@@ -5,22 +5,30 @@ use std::path::Path;
 use piston_window::*;
 use piston::input::{Button, Key, PressEvent};
 
-const WINDOW_WIDTH:u32 = 1200;
-const WINDOW_HEIGHT:u32 = 800;
+const WINDOW_WIDTH:u32 = 1024;
+const WINDOW_HEIGHT:u32 = 768+192;
 
 // Add check after loading map and gui, if size differ from const stop the program
-const MAP_WIDTH:u32 = 800;
-const MAP_HEIGHT:u32 = 600;
+const MAP_WIDTH:u32 = 1024;
+const MAP_HEIGHT:u32 = 768;
 
-const GUI_WIDTH:u32 = 800;
-const GUI_HEIGHT:u32 = 200;
+const GUI_WIDTH:u32 = 1024;
+const GUI_HEIGHT:u32 = 192;
 
 const GAME_HEIGHT:u32 = MAP_HEIGHT + GUI_HEIGHT;
+
+// [17:58:55:362] Sulfurel : Le Lorem Ipsum est simplement du faux texte employé dans la composition et la mise en page avant impression. Le Lorem Ipsum est le faux texte standard de l'imprimerie depuis les années 1500, quand un 
+
+// [17:58:55:362] Sulfurel : Le Lorem Ipsum est simplement du faux
+// texte employé dans la composition et la mise en page avant
+// impression. Le Lorem Ipsum est le faux texte standard de
+// l'imprimerie depuis les années 1500, quand un 
+
 
 fn main() {
 
     let opengl = OpenGL::V3_2;
-    let mut window: PistonWindow = WindowSettings::new("Sufod", [WINDOW_WIDTH, WINDOW_HEIGHT])
+    let mut window: PistonWindow = WindowSettings::new("rpg", [WINDOW_WIDTH, WINDOW_HEIGHT])
     .exit_on_esc(true)
     .graphics_api(opengl)
     .resizable(false)
@@ -35,8 +43,8 @@ fn main() {
 
     //A texture to use with the image
     let ref mut texture_context = window.create_texture_context();
-    let texture = Texture::from_path(texture_context, Path::new("../assets/v1/export/tileset.png"), Flip::None, &piston_window::TextureSettings::new()).unwrap();
-    let gui_texture = Texture::from_path(texture_context, Path::new("../assets/v1/export/interface.png"), Flip::None, &piston_window::TextureSettings::new()).unwrap();
+    let texture = Texture::from_path(texture_context, Path::new("../assets/v2/map_1024x768_grid64.png"), Flip::None, &piston_window::TextureSettings::new()).unwrap();
+    let gui_texture = Texture::from_path(texture_context, Path::new("../assets/v2/interface_1024x192_grid16.png"), Flip::None, &piston_window::TextureSettings::new()).unwrap();
  
      
     let mut events = Events::new(EventSettings::new());
