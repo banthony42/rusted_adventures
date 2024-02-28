@@ -1,9 +1,16 @@
-extern crate piston_window;
-extern crate gfx;
+extern crate glutin_window;
+extern crate graphics;
+extern crate opengl_graphics;
+extern crate piston;
 
-use std::path::Path;
-use piston_window::*;
-use piston::input::{Button, Key, PressEvent};
+use glutin_window::GlutinWindow as Window;
+use opengl_graphics::{GlGraphics, OpenGL, Texture, TextureSettings};
+use piston::event_loop::{EventSettings, Events};
+use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent, Button};
+use piston::window::WindowSettings;
+use piston::{PressEvent, ReleaseEvent, ResizeArgs, ResizeEvent};
+
+use graphics::*;
 
 const WINDOW_WIDTH:u32 = 1024;
 const WINDOW_HEIGHT:u32 = 768+192;
@@ -11,81 +18,113 @@ const WINDOW_HEIGHT:u32 = 768+192;
 // Add check after loading map and gui, if size differ from const stop the program
 const MAP_WIDTH:u32 = 1024;
 const MAP_HEIGHT:u32 = 768;
+const MAP_WIDTH_CENTER:u32 = (WINDOW_WIDTH - MAP_WIDTH) / 2;
 
 const GUI_WIDTH:u32 = 1024;
 const GUI_HEIGHT:u32 = 192;
-
+const GUI_WIDTH_CENTER:u32 = (WINDOW_WIDTH - GUI_WIDTH) / 2;
 const GAME_HEIGHT:u32 = MAP_HEIGHT + GUI_HEIGHT;
 
-// [17:58:55:362] Sulfurel : Le Lorem Ipsum est simplement du faux texte employé dans la composition et la mise en page avant impression. Le Lorem Ipsum est le faux texte standard de l'imprimerie depuis les années 1500, quand un 
+// Colors
+const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 
-// [17:58:55:362] Sulfurel : Le Lorem Ipsum est simplement du faux
-// texte employé dans la composition et la mise en page avant
-// impression. Le Lorem Ipsum est le faux texte standard de
-// l'imprimerie depuis les années 1500, quand un 
+pub struct Game {
+    gl: GlGraphics, // OpenGL drawing backend.
+    map_img: Image,
+    ui_img: Image,
+    map_txt: Texture,
+    ui_txt: Texture
+}
 
+impl Game {
+    fn render(&mut self, args: &RenderArgs) {
+
+        self.gl.draw(args.viewport(), |c, gl| {
+            // Clear the screen.
+            clear(BLACK, gl);
+            self.map_img.draw(&self.map_txt, &DrawState::default(), c.transform, gl);
+            self.ui_img.draw(&self.ui_txt, &DrawState::default(), c.transform, gl);
+        });
+    }
+
+    fn key_press(&mut self, args: &Button) {
+        if let &Button::Keyboard(key) = args {
+            match key {
+                any => {
+                    println!("Key pressed: {:?}", any);
+                }
+           }
+        }
+    }
+
+    fn key_release(&mut self, args: &Button) {
+        if let &Button::Keyboard(key) = args {
+            match key {
+                any => {
+                    println!("Key released: {:?}", any);
+                }
+           }
+        }
+    }
+
+    fn resize_window(&mut self, args: &ResizeArgs) {
+        let window_width = args.window_size[0] as u32;
+        let window_height = args.window_size[1] as u32;
+        let map_x_centered = ((window_width - MAP_WIDTH) / 2) as f64;
+        let gui_x_centered = ((window_width - GUI_WIDTH) / 2) as f64;
+
+        let map_y_centered = ((window_height - GAME_HEIGHT) / 2) as f64;
+
+        self.map_img = Image::new().rect([map_x_centered, map_y_centered, MAP_WIDTH as f64, MAP_HEIGHT as f64]);
+        self.ui_img = Image::new().rect([gui_x_centered, map_y_centered + MAP_HEIGHT as f64, GUI_WIDTH as f64, GUI_HEIGHT as f64]);
+        println!("Resize : {} x {}", window_width, window_height);
+        println!("Resize : new map_x: {}", map_x_centered);
+    }
+
+    fn update(&mut self, args: &UpdateArgs) {
+    }
+}
 
 fn main() {
-
     let opengl = OpenGL::V3_2;
-    let mut window: PistonWindow = WindowSettings::new("rpg", [WINDOW_WIDTH, WINDOW_HEIGHT])
-    .exit_on_esc(true)
-    .graphics_api(opengl)
-    .resizable(false)
-    .build()
-    .unwrap();
 
-	//Create the image object and attach a square Rectangle object inside.
-    let map_x_centered = ((WINDOW_WIDTH - MAP_WIDTH) / 2) as f64;
-    let gui_x_centered = ((WINDOW_WIDTH - GUI_WIDTH) / 2) as f64;
-    let mut map   = Image::new().rect([map_x_centered, 0.0, MAP_WIDTH as f64, MAP_HEIGHT as f64]);
-    let mut gui   = Image::new().rect([gui_x_centered, MAP_HEIGHT as f64, GUI_WIDTH as f64, GUI_HEIGHT as f64]);
+    // Create a Glutin window.
+    let mut window: Window = WindowSettings::new("rpg", [WINDOW_WIDTH, WINDOW_HEIGHT])
+        .graphics_api(opengl)
+        .exit_on_esc(true)
+        .resizable(false)
+        .build()
+        .unwrap();
 
-    //A texture to use with the image
-    let ref mut texture_context = window.create_texture_context();
-    let texture = Texture::from_path(texture_context, Path::new("../assets/v2/map_1024x768_grid64.png"), Flip::None, &piston_window::TextureSettings::new()).unwrap();
-    let gui_texture = Texture::from_path(texture_context, Path::new("../assets/v2/interface_1024x192_grid16.png"), Flip::None, &piston_window::TextureSettings::new()).unwrap();
- 
-     
+    // Create a new game and run it.
+    let mut game = Game {
+        gl: GlGraphics::new(opengl),
+        map_img: Image::new().rect([MAP_WIDTH_CENTER as f64, 0.0, MAP_WIDTH as f64, MAP_HEIGHT as f64]),
+        ui_img: Image::new().rect([GUI_WIDTH_CENTER as f64, MAP_HEIGHT as f64, GUI_WIDTH as f64, GUI_HEIGHT as f64]),
+        map_txt: Texture::from_path("../assets/v2/map_1024x768_grid64.png", &TextureSettings::new()).unwrap(),
+        ui_txt: Texture::from_path("../assets/v2/interface_1024x192_grid16.png", &TextureSettings::new()).unwrap()
+    };
+
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
-
-        if let Some(r) = e.resize_args() {
-            let window_width = r.window_size[0] as u32;
-            let window_height = r.window_size[1] as u32;
-            let map_x_centered = ((window_width - MAP_WIDTH) / 2) as f64;
-            let gui_x_centered = ((window_width - GUI_WIDTH) / 2) as f64;
-
-            let map_y_centered = ((window_height - GAME_HEIGHT) / 2) as f64;
-
-            map = Image::new().rect([map_x_centered, map_y_centered, MAP_WIDTH as f64, MAP_HEIGHT as f64]);
-            gui = Image::new().rect([gui_x_centered, map_y_centered + MAP_HEIGHT as f64, GUI_WIDTH as f64, GUI_HEIGHT as f64]);
-            println!("Resize : {} x {}", window_width, window_height);
-            println!("Resize : new map_x: {}", map_x_centered);
+        if let Some(args) = e.render_args() {
+            game.render(&args);
         }
 
-        if let Some(input) = e.press_args() {
-            if let Button::Keyboard(key) = input {
-                match key {
-                    any => {
-                        println!("Key pressed: {:?}", any);
-                    }
-               }
-            }
+        if let Some(args) = e.press_args() {
+            game.key_press(&args);
         }
 
-        if let Some(r) = e.render_args() {
+        if let Some(args) = e.release_args() {
+            game.key_release(&args);
+        }
 
-            let black = [0.0, 0.0, 0.0, 1.0];
-            if let Some(e) = window.next() {
-                window.draw_2d(&e, |c, g, _| {
-                    clear(black, g);
-    
-                    //Draw the image with the texture
-                    map.draw(&texture, &DrawState::default(), c.transform, g);
-                    gui.draw(&gui_texture, &DrawState::default(), c.transform, g);
-                });
-            }
+        if let Some(args) = e.resize_args() {
+            game.resize_window(&args);
+        }
+
+        if let Some(args) = e.update_args() {
+            game.update(&args);
         }
     }
 }
