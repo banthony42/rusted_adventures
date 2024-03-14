@@ -20,14 +20,15 @@ pub struct TileMapData {
     pub tiles: Vec<u32>,
     pub width: u32,
     pub height: u32,
-    pub tileset_index: usize,
+    pub tileset: Tileset,
 }
 
 impl TileMapData {
-    pub fn draw<F>(&self, tileset: &Tileset, draw_func: &mut F)
-    where F: FnMut(&[f64;4], &f64, &f64)
+    pub fn draw<F>(&self, draw_func: &mut F)
+    where F: FnMut(&[f64;4], &Tileset, &f64, &f64)
     {
-        self.tiles.iter().enumerate().map(|(index, tile_number)| {
+        let tileset_tmp = &self.tileset;
+        let _ = self.tiles.iter().enumerate().map(|(index, tile_number)| {
 
             if *tile_number == 0 {
                 return
@@ -37,19 +38,18 @@ impl TileMapData {
             let y = index as u32 / self.width;
 
             let src_rect = [
-                (*tile_number % (tileset.tileset.get_width() / tileset.tile_width ) * tileset.tile_width) as f64 ,
-                (*tile_number / (tileset.tileset.get_width() / tileset.tile_width) * tileset.tile_height) as f64,
-                tileset.tile_width as f64,
-                tileset.tile_height as f64,
+                (*tile_number % (self.tileset.tileset.get_width() / self.tileset.tile_width ) * self.tileset.tile_width) as f64 ,
+                (*tile_number / (self.tileset.tileset.get_width() / self.tileset.tile_width) * self.tileset.tile_height) as f64,
+                self.tileset.tile_width as f64,
+                self.tileset.tile_height as f64,
             ];
 
-            draw_func(&src_rect, &(x as f64), &(y as f64));
+            draw_func(&src_rect, &tileset_tmp, &(x as f64), &(y as f64));
         }).collect::<Vec<_>>();
     }
 }
 
 pub struct MapData {
-    pub tilesets: Vec<Tileset>,
     pub map: TileMapData,
     pub collider: TileMapData,
     pub sprites: TileMapData
@@ -74,33 +74,36 @@ impl World {
         for (coord, map_file) in WORLD {
             let loaded_map = AsepriteExportTileMap::new(map_file);
 
-            let map_tileset = loaded_map.tilesets.iter().map(|tileset| {
-                let tilset_path = format!("../assets/{}", tileset.image.replace("\\", "/"));
-                return Tileset {
-                    tileset: Texture::from_path(&tilset_path, &TextureSettings::new()).unwrap(),
-                    file_path: tilset_path.to_string(),
-                    tile_width: tileset.grid.tileSize.width,
-                    tile_height: tileset.grid.tileSize.height
-                }
-            }).collect::<Vec<Tileset>>();
+            let map_new_tileset = World::aseprite_tileset_to_game_tileset(&loaded_map.tilesets, loaded_map.map.tileset_index);
+            let collider_new_tileset = World::aseprite_tileset_to_game_tileset(&loaded_map.tilesets, loaded_map.collider.tileset_index);
+            let sprite_new_tileset = World::aseprite_tileset_to_game_tileset(&loaded_map.tilesets, loaded_map.sprites.tileset_index);
 
             world.world.insert(coord, MapData {
-                tilesets: map_tileset,
-                map: Self::aseprite_tilemap_to_game_tilemap(loaded_map.map),
-                collider: Self::aseprite_tilemap_to_game_tilemap(loaded_map.collider),
-                sprites: Self::aseprite_tilemap_to_game_tilemap(loaded_map.sprites)
+                map: World::aseprite_tilemap_to_game_tilemap(loaded_map.map, map_new_tileset),
+                collider: World::aseprite_tilemap_to_game_tilemap(loaded_map.collider, collider_new_tileset),
+                sprites: World::aseprite_tilemap_to_game_tilemap(loaded_map.sprites, sprite_new_tileset),
             });
         }
-
         return world;
     }
 
-    fn aseprite_tilemap_to_game_tilemap(aseprite_tm: aseprite_export_tilemap::TileMapData) -> TileMapData {
+    fn aseprite_tileset_to_game_tileset(tilesets: &Vec<aseprite_export_tilemap::Tileset>, index: usize) -> Tileset {
+        let map_export_tileset : &aseprite_export_tilemap::Tileset = &tilesets[index];
+        let tilset_path = format!("../assets/{}", map_export_tileset.image.replace("\\", "/"));
+        return Tileset {
+                tileset: Texture::from_path(&tilset_path, &TextureSettings::new()).unwrap(),
+                file_path: tilset_path.to_string(),
+                tile_width: map_export_tileset.grid.tileSize.width,
+                tile_height: map_export_tileset.grid.tileSize.height
+            };
+    }
+
+    fn aseprite_tilemap_to_game_tilemap(aseprite_tm: aseprite_export_tilemap::TileMapData, tileset: Tileset) -> TileMapData {
         TileMapData {
             tiles: aseprite_tm.tilemap.tiles,
             width: aseprite_tm.tilemap.width,
             height: aseprite_tm.tilemap.height,
-            tileset_index: aseprite_tm.tileset_index
+            tileset: tileset
         }
     }
 }

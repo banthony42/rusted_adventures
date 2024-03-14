@@ -44,8 +44,7 @@ impl Game {
             let map_data: &world::MapData = &self.world.world[&coord];
 
             // ------- Map -------
-            let tileset = &map_data.tilesets[map_data.map.tileset_index];
-            map_data.map.draw(tileset, &mut |src_rect, x, y| {
+            map_data.map.draw(&mut |src_rect, tileset, x, y| {
                     self.map_img.src_rect(*src_rect).draw(
                         &tileset.tileset,
                         &DrawState::default(),
@@ -53,8 +52,7 @@ impl Game {
                         gl);
             });
 
-            let tileset = &map_data.tilesets[map_data.collider.tileset_index];
-            map_data.collider.draw(tileset, &mut |src_rect, x, y| {
+            map_data.collider.draw( &mut |src_rect, tileset, x, y| {
                     self.map_img.src_rect(*src_rect).draw(
                         &tileset.tileset,
                         &DrawState::default(),
@@ -62,8 +60,7 @@ impl Game {
                         gl);
             });
 
-            let tileset = &map_data.tilesets[map_data.sprites.tileset_index];
-            map_data.sprites.draw(tileset, &mut |src_rect, x, y| {
+            map_data.sprites.draw( &mut |src_rect, tileset, x, y| {
                     self.map_img.src_rect(*src_rect).draw(
                         &tileset.tileset,
                         &DrawState::default(),
@@ -72,20 +69,6 @@ impl Game {
             });
         });
     }
-
-    // Not working because it need to take self reference
-    // and self reference is already in use within the self.gl.draw closure because of gl pass to the closure
-    // and rust doesn't differ between &self and &self.gl (both consider reference on self)
-    // Therefore TileMapData.draw should be implem wich will take closure
-    // src_rect and texture will be pass to the closure 
-    // In addition maybe we should move tileset directly into the struct TileMapData instead of tileset_index
-    // map_data.map.draw(tileset, |src_rect, texture| {
-    //     self.map_img.src_rect(src_rect).draw(
-    //         &tileset.tileset,
-    //         &DrawState::default(),
-    //         ctx.transform.trans(self.map_x_centered + x as f64 * tileset.tile_width as f64, self.map_y_centered + y as f64 *  tileset.tile_height as f64),
-    //         gl);
-    // })
 
     fn key_press(&mut self, args: &Button) {
         if let &Button::Keyboard(key) = args {
