@@ -109,12 +109,26 @@ fn run_game() {
     let opengl = OpenGL::V3_2;
 
     // Create a Glutin window.
-    let mut window: Window = WindowSettings::new("rpg", [constants::WINDOW_WIDTH as u32, constants::WINDOW_HEIGHT as u32])
+    let mut window: Window =  match WindowSettings::new("rpg", [constants::WINDOW_WIDTH as u32, constants::WINDOW_HEIGHT as u32])
         .graphics_api(opengl)
         .exit_on_esc(true)
         .resizable(false)
-        .build()
-        .unwrap();
+        .build() {
+            Ok(window) => window,
+            Err(window_error) => {
+                println!("Fail to create Glutin Window: {}", window_error);
+                std::process::exit(2);
+            }
+        };
+
+    // Load whole hard drown PNG interface
+    let interface_texture = match Texture::from_path("../assets/v2/interface_1024x192_grid16.png", &TextureSettings::new()) {
+        Ok(texture) => texture,
+        Err(texture_error) => {
+            println!("Fail to load texture (interface PNG): {}", texture_error);
+            std::process::exit(2);
+        }
+    };
 
     // Create a new game and run it.
     let mut game = Game {
@@ -123,7 +137,7 @@ fn run_game() {
         map_x_centered: constants::MAP_WIDTH_CENTER as f64,
         map_y_centered: constants::MAP_HEIGHT_CENTER as f64,
         ui_img: Image::new().rect([constants::GUI_WIDTH_CENTER as f64, constants::MAP_HEIGHT as f64, constants::GUI_WIDTH as f64, constants::GUI_HEIGHT as f64]),
-        ui_txt: Texture::from_path("../assets/v2/interface_1024x192_grid16.png", &TextureSettings::new()).unwrap(),
+        ui_txt: interface_texture,
         world: World::new()
     };
 

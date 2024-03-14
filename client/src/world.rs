@@ -90,8 +90,15 @@ impl World {
     fn aseprite_tileset_to_game_tileset(tilesets: &Vec<aseprite_export_tilemap::Tileset>, index: usize) -> Tileset {
         let map_export_tileset : &aseprite_export_tilemap::Tileset = &tilesets[index];
         let tilset_path = format!("../assets/{}", map_export_tileset.image.replace("\\", "/"));
+        let tileset_texture = match Texture::from_path(&tilset_path, &TextureSettings::new()) {
+            Ok(texture) => texture,
+            Err(texture_error) => {
+                println!("Fail to load texture (tileset PNG): {}", texture_error);
+                std::process::exit(2);
+            }
+        };
         return Tileset {
-                tileset: Texture::from_path(&tilset_path, &TextureSettings::new()).unwrap(),
+                tileset: tileset_texture,
                 file_path: tilset_path.to_string(),
                 tile_width: map_export_tileset.grid.tileSize.width,
                 tile_height: map_export_tileset.grid.tileSize.height
