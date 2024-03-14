@@ -46,7 +46,7 @@ impl Game {
                     self.map_img.src_rect(*src_rect).draw(
                         &tileset.tileset,
                         &DrawState::default(),
-                        ctx.transform.trans(self.map_x_centered + *x as f64 * tileset.tile_width as f64, self.map_y_centered + *y as f64 *  tileset.tile_height as f64),
+                        ctx.transform.trans(self.map_x_centered + x as f64 * tileset.tile_width as f64, self.map_y_centered + y as f64 *  tileset.tile_height as f64),
                         gl);
             });
 
@@ -54,7 +54,7 @@ impl Game {
                     self.map_img.src_rect(*src_rect).draw(
                         &tileset.tileset,
                         &DrawState::default(),
-                        ctx.transform.trans(self.map_x_centered + *x as f64 * tileset.tile_width as f64, self.map_y_centered + *y as f64 *  tileset.tile_height as f64),
+                        ctx.transform.trans(self.map_x_centered + x as f64 * tileset.tile_width as f64, self.map_y_centered + y as f64 *  tileset.tile_height as f64),
                         gl);
             });
 
@@ -62,7 +62,7 @@ impl Game {
                     self.map_img.src_rect(*src_rect).draw(
                         &tileset.tileset,
                         &DrawState::default(),
-                        ctx.transform.trans(self.map_x_centered + *x as f64 * tileset.tile_width as f64, self.map_y_centered + *y as f64 *  tileset.tile_height as f64),
+                        ctx.transform.trans(self.map_x_centered + x as f64 * tileset.tile_width as f64, self.map_y_centered + y as f64 *  tileset.tile_height as f64),
                         gl);
             });
         });

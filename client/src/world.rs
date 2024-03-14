@@ -25,26 +25,26 @@ pub struct TileMapData {
 
 impl TileMapData {
     pub fn draw<F>(&self, draw_func: &mut F)
-    where F: FnMut(&[f64;4], &Tileset, &f64, &f64)
+    where F: FnMut(&[f64;4], &Tileset, f64, f64)
     {
-        let tileset_tmp = &self.tileset;
         let _ = self.tiles.iter().enumerate().map(|(index, tile_number)| {
 
             if *tile_number == 0 {
                 return
             }
 
-            let x = index as u32 % self.width;
-            let y = index as u32 / self.width;
-
             let src_rect = [
-                (*tile_number % (self.tileset.tileset.get_width() / self.tileset.tile_width ) * self.tileset.tile_width) as f64 ,
+                (*tile_number % (self.tileset.tileset.get_width() / self.tileset.tile_width ) * self.tileset.tile_width) as f64,
                 (*tile_number / (self.tileset.tileset.get_width() / self.tileset.tile_width) * self.tileset.tile_height) as f64,
                 self.tileset.tile_width as f64,
                 self.tileset.tile_height as f64,
             ];
 
-            draw_func(&src_rect, &tileset_tmp, &(x as f64), &(y as f64));
+            let x = (index as u32 % self.width) as f64;
+            let y = (index as u32 / self.width) as f64;
+
+            draw_func(&src_rect, &self.tileset, x, y);
+
         }).collect::<Vec<_>>();
     }
 }
