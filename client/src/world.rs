@@ -1,5 +1,5 @@
 use std::{clone, collections::HashMap};
-use opengl_graphics::{Texture, TextureSettings};
+use opengl_graphics::{Texture, TextureSettings, ImageSize};
 
 use crate::aseprite_export_tilemap::{self, AsepriteExportTileMap};
 
@@ -21,6 +21,31 @@ pub struct TileMapData {
     pub width: u32,
     pub height: u32,
     pub tileset_index: usize,
+}
+
+impl TileMapData {
+    pub fn draw<F>(&self, tileset: &Tileset, draw_func: &mut F)
+    where F: FnMut(&[f64;4], &f64, &f64)
+    {
+        self.tiles.iter().enumerate().map(|(index, tile_number)| {
+
+            if *tile_number == 0 {
+                return
+            }
+
+            let x = index as u32 % self.width;
+            let y = index as u32 / self.width;
+
+            let src_rect = [
+                (*tile_number % (tileset.tileset.get_width() / tileset.tile_width ) * tileset.tile_width) as f64 ,
+                (*tile_number / (tileset.tileset.get_width() / tileset.tile_width) * tileset.tile_height) as f64,
+                tileset.tile_width as f64,
+                tileset.tile_height as f64,
+            ];
+
+            draw_func(&src_rect, &(x as f64), &(y as f64));
+        }).collect::<Vec<_>>();
+    }
 }
 
 pub struct MapData {

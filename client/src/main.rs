@@ -41,87 +41,35 @@ impl Game {
 
             // Draw map based on tiles
             let coord = Coord { x:0, y:0 };
-            let map_data = &self.world.world[&coord];
+            let map_data: &world::MapData = &self.world.world[&coord];
 
             // ------- Map -------
-            // self.draw_tilemap(map_data.map, &map_data.tilesets, ctx, gl);
+            let tileset = &map_data.tilesets[map_data.map.tileset_index];
+            map_data.map.draw(tileset, &mut |src_rect, x, y| {
+                    self.map_img.src_rect(*src_rect).draw(
+                        &tileset.tileset,
+                        &DrawState::default(),
+                        ctx.transform.trans(self.map_x_centered + *x as f64 * tileset.tile_width as f64, self.map_y_centered + *y as f64 *  tileset.tile_height as f64),
+                        gl);
+            });
 
-            let _ = map_data.map.tiles.iter().enumerate().map(|(index, tile_number)| {
+            let tileset = &map_data.tilesets[map_data.collider.tileset_index];
+            map_data.collider.draw(tileset, &mut |src_rect, x, y| {
+                    self.map_img.src_rect(*src_rect).draw(
+                        &tileset.tileset,
+                        &DrawState::default(),
+                        ctx.transform.trans(self.map_x_centered + *x as f64 * tileset.tile_width as f64, self.map_y_centered + *y as f64 *  tileset.tile_height as f64),
+                        gl);
+            });
 
-                if *tile_number == 0 {
-                    return
-                }
-
-                let x = index as u32 % map_data.map.width;
-                let y = index as u32 / map_data.map.width;
-
-                let tileset = &map_data.tilesets[map_data.map.tileset_index];
-
-                let src_rect = [
-                    (*tile_number % (tileset.tileset.get_width() / tileset.tile_width ) * tileset.tile_width) as f64 ,
-                    (*tile_number / (tileset.tileset.get_width() / tileset.tile_width) * tileset.tile_height) as f64,
-                    tileset.tile_width as f64,
-                    tileset.tile_height as f64,
-                ];
-
-                self.map_img.src_rect(src_rect).draw(
-                    &map_data.tilesets[map_data.map.tileset_index].tileset,
-                    &DrawState::default(),
-                    ctx.transform.trans(self.map_x_centered + x as f64 * tileset.tile_width as f64, self.map_y_centered + y as f64 *  tileset.tile_height as f64),
-                    gl);
-            }).collect::<Vec<_>>();
-
-            // ------- Collider -------
-            let _ = map_data.collider.tiles.iter().enumerate().map(|(index, tile_number)| {
-
-                if *tile_number == 0 {
-                    return
-                }
-
-                let x = index as u32 % map_data.collider.width;
-                let y = index as u32 / map_data.collider.width;
-
-                let tileset = &map_data.tilesets[map_data.collider.tileset_index];
-
-                let src_rect = [
-                    (*tile_number % (tileset.tileset.get_width() / tileset.tile_width ) * tileset.tile_width) as f64 ,
-                    (*tile_number / (tileset.tileset.get_width() / tileset.tile_width) * tileset.tile_height) as f64,
-                    tileset.tile_width as f64,
-                    tileset.tile_height as f64,
-                ];
-
-                self.map_img.src_rect(src_rect).draw(
-                    &map_data.tilesets[map_data.collider.tileset_index].tileset,
-                    &DrawState::default(),
-                    ctx.transform.trans(self.map_x_centered + x as f64 * tileset.tile_width as f64, self.map_y_centered + y as f64 *  tileset.tile_height as f64),
-                    gl);
-            }).collect::<Vec<_>>();
-
-            // ------- Sprites -------
-            let _ = map_data.sprites.tiles.iter().enumerate().map(|(index, tile_number)| {
-
-                if *tile_number == 0 {
-                    return
-                }
-
-                let x = index as u32 % map_data.sprites.width;
-                let y = index as u32 / map_data.sprites.width;
-
-                let tileset = &map_data.tilesets[map_data.sprites.tileset_index];
-
-                let src_rect = [
-                    (*tile_number % (tileset.tileset.get_width() / tileset.tile_width ) * tileset.tile_width) as f64 ,
-                    (*tile_number / (tileset.tileset.get_width() / tileset.tile_width) * tileset.tile_height) as f64,
-                    tileset.tile_width as f64,
-                    tileset.tile_height as f64,
-                ];
-
-                self.map_img.src_rect(src_rect).draw(
-                    &map_data.tilesets[map_data.sprites.tileset_index].tileset,
-                    &DrawState::default(),
-                    ctx.transform.trans(self.map_x_centered + x as f64 * tileset.tile_width as f64, self.map_y_centered + y as f64 *  tileset.tile_height as f64),
-                    gl);
-            }).collect::<Vec<_>>();
+            let tileset = &map_data.tilesets[map_data.sprites.tileset_index];
+            map_data.sprites.draw(tileset, &mut |src_rect, x, y| {
+                    self.map_img.src_rect(*src_rect).draw(
+                        &tileset.tileset,
+                        &DrawState::default(),
+                        ctx.transform.trans(self.map_x_centered + *x as f64 * tileset.tile_width as f64, self.map_y_centered + *y as f64 *  tileset.tile_height as f64),
+                        gl);
+            });
         });
     }
 
@@ -138,43 +86,6 @@ impl Game {
     //         ctx.transform.trans(self.map_x_centered + x as f64 * tileset.tile_width as f64, self.map_y_centered + y as f64 *  tileset.tile_height as f64),
     //         gl);
     // })
-    fn draw_tilemap<G>(&mut self, tm: TileMapData, tilesets: &Vec<Tileset>, ctx: Context, gl: &mut G) where
-        G : Graphics<Texture = Texture>,
-        {
-        let _ = tm.tiles.iter().enumerate().map(|(index, tile_number)| {
-    
-            if *tile_number == 0 {
-                return
-            }
-    
-            let x = index as u32 % tm.width;
-            let y = index as u32 / tm.width;
-            let tileset = &tilesets[tm.tileset_index];
-
-            let src_rect = [
-                (*tile_number % (tileset.tileset.get_width() / tileset.tile_width ) * tileset.tile_width) as f64 ,
-                (*tile_number / (tileset.tileset.get_width() / tileset.tile_width) * tileset.tile_height) as f64,
-                tileset.tile_width as f64,
-                tileset.tile_height as f64,
-            ];
-    
-            println!("==> map[{}] : {} | Map(x: {} y: {}) | TilesetSize{:?} TilesetTileSize: {}x{}| DrawRect: {:?} ", 
-                        index,
-                        tile_number,
-                        x,
-                        y,
-                        tileset.tileset.get_size(),
-                        tileset.tile_width,
-                        tileset.tile_height,
-                        src_rect);
-    
-            self.map_img.src_rect(src_rect).draw(
-                &tileset.tileset,
-                &DrawState::default(),
-                ctx.transform.trans(self.map_x_centered + x as f64 * tileset.tile_width as f64, self.map_y_centered + y as f64 *  tileset.tile_height as f64),
-                gl);
-        }).collect::<Vec<_>>();
-    }
 
     fn key_press(&mut self, args: &Button) {
         if let &Button::Keyboard(key) = args {
