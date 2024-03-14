@@ -3,10 +3,8 @@ extern crate graphics;
 extern crate opengl_graphics;
 extern crate piston;
 
-use std::clone;
-
 use glutin_window::GlutinWindow as Window;
-use graphics::{clear, Context, DrawState, Graphics, Image, Transformed, ImageSize};
+use graphics::{clear, DrawState, Image, Transformed};
 use opengl_graphics::{GlGraphics, OpenGL, Texture, TextureSettings};
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent, Button};
@@ -17,7 +15,7 @@ pub mod constants;
 pub mod aseprite_export_tilemap;
 pub mod world;
 
-use world::{Coord, TileMapData, Tileset, World};
+use world::{Coord, World};
 
 pub struct Game {
     gl: GlGraphics, // OpenGL drawing backend.
@@ -101,7 +99,7 @@ impl Game {
         self.ui_img = Image::new().rect([gui_x_centered, self.map_y_centered + constants::MAP_HEIGHT as f64, constants::GUI_WIDTH as f64, constants::GUI_HEIGHT as f64]);
     }
 
-    fn update(&mut self, args: &UpdateArgs) {
+    fn update(&mut self, _args: &UpdateArgs) {
     }
 }
 

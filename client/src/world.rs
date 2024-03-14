@@ -1,4 +1,4 @@
-use std::{clone, collections::HashMap};
+use std::{collections::HashMap};
 use opengl_graphics::{Texture, TextureSettings, ImageSize};
 
 use crate::aseprite_export_tilemap::{self, AsepriteExportTileMap};
@@ -63,7 +63,7 @@ impl World {
 
     pub fn new() -> Self {
 
-        let WORLD = HashMap::from([
+        let __world  = HashMap::from([
             (Coord { x:0, y:0}, "../assets/map_collision_sprites_v2/sprite.json")
         ]);
 
@@ -71,7 +71,7 @@ impl World {
             world: HashMap::new()
         };
 
-        for (coord, map_file) in WORLD {
+        for (coord, map_file) in __world {
             let loaded_map = AsepriteExportTileMap::new(map_file);
 
             let map_new_tileset = World::aseprite_tileset_to_game_tileset(&loaded_map.tilesets, loaded_map.map.tileset_index);
@@ -106,12 +106,4 @@ impl World {
             tileset: tileset
         }
     }
-}
-
-pub fn test() {
-    let world = World::new();
-
-    let map_from_server = Coord { x:0, y:0};
-
-    let map = &world.world[&map_from_server];
 }
