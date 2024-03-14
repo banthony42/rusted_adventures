@@ -24,7 +24,8 @@ pub struct Game {
     ui_txt: Texture,
     world: World,
     map_x_centered: f64,
-    map_y_centered: f64
+    map_y_centered: f64,
+    gui_x_centered: f64
 }
 
 impl Game {
@@ -92,11 +93,21 @@ impl Game {
         let window_width = args.window_size[0] as usize;
         let window_height = args.window_size[1] as usize;
 
-        self.map_x_centered = ((window_width - constants::MAP_WIDTH) / 2) as f64;
-        self.map_y_centered = ((window_height - constants::GAME_HEIGHT) / 2) as f64;
+        if window_width >= constants::MAP_WIDTH {
+            self.map_x_centered = ((window_width - constants::MAP_WIDTH) / 2) as f64;
+            self.gui_x_centered = ((window_width - constants::GUI_WIDTH) / 2) as f64;
+        } else {
+            self.map_x_centered = 0.0;
+            self.gui_x_centered = 0.0;
+        }
 
-        let gui_x_centered = ((window_width - constants::GUI_WIDTH) / 2) as f64;
-        self.ui_img = Image::new().rect([gui_x_centered, self.map_y_centered + constants::MAP_HEIGHT as f64, constants::GUI_WIDTH as f64, constants::GUI_HEIGHT as f64]);
+        if window_height >= constants::GAME_HEIGHT {
+            self.map_y_centered = ((window_height - constants::GAME_HEIGHT) / 2) as f64;
+        } else {
+            self.map_y_centered = 0.0;
+        }
+
+        self.ui_img = Image::new().rect([self.gui_x_centered, self.map_y_centered + constants::MAP_HEIGHT as f64, constants::GUI_WIDTH as f64, constants::GUI_HEIGHT as f64]);
     }
 
     fn update(&mut self, _args: &UpdateArgs) {
@@ -112,7 +123,7 @@ fn run_game() {
     let mut window: Window =  match WindowSettings::new("rpg", [constants::WINDOW_WIDTH as u32, constants::WINDOW_HEIGHT as u32])
         .graphics_api(opengl)
         .exit_on_esc(true)
-        .resizable(false)
+        .resizable(true)
         .build() {
             Ok(window) => window,
             Err(window_error) => {
@@ -136,6 +147,7 @@ fn run_game() {
         map_img: Image::new(),
         map_x_centered: constants::MAP_WIDTH_CENTER as f64,
         map_y_centered: constants::MAP_HEIGHT_CENTER as f64,
+        gui_x_centered: 0.0,
         ui_img: Image::new().rect([constants::GUI_WIDTH_CENTER as f64, constants::MAP_HEIGHT as f64, constants::GUI_WIDTH as f64, constants::GUI_HEIGHT as f64]),
         ui_txt: interface_texture,
         world: World::new()
