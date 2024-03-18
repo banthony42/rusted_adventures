@@ -64,7 +64,7 @@ impl World {
     pub fn new() -> Self {
 
         let __world  = HashMap::from([
-            (Coord { x:0, y:0}, "../assets/map_collision_sprites_v2/sprite.json")
+            (Coord { x:0, y:0}, "../assets/map_v3/sprite.json")
         ]);
 
         let mut world = World {
