@@ -32,13 +32,11 @@ pub mod constants;
 pub mod aseprite_export_tilemap;
 pub mod world;
 pub mod entity;
+pub mod client;
 
 use entity::GameTexture;
-use world::{Coord, World};
-
-struct GameData {
-    player: entity::Player,
-}
+use world::World;
+use client::GameData;
 
 pub struct Game {
     gl: GlGraphics, // OpenGL drawing backend.
@@ -204,9 +202,13 @@ fn run_game() {
             }
         };
 
-    // Simulate initial server game data response
-    let g_data = GameData {
-        player: entity::Player::new(Coord { x:0, y:0}, Coord {x:8, y:8}),
+    let g_data = match client::GameData::get_data_from_server() {
+        Ok(data) => data,
+        Err(error) => {
+            // TODO: should not exit
+            println!("{error}");
+            std::process::exit(1);
+        }
     };
 
     // Create a new game and run it.

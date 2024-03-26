@@ -1,9 +1,10 @@
 use std::{collections::HashMap};
 use opengl_graphics::{Texture, TextureSettings, ImageSize};
+use serde::{Deserialize, Serialize};
 
 use crate::aseprite_export_tilemap::{self, AsepriteExportTileMap};
 
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Coord {
     pub x: i32,
     pub y: i32

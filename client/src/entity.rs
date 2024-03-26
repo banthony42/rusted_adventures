@@ -1,16 +1,18 @@
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     world::TileMapData, constants, world::Coord
 };
 
-
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum GameTexture {
     Character,
     Interface
 }
 
 // TODO: use getter / setter make attributes private
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Player {
     pub texture: GameTexture,
     pub map_coord: Coord,
