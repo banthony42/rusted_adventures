@@ -1,22 +1,25 @@
 use serde::{Deserialize, Serialize};
+use crate::entity::Player;
 
-use crate::{entity};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GameData {
-    pub player: entity::Player,
+    pub player: Player,
 }
 
 impl GameData {
 
     fn fetch_data_from_server() -> &'static str {
-        // Simulate initial server game data response
+        // Simulate server game data response
         return r#"{
             "player": {
-                "texture": "Character",
-                "map_coord": {
-                    "x": 8,
-                    "y": 8
+                "base": {
+                    "name": "John Snow",
+                    "texture": "Character",
+                    "map_coord": {
+                        "x": 8,
+                        "y": 8
+                    }
                 },
                 "world_coord": {
                     "x": 0,

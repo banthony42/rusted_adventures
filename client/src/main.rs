@@ -102,7 +102,6 @@ impl Game {
     fn update(&mut self, _args: &UpdateArgs) {
         if (get_timestamp() - self.ts) > 1000 {
             self.ts = get_timestamp();
-            println!("==> update: player: {:?}", self.fetched_data.player.map_coord);
         }
     }
 
@@ -111,16 +110,16 @@ impl Game {
         if let &Button::Keyboard(key) = args {
             match key {
                 piston::Key::W | piston::Key::Up => {
-                    self.fetched_data.player.move_player_y(-1, &map_data.collider);
+                    self.fetched_data.player.move_y(-1, &map_data.collider);
                 },
                 piston::Key::S | piston::Key::Down => {
-                    self.fetched_data.player.move_player_y(1, &map_data.collider);
+                    self.fetched_data.player.move_y(1, &map_data.collider);
                 },
                 piston::Key::A | piston::Key::Left => {
-                    self.fetched_data.player.move_player_x(-1, &map_data.collider);
+                    self.fetched_data.player.move_x(-1, &map_data.collider);
                 },
                 piston::Key::D | piston::Key::Right => {
-                    self.fetched_data.player.move_player_x(1, &map_data.collider);
+                    self.fetched_data.player.move_x(1, &map_data.collider);
                 },
                 _ => {}
            }

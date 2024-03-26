@@ -1,4 +1,5 @@
 
+use std::ops::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -11,25 +12,15 @@ pub enum GameTexture {
     Interface
 }
 
-// TODO: use getter / setter make attributes private
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Player {
+pub struct Entity {
+    pub name: String,
     pub texture: GameTexture,
     pub map_coord: Coord,
-    pub world_coord: Coord,
 }
 
-
-impl Player {
-
-    pub fn new (world_coord :Coord, map_coord : Coord) -> Self {
-        return Player {
-            texture: GameTexture::Character,
-            map_coord: map_coord,
-            world_coord: world_coord
-        }
-    }
-    pub fn move_player_x(&mut self, step: i8, collider: &TileMapData) -> bool {
+impl Entity {
+    pub fn move_x(&mut self, step: i8, collider: &TileMapData) -> bool {
         if step > 0 {
             // Right
             if self.map_coord.x < (constants::TILEMAP_WIDTH - 1) as i32 {
@@ -50,12 +41,11 @@ impl Player {
             }
         }
         // Collision
-        println!("Boum ...");
+        println!("[{}]: Boum ...", self.name);
         return false;
     }
 
-
-    pub fn move_player_y(&mut self, step: i8, collider: &TileMapData) -> bool {
+    pub fn move_y(&mut self, step: i8, collider: &TileMapData) -> bool {
         if step > 0 {
             // Right
             if self.map_coord.y < (constants::TILEMAP_HEIGHT - 1) as i32 {
@@ -76,7 +66,26 @@ impl Player {
             }
         }
         // Collision
-        println!("Boum ...");
+        println!("[{}]: Boum ...", self.name);
         return false;
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Player {
+    pub base: Entity,
+    pub world_coord: Coord,
+}
+
+impl Deref for Player {
+    type Target = Entity;
+    fn deref(&self) -> &Entity {
+        return &self.base;
+    }
+}
+
+impl DerefMut for Player {
+    fn deref_mut(&mut self) -> &mut Entity {
+        return &mut self.base;
     }
 }
