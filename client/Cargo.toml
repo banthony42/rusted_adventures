@@ -6,9 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-piston = "0.55.0"
-piston2d-graphics = "0.44.0"
-pistoncore-glutin_window = "0.72.0"
-piston2d-opengl_graphics = "0.83.0"
+piston = "0.53.0"
+piston2d-graphics = "0.40.0"
+piston_window = "0.119.0"
+piston2d-opengl_graphics = "0.78.0"
+
 serde_json = "1.0.114"
 serde = {  version = "1.0.197", features = [ "derive" ] }

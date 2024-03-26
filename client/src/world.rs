@@ -3,10 +3,10 @@ use opengl_graphics::{Texture, TextureSettings, ImageSize};
 
 use crate::aseprite_export_tilemap::{self, AsepriteExportTileMap};
 
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq)]
 pub struct Coord {
-    pub x: u32,
-    pub y: u32
+    pub x: i32,
+    pub y: i32
 }
 
 pub struct Tileset {
