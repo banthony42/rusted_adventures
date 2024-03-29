@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    world::TileMapData, constants, world::Coord
+    constants::{self, TILEMAP_HEIGHT, TILEMAP_WIDTH}, world::{Coord, Sprite}
 };
 
 #[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
@@ -20,12 +20,18 @@ pub struct Entity {
 }
 
 impl Entity {
-    pub fn move_x(&mut self, step: i8, collider: &TileMapData) -> bool {
+    pub fn move_x(&mut self, step: i8,  sprites: &Vec<Sprite>) -> bool {
         if step > 0 {
             // Right
-            if self.map_coord.x < (constants::TILEMAP_WIDTH - 1) as i32 {
-                let tile_index = (self.map_coord.x + step as i32) + (self.map_coord.y * collider.width as i32);
-                if collider.tiles[tile_index as usize] == 0 {
+            if self.map_coord.x < (TILEMAP_WIDTH - 1) as i32 {
+                let tile_index = (self.map_coord.x + step as i32) + (self.map_coord.y * TILEMAP_WIDTH as i32);
+ 
+                
+                let a : Vec<&Sprite> = sprites.iter()
+                .filter(|sprt| sprt.collider == false)
+                .filter(|sprt| sprt.frames[sprt.frame_index].tilemap_index == tile_index as u16).collect();
+            
+                if a.len() > 0 {
                     self.map_coord.x += step as i32;
                     return true;
                 }
@@ -33,8 +39,12 @@ impl Entity {
         } else {
             // Left
             if self.map_coord.x > 0 {
-                let tile_index = (self.map_coord.x + step as i32) + (self.map_coord.y * collider.width as i32);
-                if collider.tiles[tile_index as usize] == 0 {
+                let tile_index = (self.map_coord.x + step as i32) + (self.map_coord.y * TILEMAP_WIDTH as i32);
+                let a : Vec<&Sprite> = sprites.iter()
+                    .filter(|sprt| sprt.collider == false)
+                    .filter(|sprt| sprt.frames[sprt.frame_index].tilemap_index == tile_index as u16).collect();
+
+                if a.len() > 0 {
                     self.map_coord.x += step as i32;
                     return true;
                 }
@@ -45,12 +55,16 @@ impl Entity {
         return false;
     }
 
-    pub fn move_y(&mut self, step: i8, collider: &TileMapData) -> bool {
+    pub fn move_y(&mut self, step: i8, sprites: &Vec<Sprite>) -> bool {
         if step > 0 {
             // Right
-            if self.map_coord.y < (constants::TILEMAP_HEIGHT - 1) as i32 {
-                let tile_index = self.map_coord.x + ((self.map_coord.y + step as i32) * collider.width as i32);
-                if collider.tiles[tile_index as usize] == 0 {
+            if self.map_coord.y < (TILEMAP_HEIGHT - 1) as i32 {
+                let tile_index = self.map_coord.x + ((self.map_coord.y + step as i32) * TILEMAP_WIDTH as i32);
+                let a : Vec<&Sprite> = sprites.iter()
+                    .filter(|sprt| sprt.collider == false)
+                    .filter(|sprt| sprt.frames[sprt.frame_index].tilemap_index == tile_index as u16).collect();
+
+                if a.len() > 0 {
                     self.map_coord.y += step as i32;
                     return true;
                 }
@@ -58,8 +72,12 @@ impl Entity {
         } else {
             // Left
             if self.map_coord.y > 0 {
-                let tile_index = self.map_coord.x + ((self.map_coord.y + step as i32) * collider.width as i32);
-                if collider.tiles[tile_index as usize] == 0 {
+                let tile_index = self.map_coord.x + ((self.map_coord.y + step as i32) * TILEMAP_WIDTH as i32);
+                let a : Vec<&Sprite> = sprites.iter()
+                    .filter(|sprt| sprt.collider == false)
+                    .filter(|sprt| sprt.frames[sprt.frame_index].tilemap_index == tile_index as u16).collect();
+
+                if a.len() > 0 {
                     self.map_coord.y += step as i32;
                     return true;
                 }

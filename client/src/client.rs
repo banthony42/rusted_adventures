@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::entity::Player;
+use crate::{entity::Player, world::Coord};
 
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -8,6 +8,30 @@ pub struct GameData {
 }
 
 impl GameData {
+
+    fn fetch_entities_from_server(world_coord: Coord) -> &'static str {
+        // Simulate server game data response
+        return r#"{
+            "entities": [
+                {
+                    "type" : "player",
+                    "name" : "Walter White",
+                    "class" : "chemist",
+                    "map_coord": {
+                        "x": 8,
+                        "y": 8
+                    }                  
+                },
+                {
+                    "type" : "bouftou",
+                    "map_coord": {
+                        "x": 8,
+                        "y": 8
+                    }                  
+                }
+            ]
+        }"#
+    }
 
     fn fetch_data_from_server() -> &'static str {
         // Simulate server game data response

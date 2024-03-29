@@ -1,8 +1,7 @@
-use std::{collections::HashMap};
-use opengl_graphics::{Texture, TextureSettings, ImageSize};
-use serde::{Deserialize, Serialize};
-
-use crate::aseprite_export_tilemap::{self, AsepriteExportTileMap};
+use std::fs;
+use std::collections::HashMap;
+use opengl_graphics::{Texture, TextureSettings};
+use serde::{Serialize, Deserialize, Deserializer, de::Visitor};
 
 #[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Coord {
@@ -10,50 +9,203 @@ pub struct Coord {
     pub y: i32
 }
 
-pub struct Tileset {
-    pub tileset: Texture,
-    pub tile_width: u32,
-    pub tile_height: u32,
-    pub file_path: String
+#[derive(Deserialize, Debug, Clone, Copy)]
+pub struct Frame {
+    pub tilemap_index: u16,     // The sprite number in the tilemap, define WHERE the sprite should be drawn.
+    pub tileset_index: u8,      // The sprite number in the tileset, define WHICH sprite to pick in the tileset.
+    pub frame_number: u8,
 }
 
-pub struct TileMapData {
-    pub tiles: Vec<u32>,
-    pub width: u32,
-    pub height: u32,
-    pub tileset: Tileset,
+#[derive(Deserialize, Debug, Default)]
+pub struct Sprite {
+    pub layer_name: String,
+    pub tileset: u8,
+    pub collider: bool,
+    pub frames: Vec<Frame>,
+    pub timer: u128,
+    pub frame_index: usize
 }
 
-impl TileMapData {
-    pub fn draw<F>(&self, draw_func: &mut F)
-    where F: FnMut(&[f64;4], &Tileset, f64, f64)
+#[derive(Deserialize, Debug)]
+struct Map {
+    width: u32,
+    height: u32,
+    #[serde(rename(deserialize = "layers"))]
+    #[serde(deserialize_with = "deserialize_sprites")]
+    sprites: Vec<Sprite>,
+    #[serde(deserialize_with = "deserialize_frames")]
+    frames: Vec<f32>,
+    #[serde(deserialize_with = "deserialize_tilesets")]
+    tilesets: Vec<String>
+}
+
+
+struct SpriteDeserializer;
+
+impl<'de> Visitor<'de> for SpriteDeserializer {
+    type Value = Vec<Sprite>;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("Could not deserialize into Sprite.")
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where A: serde::de::SeqAccess<'de>,
     {
-        let _ = self.tiles.iter().enumerate().map(|(index, tile_number)| {
+        let mut sprites : Vec<Sprite> = Vec::new();
 
-            if *tile_number == 0 {
-                return
+        // Iter on all layers objects
+        while let Some(obj) = seq.next_element::<serde_json::Value>()? {
+           
+            let layer_name = obj.get("name")
+                .expect("Layer name not found.")
+                .to_string()
+                .replace("\"", "");
+
+            let tileset = obj.get("tileset")
+                .expect("tileset not found.")
+                .as_u64()
+                .expect("Fail to get tileset JSON key as u64.")as u8;
+
+            let cels = obj.get("cels")
+                .expect("\"cels\" array not found in JSON.")
+                .as_array()
+                .expect("Fail to get cels JSON array as Vector.");
+
+            // println!("--- Layer:\"{layer_name}\" ---");
+            let mut frames : Vec<Frame> = Vec::new();
+            for cel in cels {
+                // dbg!(&cel);
+
+                let frame_number = cel.get("frame")
+                    .expect("\"frame\" key not found in JSON.")
+                    .as_u64()
+                    .expect("Fail to get frame JSON key as u64.") as u8;
+
+                let tilemap = cel.get("tilemap")
+                    .expect("\"tilemap\" not found in JSON.")
+                    .as_object()
+                    .expect("Fail to get tilemap JSON key as object.");
+
+                let tiles = tilemap.get("tiles")
+                    .expect("\"tiles\" array not found in JSON.")
+                    .as_array()
+                    .expect("Fail to get tiles JSON array as Vector.");
+
+                frames.push(Frame {
+                    frame_number:  frame_number,
+                    tilemap_index: 0,
+                    tileset_index: 0,
+                });
+                            
+                let _ : Vec<_> = tiles.iter().enumerate().map(|(tile_index, tile)| {
+
+                    let tileset_index = tile.as_u64().expect("Fail to get value from tiles JSON array as u64.") as u8;
+
+                    // Value 0 within tilemap is consider empty
+                    // It means that the sprite at this position is not define in this layer.
+                    if tileset_index == 0 {
+                        return
+                    }
+
+                    frames.last_mut().unwrap().tilemap_index = tile_index as u16;
+                    frames.last_mut().unwrap().tileset_index = tileset_index;
+
+                    sprites.push(Sprite {
+                        collider: if layer_name == "Collider" { true } else {false },
+                        layer_name: layer_name.clone(),
+                        tileset: tileset,
+                        frames: frames.clone(),
+                        timer: 0,
+                        frame_index: 0
+                    });
+                }).collect();
+
+                if layer_name != "AnimatedSprites" {
+                    // Load several frames only for AnimatedSprites layer
+                    break ;
+                }
             }
+        }             
 
-            let src_rect = [
-                (*tile_number % (self.tileset.tileset.get_width() / self.tileset.tile_width ) * self.tileset.tile_width) as f64,
-                (*tile_number / (self.tileset.tileset.get_width() / self.tileset.tile_width) * self.tileset.tile_height) as f64,
-                self.tileset.tile_width as f64,
-                self.tileset.tile_height as f64,
-            ];
+        Ok(sprites)
+    }
 
-            let x = (index as u32 % self.width) as f64;
-            let y = (index as u32 / self.width) as f64;
+}
 
-            draw_func(&src_rect, &self.tileset, x, y);
+fn deserialize_sprites<'de, D>(deserializer: D) -> Result<Vec<Sprite>, D::Error>
+    where D: Deserializer<'de> {
+        deserializer.deserialize_seq(SpriteDeserializer)
+}
 
-        }).collect::<Vec<_>>();
+struct FramesDeserializer;
+
+impl<'de> Visitor<'de> for FramesDeserializer {
+    type Value = Vec<f32>;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("Could not deserialize into Vec<f32>.")
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where A: serde::de::SeqAccess<'de>,
+    {
+        let mut frames : Vec<f32> = Vec::new();
+
+        // Iter on all frames objects
+        while let Some(frame_obj) = seq.next_element::<serde_json::Value>()? {
+            frames.push(frame_obj.get("duration")
+            .expect("duration not found.")
+            .as_f64()
+            .expect("Fail to get duration JSON key as f32.") as f32 * 1000.0)
+        }
+        return Ok(frames)
     }
 }
 
+fn deserialize_frames<'de, D>(deserializer: D) -> Result<Vec<f32>, D::Error>
+    where D: Deserializer<'de> {
+        deserializer.deserialize_seq(FramesDeserializer)
+}
+
+
+struct TilesetsDeserializer;
+
+impl<'de> Visitor<'de> for TilesetsDeserializer {
+    type Value = Vec<String>;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("Could not deserialize into Vec<String>.")
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where A: serde::de::SeqAccess<'de>,
+    {
+        let mut tilesets : Vec<String> = Vec::new();
+
+        // Iter on all frames objects
+        while let Some(frame_obj) = seq.next_element::<serde_json::Value>()? {
+            tilesets.push(format!("../assets/{}", frame_obj.get("image")
+                .expect("tilesets not found.")
+                .as_str()
+                .expect("Fail to get tilesets image JSON key as &str.")
+                .replace("\\", "/")))
+        }
+        return Ok(tilesets)
+    }
+}
+
+fn deserialize_tilesets<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+    where D: Deserializer<'de> {
+        deserializer.deserialize_seq(TilesetsDeserializer)
+}
+
 pub struct MapData {
-    pub map: TileMapData,
-    pub collider: TileMapData,
-    pub sprites: TileMapData
+    pub width: u32,
+    pub height: u32,
+    pub sprites: Vec<Sprite>,
+    pub frames: Vec<f32>,
+    pub tilesets: Vec<Texture>  // TODO: merge with Sprite ; Split World from Deserializer
 }
 
 pub struct World {
@@ -73,45 +225,28 @@ impl World {
         };
 
         for (coord, map_file) in __world {
-            let loaded_map = AsepriteExportTileMap::new(map_file);
+            let raw_data: String = fs::read_to_string(map_file).expect("test_map_import: Unable to read file.");
+            let loaded_map = serde_json::from_str::<Map>(&raw_data)
+                .expect(&format!("Fail to load JSON map: {}", map_file));
 
-            let map_new_tileset = World::aseprite_tileset_to_game_tileset(&loaded_map.tilesets, loaded_map.map.tileset_index);
-            let collider_new_tileset = World::aseprite_tileset_to_game_tileset(&loaded_map.tilesets, loaded_map.collider.tileset_index);
-            let sprite_new_tileset = World::aseprite_tileset_to_game_tileset(&loaded_map.tilesets, loaded_map.sprites.tileset_index);
+            let tilesets = loaded_map.tilesets.iter().map(|path| {
+                match Texture::from_path(&path, &TextureSettings::new()) {
+                    Ok(texture) => texture,
+                    Err(texture_error) => {
+                        println!("Fail to load texture (tileset PNG): {}", texture_error);
+                        std::process::exit(2);
+                    }
+                }
+            }).collect();
 
             world.world.insert(coord, MapData {
-                map: World::aseprite_tilemap_to_game_tilemap(loaded_map.map, map_new_tileset),
-                collider: World::aseprite_tilemap_to_game_tilemap(loaded_map.collider, collider_new_tileset),
-                sprites: World::aseprite_tilemap_to_game_tilemap(loaded_map.sprites, sprite_new_tileset),
+                width: loaded_map.width,
+                height: loaded_map.height,
+                sprites: loaded_map.sprites,
+                frames: loaded_map.frames,
+                tilesets: tilesets
             });
         }
         return world;
-    }
-
-    fn aseprite_tileset_to_game_tileset(tilesets: &Vec<aseprite_export_tilemap::Tileset>, index: usize) -> Tileset {
-        let map_export_tileset : &aseprite_export_tilemap::Tileset = &tilesets[index];
-        let tilset_path = format!("../assets/{}", map_export_tileset.image.replace("\\", "/"));
-        let tileset_texture = match Texture::from_path(&tilset_path, &TextureSettings::new()) {
-            Ok(texture) => texture,
-            Err(texture_error) => {
-                println!("Fail to load texture (tileset PNG): {}", texture_error);
-                std::process::exit(2);
-            }
-        };
-        return Tileset {
-                tileset: tileset_texture,
-                file_path: tilset_path.to_string(),
-                tile_width: map_export_tileset.grid.tileSize.width,
-                tile_height: map_export_tileset.grid.tileSize.height
-            };
-    }
-
-    fn aseprite_tilemap_to_game_tilemap(aseprite_tm: aseprite_export_tilemap::TileMapData, tileset: Tileset) -> TileMapData {
-        TileMapData {
-            tiles: aseprite_tm.tilemap.tiles,
-            width: aseprite_tm.tilemap.width,
-            height: aseprite_tm.tilemap.height,
-            tileset: tileset
-        }
     }
 }

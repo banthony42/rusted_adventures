@@ -1,6 +1,7 @@
 use std::collections::HashMap;
+use constants::{TILEMAP_WIDTH, TILE_HEIGHT, TILE_WIDTH};
 use graphics::{clear, DrawState, Image, Transformed};
-use opengl_graphics::{GlGraphics, OpenGL, Texture, TextureSettings};
+use opengl_graphics::{GlGraphics, OpenGL, Texture, TextureSettings, ImageSize};
 use piston::Window;
 use piston_window::{
     PistonWindow,
@@ -29,14 +30,13 @@ fn get_timestamp() -> u128 {
 }
 
 pub mod constants;
-pub mod aseprite_export_tilemap;
-pub mod world;
 pub mod entity;
 pub mod client;
+pub mod world;
 
 use entity::GameTexture;
-use world::World;
 use client::GameData;
+use world::World;
 
 pub struct Game {
     gl: GlGraphics, // OpenGL drawing backend.
@@ -48,7 +48,8 @@ pub struct Game {
     map_y_centered: f64,
     gui_x_centered: f64,
     fetched_data: GameData,
-    ts: u128
+    ts: u128,
+    delta_ts: u128
 }
 
 impl Game {
@@ -62,32 +63,42 @@ impl Game {
             self.ui_img.draw(&self.hard_textures[&GameTexture::Interface] , &DrawState::default(), ctx.transform, gl);
 
             // Draw map based on tiles
-            let map_data: &world::MapData = &self.world.world[&self.fetched_data.player.world_coord];
+            let map_data = self.world.world.get_mut(&self.fetched_data.player.world_coord).unwrap();
+            let _ = map_data.sprites.iter_mut().map(|sprite| {
 
-            // ------- Map -------
-            map_data.map.draw(&mut |src_rect, tileset, x, y| {
-                    self.map_img.src_rect(*src_rect).draw(
-                        &tileset.tileset,
-                        &DrawState::default(),
-                        ctx.transform.trans(self.map_x_centered + x as f64 * tileset.tile_width as f64, self.map_y_centered + y as f64 *  tileset.tile_height as f64),
-                        gl);
-            });
+                // When the timer for the frame reach the total duration for this frame
+                // Pass to the next frame.
+                if sprite.timer >= (map_data.frames[sprite.frame_index]) as u128 {
+                    if sprite.frame_index >= (sprite.frames.len() -1) {
+                        sprite.frame_index = 0;
+                    } else {
+                        sprite.frame_index += 1;
+                    }
+                    sprite.timer = 0;
+                } else {
+                    sprite.timer += self.delta_ts;
+                }
 
-            map_data.collider.draw( &mut |src_rect, tileset, x, y| {
-                    self.map_img.src_rect(*src_rect).draw(
-                        &tileset.tileset,
-                        &DrawState::default(),
-                        ctx.transform.trans(self.map_x_centered + x as f64 * tileset.tile_width as f64, self.map_y_centered + y as f64 *  tileset.tile_height as f64),
-                        gl);
-            });
+                let sprite_texture = &map_data.tilesets[sprite.tileset as usize];
+                let tile_number = sprite.frames[sprite.frame_index].tileset_index;
 
-            map_data.sprites.draw( &mut |src_rect, tileset, x, y| {
-                    self.map_img.src_rect(*src_rect).draw(
-                        &tileset.tileset,
-                        &DrawState::default(),
-                        ctx.transform.trans(self.map_x_centered + x as f64 * tileset.tile_width as f64, self.map_y_centered + y as f64 *  tileset.tile_height as f64),
-                        gl);
-            });
+                let src_rect = [
+                    (tile_number as u32 % (sprite_texture.get_width() / TILE_WIDTH) * TILE_WIDTH) as f64,
+                    (tile_number as u32 / (sprite_texture.get_width() / TILE_WIDTH) * TILE_HEIGHT) as f64,
+                    TILE_WIDTH as f64,
+                    TILE_HEIGHT as f64,
+                ];
+
+                let x = (sprite.frames[sprite.frame_index].tilemap_index as u32 % TILEMAP_WIDTH) as f64;
+                let y = (sprite.frames[sprite.frame_index].tilemap_index as u32 / TILEMAP_WIDTH) as f64;
+
+                self.map_img.src_rect(src_rect).draw(
+                    sprite_texture,
+                    &DrawState::default(),
+                    ctx.transform.trans(self.map_x_centered + x as f64 * TILE_WIDTH as f64, self.map_y_centered + y as f64 * TILE_HEIGHT as f64),
+                    gl);
+   
+            }).collect::<Vec<_>>();
 
             // Draw players
             let trans = ctx.transform.trans(
@@ -100,9 +111,8 @@ impl Game {
     }
 
     fn update(&mut self, _args: &UpdateArgs) {
-        if (get_timestamp() - self.ts) > 1000 {
-            self.ts = get_timestamp();
-        }
+        self.delta_ts = get_timestamp() - self.ts;
+        self.ts = get_timestamp();
     }
 
     fn key_press(&mut self, args: &Button) {
@@ -110,16 +120,16 @@ impl Game {
         if let &Button::Keyboard(key) = args {
             match key {
                 piston::Key::W | piston::Key::Up => {
-                    self.fetched_data.player.move_y(-1, &map_data.collider);
+                    self.fetched_data.player.move_y(-1, &map_data.sprites);
                 },
                 piston::Key::S | piston::Key::Down => {
-                    self.fetched_data.player.move_y(1, &map_data.collider);
+                    self.fetched_data.player.move_y(1, &map_data.sprites);
                 },
                 piston::Key::A | piston::Key::Left => {
-                    self.fetched_data.player.move_x(-1, &map_data.collider);
+                    self.fetched_data.player.move_x(-1, &map_data.sprites);
                 },
                 piston::Key::D | piston::Key::Right => {
-                    self.fetched_data.player.move_x(1, &map_data.collider);
+                    self.fetched_data.player.move_x(1, &map_data.sprites);
                 },
                 _ => {}
            }
@@ -219,9 +229,10 @@ fn run_game() {
         gui_x_centered: 0.0,
         ui_img: Image::new().rect([constants::GUI_WIDTH_CENTER as f64, constants::MAP_HEIGHT as f64, constants::GUI_WIDTH as f64, constants::GUI_HEIGHT as f64]),
         hard_textures: load_hard_drown_assets(),
-        world: World::new(),
+        world: world::World::new(),
         fetched_data: g_data,
-        ts: get_timestamp()
+        ts: get_timestamp(),
+        delta_ts: 0
     };
 
     game.handle_resize(window.size());
@@ -249,6 +260,7 @@ fn run_game() {
         }
     }
 }
+
 
 fn main() {
     run_game();
