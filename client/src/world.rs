@@ -1,6 +1,7 @@
 use std::fs;
 use std::collections::HashMap;
-use opengl_graphics::{Texture, TextureSettings};
+use piston_window::*;
+// use opengl_graphics::{Texture, TextureSettings};
 use serde::{Serialize, Deserialize, Deserializer, de::Visitor};
 
 #[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
@@ -201,11 +202,12 @@ fn deserialize_tilesets<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error
 }
 
 pub struct MapData {
+    pub info: String,
     pub width: u32,
     pub height: u32,
     pub sprites: Vec<Sprite>,
     pub frames: Vec<f32>,
-    pub tilesets: Vec<Texture>  // TODO: merge with Sprite ; Split World from Deserializer
+    pub tilesets: Vec<G2dTexture>  // TODO: merge with Sprite ; Split World from Deserializer
 }
 
 pub struct World {
@@ -214,23 +216,28 @@ pub struct World {
 
 impl World {
 
-    pub fn new() -> Self {
+    pub fn new(window : &mut PistonWindow) -> Self {
+
+        struct MapImport {
+            path: String,
+            info: String
+        };
 
         let __world  = HashMap::from([
-            (Coord { x:0, y:0}, "../assets/map_v3/sprite.json")
+            (Coord { x:0, y:0 }, MapImport { path: String::from("../assets/map_v3/sprite.json"), info: String::from("Plaine")})
         ]);
 
         let mut world = World {
             world: HashMap::new()
         };
 
-        for (coord, map_file) in __world {
-            let raw_data: String = fs::read_to_string(map_file).expect("test_map_import: Unable to read file.");
+        for (coord, map_import) in __world {
+            let raw_data: String = fs::read_to_string(&map_import.path).expect("test_map_import: Unable to read file.");
             let loaded_map = serde_json::from_str::<Map>(&raw_data)
-                .expect(&format!("Fail to load JSON map: {}", map_file));
+                .expect(&format!("Fail to load JSON map: {}", &map_import.path));
 
             let tilesets = loaded_map.tilesets.iter().map(|path| {
-                match Texture::from_path(&path, &TextureSettings::new()) {
+                match Texture::from_path(&mut window.create_texture_context(), &path, Flip::None, &TextureSettings::new()) {
                     Ok(texture) => texture,
                     Err(texture_error) => {
                         println!("Fail to load texture (tileset PNG): {}", texture_error);
@@ -240,6 +247,7 @@ impl World {
             }).collect();
 
             world.world.insert(coord, MapData {
+                info: map_import.info,
                 width: loaded_map.width,
                 height: loaded_map.height,
                 sprites: loaded_map.sprites,

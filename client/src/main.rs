@@ -1,24 +1,8 @@
 use std::collections::HashMap;
-use constants::{TILEMAP_WIDTH, TILE_HEIGHT, TILE_WIDTH};
-use graphics::{clear, DrawState, Image, Transformed};
-use opengl_graphics::{GlGraphics, OpenGL, Texture, TextureSettings, ImageSize};
-use piston::Window;
-use piston_window::{
-    PistonWindow,
-    WindowSettings,
-    Size,
-    Events,
-    EventSettings,
-    ResizeEvent,
-    ResizeArgs,
-    RenderEvent,
-    RenderArgs,
-    UpdateEvent,
-    UpdateArgs,
-    PressEvent,
-    ReleaseEvent,
-    Button,
-};
+use constants::*;
+use graphics::{clear, math::Matrix2d, DrawState, Image, Transformed};
+use piston_window::*;
+
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -33,34 +17,36 @@ pub mod constants;
 pub mod entity;
 pub mod client;
 pub mod world;
+pub mod font;
 
 use entity::GameTexture;
 use client::GameData;
-use world::World;
+use world::{Coord, World};
+use font::Font;
 
 pub struct Game {
-    gl: GlGraphics, // OpenGL drawing backend.
     map_img: Image,
     ui_img: Image,
-    hard_textures: HashMap<GameTexture, Texture>,
+    hard_textures: HashMap<GameTexture, G2dTexture>,
     world: World,
     map_x_centered: f64,
     map_y_centered: f64,
     gui_x_centered: f64,
     fetched_data: GameData,
     ts: u128,
-    delta_ts: u128
+    delta_ts: u128,
+    font: Font
 }
 
 impl Game {
-    fn render(&mut self, args: &RenderArgs) {
+    fn render(&mut self, evnt : &Event, window: &mut PistonWindow) {
 
-        self.gl.draw(args.viewport(), |ctx, gl| {
+        window.draw_2d(evnt, |ctx, gl, device| {
             // Clear the screen.
             clear(constants::BLACK, gl);
 
             // Draw hardsaved PNG map and UI
-            self.ui_img.draw(&self.hard_textures[&GameTexture::Interface] , &DrawState::default(), ctx.transform, gl);
+            self.ui_img.draw(&self.hard_textures[&GameTexture::Interface] , &DrawState::default(), ctx.transform, gl);         
 
             // Draw map based on tiles
             let map_data = self.world.world.get_mut(&self.fetched_data.player.world_coord).unwrap();
@@ -107,7 +93,26 @@ impl Game {
 
             let player_img = Image::new();
             player_img.draw(&self.hard_textures[&self.fetched_data.player.texture], &DrawState::default(),trans, gl);
+
+            let map_coord_txt = format!("{}\nCoordonnées: {}, {}", map_data.info, self.fetched_data.player.world_coord.x, self.fetched_data.player.world_coord.y);
+            self.render_text(map_coord_txt.as_str(), &ctx, gl, device, WHITE, Coord { x: 5, y: 17 });
+            self.render_text("[14:30:01]: Salut les amis!", &ctx, gl, device, BLACK, Coord { x: 16 + 5, y: 928 - 10});
+
         });
+    }
+
+    pub fn render_text(&mut self, text: &str, ctx: &Context, gl: &mut G2d, device: &mut GfxDevice, color: [f32;4], pos: Coord) {
+        let texts : Vec<&str> = text.split("\n").collect();
+
+        let _: Vec<_> = texts.iter().enumerate().map(|(index, text)| {
+            let _ = text::Text::new_color(color, 17).draw(
+                text,
+                self.font.get(),
+                &ctx.draw_state,
+                ctx.transform.trans(self.map_x_centered + pos.x as f64, self.map_y_centered + pos.y as f64 + (index * 17) as f64 ), gl
+            );
+            self.font.get().factory.encoder.flush(device);
+        }).collect();
     }
 
     fn update(&mut self, _args: &UpdateArgs) {
@@ -170,15 +175,15 @@ impl Game {
     }
 }
 
-fn load_hard_drown_assets() -> HashMap<GameTexture, Texture> {
+fn load_hard_drown_assets(window: &mut PistonWindow) -> HashMap<GameTexture, G2dTexture> {
     // Load whole hard drown PNG interface
     let assets: Vec<&str> = vec![
         "../assets/v2/interface_1024x192_grid16.png",
         "../assets/v3/character.png"
     ];
 
-    let loaded_assets : HashMap<GameTexture, Texture> = assets.iter().map(|path| {
-        let text = match Texture::from_path(path, &TextureSettings::new()) {
+    let loaded_assets : HashMap<GameTexture, G2dTexture> = assets.iter().map(|path| {
+        let text = match Texture::from_path(&mut window.create_texture_context(), path, Flip::None, &TextureSettings::new()) {
             Ok(texture) => texture,
             Err(texture_error) => {
                 println!("Fail to load hard drown texture : {} : {}", path, texture_error);
@@ -222,26 +227,24 @@ fn run_game() {
 
     // Create a new game and run it.
     let mut game = Game {
-        gl: GlGraphics::new(opengl),
         map_img: Image::new(),
         map_x_centered: constants::MAP_WIDTH_CENTER as f64,
         map_y_centered: constants::MAP_HEIGHT_CENTER as f64,
         gui_x_centered: 0.0,
         ui_img: Image::new().rect([constants::GUI_WIDTH_CENTER as f64, constants::MAP_HEIGHT as f64, constants::GUI_WIDTH as f64, constants::GUI_HEIGHT as f64]),
-        hard_textures: load_hard_drown_assets(),
-        world: world::World::new(),
+        hard_textures: load_hard_drown_assets(&mut window),
+        world: world::World::new(&mut window),
         fetched_data: g_data,
         ts: get_timestamp(),
-        delta_ts: 0
+        delta_ts: 0,
+        font: Font::new()
     };
 
+    game.font.load(&mut window);
     game.handle_resize(window.size());
 
-    let mut events = Events::new(EventSettings::new());
-    while let Some(e) = events.next(&mut window) {
-        if let Some(args) = e.render_args() {
-            game.render(&args);
-        }
+    while let Some(e) = window.next() {
+        game.render(&e, &mut window);
 
         if let Some(args) = e.press_args() {
             game.key_press(&args);
