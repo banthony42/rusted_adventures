@@ -1,16 +1,26 @@
 use diesel::prelude::*;
 
+use crate::args::{AccountCommand, AccountSubcommand, CreateAccount, UpdateAccount, DeleteAccount};
 use crate::models::{Account, NewAccount};
 use crate::db::establish_connection;
 
-pub fn create_account(new_login: String, new_password: String) {
-    println!("Creating account: login:{:?} password:{:?}", new_login, new_password);
+pub fn handle_account(account: AccountCommand) {
+    match account.command {
+        AccountSubcommand::Create(account) => create_account(account),
+        AccountSubcommand::Show => show_account(),
+        AccountSubcommand::Delete(account) => delete_account(account),
+        AccountSubcommand::Update(account) => update_account(account),
+    }
+}
+
+pub fn create_account(new_account: CreateAccount) {
+    println!("Creating account: login:{:?} password:{:?}", new_account.login, new_account.password);
     use crate::schema::accounts::dsl::*;
 
     let connection = &mut establish_connection();
     let new_account = NewAccount {
-        login: new_login,
-        password: new_password
+        login: new_account.login,
+        password: new_account.password
     };
 
     diesel::insert_into(accounts)
@@ -20,11 +30,11 @@ pub fn create_account(new_login: String, new_password: String) {
     println!("==> TODO: properly warn and do nothing when user already exist");
 }
 
-pub fn update_account() {
+pub fn update_account(update_account: UpdateAccount) {
     todo!()
 }
 
-pub fn delete_account() {
+pub fn delete_account(delete_account: DeleteAccount) {
     todo!()
 }
 
