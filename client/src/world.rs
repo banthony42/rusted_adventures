@@ -210,6 +210,11 @@ pub struct MapData {
     pub tilesets: Vec<G2dTexture>  // TODO: merge with Sprite ; Split World from Deserializer
 }
 
+struct MapImport {
+    path: String,
+    info: String
+}
+
 pub struct World {
     pub world: HashMap<Coord, MapData>
 }
@@ -217,11 +222,6 @@ pub struct World {
 impl World {
 
     pub fn new(window : &mut PistonWindow) -> Self {
-
-        struct MapImport {
-            path: String,
-            info: String
-        };
 
         let __world  = HashMap::from([
             (Coord { x:0, y:0 }, MapImport { path: String::from("../assets/map_v3/sprite.json"), info: String::from("Plaine")})

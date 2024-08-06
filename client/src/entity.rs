@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    constants::{self, TILEMAP_HEIGHT, TILEMAP_WIDTH}, world::{Coord, Sprite}
+    constants::{TILEMAP_HEIGHT, TILEMAP_WIDTH}, world::{Coord, Sprite}
 };
 
 #[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
