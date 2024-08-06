@@ -2,7 +2,7 @@ use std::fs;
 use std::collections::HashMap;
 use piston_window::*;
 // use opengl_graphics::{Texture, TextureSettings};
-use serde::{Serialize, Deserialize, Deserializer, de::Visitor};
+use serde::{de::{Visitor}, Deserialize, Deserializer, Serialize};
 
 #[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Coord {
@@ -203,8 +203,6 @@ fn deserialize_tilesets<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error
 
 pub struct MapData {
     pub info: String,
-    pub width: u32,
-    pub height: u32,
     pub sprites: Vec<Sprite>,
     pub frames: Vec<f32>,
     pub tilesets: Vec<G2dTexture>  // TODO: merge with Sprite ; Split World from Deserializer
@@ -219,12 +217,17 @@ pub struct World {
     pub world: HashMap<Coord, MapData>
 }
 
+pub enum WorldError {
+    UnknownMap
+}
+
 impl World {
 
     pub fn new(window : &mut PistonWindow) -> Self {
 
         let __world  = HashMap::from([
-            (Coord { x:0, y:0 }, MapImport { path: String::from("../assets/map_v3/sprite.json"), info: String::from("Plaine")})
+            (Coord { x:0, y:0 }, MapImport { path: String::from("../assets/map.0.0/sprite.json"), info: String::from("Plaines")}),
+            (Coord { x:1, y:0 }, MapImport { path: String::from("../assets/map.1.0/sprite.json"), info: String::from("Plaines")})
         ]);
 
         let mut world = World {
@@ -248,13 +251,18 @@ impl World {
 
             world.world.insert(coord, MapData {
                 info: map_import.info,
-                width: loaded_map.width,
-                height: loaded_map.height,
                 sprites: loaded_map.sprites,
                 frames: loaded_map.frames,
                 tilesets: tilesets
             });
         }
         return world;
+    }
+
+    pub fn get_world_map(&self, coord: &Coord) -> Result<&MapData, WorldError> {
+        match self.world.get(&coord) {
+            Some(map_data) => return Ok(map_data),
+            None => Err(WorldError::UnknownMap)
+        }
     }
 }

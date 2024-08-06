@@ -178,16 +178,16 @@ impl Game {
         if let &Button::Keyboard(key) = args {
             match key {
                 piston::Key::W | piston::Key::Up => {
-                    self.fetched_data.player.move_y(-1, &map_data.sprites);
+                    self.fetched_data.player.move_y(-1, &map_data.sprites, &self.world);
                 },
                 piston::Key::S | piston::Key::Down => {
-                    self.fetched_data.player.move_y(1, &map_data.sprites);
+                    self.fetched_data.player.move_y(1, &map_data.sprites, &self.world);
                 },
                 piston::Key::A | piston::Key::Left => {
-                    self.fetched_data.player.move_x(-1, &map_data.sprites);
+                    self.fetched_data.player.move_x(-1, &map_data.sprites, &self.world);
                 },
                 piston::Key::D | piston::Key::Right => {
-                    self.fetched_data.player.move_x(1, &map_data.sprites);
+                    self.fetched_data.player.move_x(1, &map_data.sprites, &self.world);
                 },
                 _ => {}
            }

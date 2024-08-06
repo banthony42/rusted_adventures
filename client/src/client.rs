@@ -47,11 +47,11 @@ impl GameData {
                         "x": 8,
                         "y": 8,
                         "label": "Mountain"
+                    },
+                    "world_coord": {
+                        "x": 0,
+                        "y": 0
                     }
-                },
-                "world_coord": {
-                    "x": 0,
-                    "y": 0
                 }
             }
         }"#
