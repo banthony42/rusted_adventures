@@ -34,8 +34,8 @@ impl GameData {
                     "type" : "Monster",
                     "texture": "Bouftou",
                     "map_coord": {
-                        "x": 8,
-                        "y": 8
+                        "x": 10,
+                        "y": 10
                     },
                     "world_coord": {
                         "x": 0,

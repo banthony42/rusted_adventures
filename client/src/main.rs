@@ -6,6 +6,8 @@ mod entity;
 mod world;
 mod font;
 mod client;
+mod utils;
+mod interface;
 
 use game::Game;
 
@@ -33,7 +35,13 @@ fn run_game() {
     game.handle_resize(window.size());
 
     while let Some(e) = window.next() {
+
         game.render(&e, &mut window);
+
+        // Workaround: In render method i don't want to update any data
+        // However to render text the Glyph/Piston API need to works with mutable
+        // This is the uniq reason of this method, should be deleted for a better solution.
+        game.render_mut(&e, &mut window);
 
         if let Some(args) = e.press_args() {
             game.key_press(&args);

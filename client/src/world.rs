@@ -4,6 +4,11 @@ use piston_window::*;
 // use opengl_graphics::{Texture, TextureSettings};
 use serde::{de::{Visitor}, Deserialize, Deserializer, Serialize};
 
+use crate::{
+    constants,
+    game::Game
+};
+
 #[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Coord {
     pub x: i32,
@@ -257,6 +262,54 @@ impl World {
             });
         }
         return world;
+    }
+
+    pub fn render(&self, evnt : &Event, window: &mut PistonWindow, game: &Game) {
+        let map_data = self.world.get(&game.fetched_data.player.world_coord).unwrap();
+        window.draw_2d(evnt, |ctx, gl, _device| {
+        let _ = map_data.sprites.iter().map(|sprite| {
+
+            let sprite_texture = &map_data.tilesets[sprite.tileset as usize];
+            let tile_number = sprite.frames[sprite.frame_index].tileset_index;
+
+            let src_rect = [
+                (tile_number as u32 % (sprite_texture.get_width() / constants::TILE_WIDTH) * constants::TILE_WIDTH) as f64,
+                (tile_number as u32 / (sprite_texture.get_width() / constants::TILE_WIDTH) * constants::TILE_HEIGHT) as f64,
+                constants::TILE_WIDTH as f64,
+                constants::TILE_HEIGHT as f64,
+            ];
+
+            let x = (sprite.frames[sprite.frame_index].tilemap_index as u32 % constants::TILEMAP_WIDTH) as f64;
+            let y = (sprite.frames[sprite.frame_index].tilemap_index as u32 / constants::TILEMAP_WIDTH) as f64;
+
+            // TODO: delete map_img from struct Game and create Image here to draw the map
+            let map_img = Image::new();
+            map_img.src_rect(src_rect).draw(
+                sprite_texture,
+                &DrawState::default(),
+                ctx.transform.trans(game.margin.width + x as f64 * constants::TILE_WIDTH as f64, game.margin.height + y as f64 * constants::TILE_HEIGHT as f64),
+                gl);
+
+        }).collect::<Vec<_>>();
+    });
+    }
+
+    pub fn update(&mut self, delta_ts: u128, world_coord: &Coord) {
+        let map_data = self.world.get_mut(world_coord).expect(format!("====> Trying to get map_data from : {:?}", world_coord).as_str());
+        let _ = map_data.sprites.iter_mut().map(|sprite| {
+            // When the timer for the frame reach the total duration for this frame
+            // Pass to the next frame.
+            if sprite.timer >= (map_data.frames[sprite.frame_index]) as u128 {
+                if sprite.frame_index >= (sprite.frames.len() -1) {
+                    sprite.frame_index = 0;
+                } else {
+                    sprite.frame_index += 1;
+                }
+                sprite.timer = 0;
+            } else {
+                sprite.timer += delta_ts;
+            }
+        }).collect::<Vec<_>>();
     }
 
     pub fn get_world_map(&self, coord: &Coord) -> Result<&MapData, WorldError> {

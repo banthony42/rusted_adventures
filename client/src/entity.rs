@@ -1,17 +1,13 @@
 
-use std::ops::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
+use piston_window::*;
+use graphics::{DrawState, Image, Transformed};
 
 use crate::{
-    constants::{TILEMAP_HEIGHT, TILEMAP_WIDTH}, world::{Coord, Sprite, World}
+    constants::{TILEMAP_HEIGHT, TILEMAP_WIDTH},
+    world::{Coord, Sprite, World},
+    game::{Game, GameTexture}
 };
-
-#[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub enum GameTexture {
-    Character,
-    Bouftou,
-    Interface
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum EntityType {
@@ -40,6 +36,7 @@ impl Name for Entity {
         }
     }
 }
+
 impl Entity {
 
     pub fn move_x(&mut self, step: i8,  sprites: &Vec<Sprite>, world: &World) -> bool {
@@ -157,22 +154,20 @@ impl Entity {
         println!("[{}]: Boum ...", self.name);
         return false;
     }
+
+    pub fn render(&self, evnt : &Event, window: &mut PistonWindow, game: &Game) {
+        match game.hard_textures.get(&self.texture) {
+            Some(entity_texture) => {
+                window.draw_2d(evnt, |ctx, gl, _device| {
+                    // Draw players
+                    let trans: [[f64; 3]; 2] = ctx.transform.trans(
+                        game.margin.width as f64 + self.map_coord.x as f64 * 64.0,
+                        game.margin.height as f64 + (self.map_coord.y as f64 * 64.0) - 64.0);
+                    let player_img = Image::new();
+                    player_img.draw(entity_texture, &DrawState::default(),trans, gl);
+                });
+            },
+            None => {}
+        }
+    }
 }
-
-// #[derive(Debug, Serialize, Deserialize)]
-// pub struct Player {
-//     pub base: Entity,
-// }
-
-// impl Deref for Player {
-//     type Target = Entity;
-//     fn deref(&self) -> &Entity {
-//         return &self.base;
-//     }
-// }
-
-// impl DerefMut for Player {
-//     fn deref_mut(&mut self) -> &mut Entity {
-//         return &mut self.base;
-//     }
-// }
