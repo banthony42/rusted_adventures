@@ -1,73 +1,83 @@
 use serde::{Deserialize, Serialize};
 use crate::{
-    entity::Player,
-    // world::Coord
+    entity::Entity,
+    world::Coord
 };
 
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GameData {
-    pub player: Player,
+    pub player: Entity,
+    pub entities: Vec<Entity>
 }
 
 impl GameData {
 
-    // fn fetch_entities_from_server(world_coord: Coord) -> &'static str {
-    //     // Simulate server game data response
-    //     return r#"{
-    //         "entities": [
-    //             {
-    //                 "type" : "player",
-    //                 "name" : "Walter White",
-    //                 "class" : "chemist",
-    //                 "map_coord": {
-    //                     "x": 1,
-    //                     "y": 1
-    //                 }
-    //             },
-    //             {
-    //                 "type" : "bouftou",
-    //                 "map_coord": {
-    //                     "x": 8,
-    //                     "y": 8
-    //                 }                  
-    //             }
-    //         ]
-    //     }"#
-    // }
-
-    fn fetch_data_from_server() -> &'static str {
+    fn fetch_entities_data(_world_coord: &Coord) -> &'static str {
         // Simulate server game data response
-        return r#"{
-            "player": {
-                "base": {
-                    "name": "John Snow",
-                    "texture": "Character",
+        return r#"[
+                {
+                    "name" : "Walter White",
+                    "type" : "Player",
+                    "texture" : "Character",
+                    "map_coord": {
+                        "x": 4,
+                        "y": 4
+                    },
+                    "world_coord": {
+                        "x": 0,
+                        "y": 0
+                    }
+                },
+                {
+                    "name": "Bouftou",
+                    "type" : "Monster",
+                    "texture": "Bouftou",
                     "map_coord": {
                         "x": 8,
-                        "y": 8,
-                        "label": "Mountain"
+                        "y": 8
                     },
                     "world_coord": {
                         "x": 0,
                         "y": 0
                     }
                 }
-            }
+            ]
+        "#
+    }
+
+    fn fetch_player_data() -> &'static str {
+        // Simulate server game data response
+        return r#"{
+                "name": "Sulfurel",
+                "type": "Player",
+                "texture": "Character",
+                "map_coord": {
+                    "x": 8,
+                    "y": 8,
+                    "label": "Mountain"
+                },
+                "world_coord": {
+                    "x": 0,
+                    "y": 0
+                }
         }"#
     }
 
     pub fn get_data_from_server() -> Result<GameData, String> {
-        let json_game_data = Self::fetch_data_from_server();
+        let json_player_data = Self::fetch_player_data();
 
-        return match serde_json::from_str::<GameData>(json_game_data) {
-            Ok(game_data) => {
-                println!("=====================\n{:?}", game_data);
-                Ok(game_data)
-            },
-            Err(error) => {
-                Err(format!("client: get_data_from_server: Error while deserializing data. {error}"))
-            }
-        }
+        let p_data = match serde_json::from_str::<Entity>(json_player_data) {
+            Ok(game_data) => game_data,
+            Err(error) => return Err(format!("client: get_data_from_server: Error while deserializing data. {error}"))
+        };
+
+        let json_entities_data = Self::fetch_entities_data(&p_data.world_coord);
+        let e_data = match serde_json::from_str::<Vec<Entity>>(json_entities_data) {
+            Ok(game_data) => game_data,
+            Err(error) => return Err(format!("client: get_data_from_server: Error while deserializing data. {error}"))
+        };
+
+        return Ok(GameData { player: p_data, entities: e_data });
     }
 }

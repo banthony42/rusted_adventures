@@ -9,17 +9,37 @@ use crate::{
 #[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum GameTexture {
     Character,
+    Bouftou,
     Interface
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum EntityType {
+    Player,
+    Monster
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entity {
     pub name: String,
+    pub r#type: EntityType,
     pub texture: GameTexture,
     pub map_coord: Coord,
     pub world_coord: Coord,
 }
 
+pub trait Name {
+    fn get_name(&self) -> String;
+}
+
+impl Name for Entity {
+    fn get_name(&self) -> String {
+        match self.r#type {
+            EntityType::Player => format!("<{}>", self.name),
+            EntityType::Monster => self.name.clone()
+        }
+    }
+}
 impl Entity {
 
     pub fn move_x(&mut self, step: i8,  sprites: &Vec<Sprite>, world: &World) -> bool {
@@ -139,20 +159,20 @@ impl Entity {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Player {
-    pub base: Entity,
-}
+// #[derive(Debug, Serialize, Deserialize)]
+// pub struct Player {
+//     pub base: Entity,
+// }
 
-impl Deref for Player {
-    type Target = Entity;
-    fn deref(&self) -> &Entity {
-        return &self.base;
-    }
-}
+// impl Deref for Player {
+//     type Target = Entity;
+//     fn deref(&self) -> &Entity {
+//         return &self.base;
+//     }
+// }
 
-impl DerefMut for Player {
-    fn deref_mut(&mut self) -> &mut Entity {
-        return &mut self.base;
-    }
-}
+// impl DerefMut for Player {
+//     fn deref_mut(&mut self) -> &mut Entity {
+//         return &mut self.base;
+//     }
+// }

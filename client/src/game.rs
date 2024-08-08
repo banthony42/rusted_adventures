@@ -6,6 +6,7 @@ use crate::{
     client::GameData,
     constants,
     entity::GameTexture,
+    entity::Name,
     font::Font,
     world::{
         Coord,
@@ -136,6 +137,10 @@ impl Game {
    
             }).collect::<Vec<_>>();
 
+            // Render Map text informations
+            let map_coord_txt = format!("{}\nCoordonnées: {}, {}", map_data.info, self.fetched_data.player.world_coord.x, self.fetched_data.player.world_coord.y);
+            self.render_text(map_coord_txt.as_str(), &ctx, gl, device, constants::WHITE, Coord { x: 5, y: 17 });
+
             // Draw players
             let trans = ctx.transform.trans(
                 self.map_x_centered + self.fetched_data.player.map_coord.x as f64 * 64.0,
@@ -143,11 +148,32 @@ impl Game {
 
             let player_img = Image::new();
             player_img.draw(&self.hard_textures[&self.fetched_data.player.texture], &DrawState::default(),trans, gl);
+            let name_coord = Coord {
+                x: (self.fetched_data.player.map_coord.x as f64 * 64.0) as i32,
+                y: ((self.fetched_data.player.map_coord.y as f64 * 64.0) - 64.0) as i32
+            };
+            self.render_text(self.fetched_data.player.get_name().as_str(), &ctx, gl, device, constants::BLACK, name_coord);
 
-            // Render Map text informations
-            let map_coord_txt = format!("{}\nCoordonnées: {}, {}", map_data.info, self.fetched_data.player.world_coord.x, self.fetched_data.player.world_coord.y);
-            self.render_text(map_coord_txt.as_str(), &ctx, gl, device, constants::WHITE, Coord { x: 5, y: 17 });
-
+            // Draw Entities
+            for entity in self.fetched_data.entities.iter() {
+                match self.hard_textures.get(&entity.texture) {
+                    Some(entity_texture) => {
+                        let trans = ctx.transform.trans(
+                            self.map_x_centered + entity.map_coord.x as f64 * 64.0,
+                            self.map_y_centered + (entity.map_coord.y as f64 * 64.0) - 64.0);
+            
+                        let entity_img = Image::new();
+                        entity_img.draw(entity_texture, &DrawState::default(),trans, gl);
+                        // let name_coord = Coord {
+                        //     x: entity.map_coord.x,
+                        //     y: entity.map_coord.y - 5
+                        // };
+                        // self.render_text(entity.get_name().as_str(), &ctx, gl, device, constants::BLACK, name_coord);
+                    },
+                    None => {}
+                }
+            }
+                       
             // TMP: Chat text font test
             self.render_text("[14:30:01]: Salut les amis!", &ctx, gl, device, constants::BLACK, Coord { x: 16 + 5, y: 928 - 10});
 
