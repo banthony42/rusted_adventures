@@ -3,9 +3,19 @@ use std::collections::HashMap;
 use piston_window::*;
 
 use crate::{
-    client::GameData, constants, entity::Name, font::Font, interface::Interface, utils::get_timestamp, world::{
+    client::GameData,
+    constants,
+    entity::Name,
+    interface::Interface,
+    utils::get_timestamp,
+    world::{
         Coord, MapData, World
-    }
+    },
+    ui::{
+        font::Font,
+        text_field::TextField
+    },
+    chat::Chat
 };
 
 #[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
@@ -47,7 +57,8 @@ pub struct Game {
     pub fetched_data: GameData,
     pub ts: u128,
     pub delta_ts: u128,
-    pub font: Font
+    pub font: Font,
+    pub chat: Chat
 }
 
 impl Game {
@@ -70,28 +81,25 @@ impl Game {
             fetched_data: g_data,
             ts: get_timestamp(),
             delta_ts: 0,
-            font: Font::new()
+            font: Font::new(),
+            chat: Chat::new(String::from("Sulfurel"))
         }
     }
 
-    pub fn render(&self, evnt : &Event, window: &mut PistonWindow) {
+    pub fn render(&mut self, evnt : &Event, window: &mut PistonWindow) {
         window.draw_2d(evnt, |_ctx, gl, _device| {
             clear(constants::BLACK, gl);
         });
 
         self.world.render(evnt, window, &self);
         self.interface.render(evnt, window, &self);
+
         self.fetched_data.player.render(evnt, window, &self);
         for entity in self.fetched_data.entities.iter() {
             entity.render(evnt, window, &self);
         }
-    }
-
-    pub fn render_mut(&mut self, evnt : &Event, window: &mut PistonWindow) {
-        // TMP: simulate a chat message just to see how it's looks like
-        self.font.render_text("[14:30:01] Sulfurel: Salut les amis!", evnt, window, constants::BLACK, Coord { x: 16 + 5, y: 928 - 10}, &self.margin);
-
-        // Render Entities names and map information
+        
+        self.chat.render(evnt, window, &mut self.font);
         self.interface.render_text_overlay(evnt, window, &mut self.font, &self.margin, &self.world.world, &self.fetched_data);
     }
 
@@ -99,23 +107,26 @@ impl Game {
         self.delta_ts = get_timestamp() - self.ts;
         self.ts = get_timestamp();
 
+        self.chat.update(self.delta_ts);
         self.world.update(self.delta_ts, &self.fetched_data.player.world_coord);
     }
 
     pub fn key_press(&mut self, args: &Button) {
+        self.chat.key_press(&args);
+    
         let map_data: &MapData = &self.world.world[&self.fetched_data.player.world_coord];
         if let &Button::Keyboard(key) = args {
             match key {
-                piston::Key::W | piston::Key::Up => {
+                piston::Key::Up => {
                     self.fetched_data.player.move_y(-1, &map_data.sprites, &self.world);
                 },
-                piston::Key::S | piston::Key::Down => {
+                piston::Key::Down => {
                     self.fetched_data.player.move_y(1, &map_data.sprites, &self.world);
                 },
-                piston::Key::A | piston::Key::Left => {
+                piston::Key::Left => {
                     self.fetched_data.player.move_x(-1, &map_data.sprites, &self.world);
                 },
-                piston::Key::D | piston::Key::Right => {
+                piston::Key::Right => {
                     self.fetched_data.player.move_x(1, &map_data.sprites, &self.world);
                 },
                 _ => {}
@@ -129,6 +140,14 @@ impl Game {
                 _ => {}
            }
         }
+    }
+
+    pub fn text_input(&mut self, args: String) {
+        self.chat.text_input(args);
+    }
+
+    pub fn mouse_cursor_args(&mut self, args: [f64; 2]) {
+        self.chat.mouse_cursor_args(args);
     }
 
     pub fn handle_resize(&mut self, new_size: Size) {
@@ -152,5 +171,6 @@ impl Game {
 
         self.handle_resize(Size { width: window_width, height: window_height });
         self.interface.resize(&self.margin);
+        self.chat.resize(&self.margin);
     }
 }

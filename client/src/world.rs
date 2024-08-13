@@ -283,9 +283,9 @@ impl World {
             let y = (sprite.frames[sprite.frame_index].tilemap_index as u32 / constants::TILEMAP_WIDTH) as f64;
 
             // TODO: delete map_img from struct Game and create Image here to draw the map
-            let map_img = Image::new();
-            map_img.src_rect(src_rect).draw(
-                sprite_texture,
+            let map_img = Image::new()
+            .src_rect(src_rect)
+            .draw(sprite_texture,
                 &DrawState::default(),
                 ctx.transform.trans(game.margin.width + x as f64 * constants::TILE_WIDTH as f64, game.margin.height + y as f64 * constants::TILE_HEIGHT as f64),
                 gl);

@@ -5,7 +5,24 @@ use graphics::*;
 use types::{Color};
 
 use crate::{
-    client::GameData, constants, entity::{self, Entity, Name}, font::Font, game::{Game, GameTexture}, world::{Coord, MapData}
+    client::GameData,
+    constants,
+    entity::{
+        Entity,
+        EntityType,
+        Name
+    },
+    game::{
+        Game,
+        GameTexture
+    },
+    world::{
+        Coord,
+        MapData
+    },
+    ui::{
+        font::Font
+    }
 };
 
 pub struct Interface {
@@ -39,18 +56,18 @@ impl Interface {
     pub fn render_text_overlay(&mut self, evnt : &Event, window: &mut PistonWindow, font: &mut Font, margin: &Size, world: &HashMap<Coord, MapData>, game_data: &GameData) {
         let map_data = world.get(&game_data.player.world_coord).unwrap();
         let map_coord_txt = format!("{}\nCoordonnées: {}, {}", map_data.info, game_data.player.world_coord.x, game_data.player.world_coord.y);
-        font.render_text(&map_coord_txt.as_str(), evnt, window, constants::WHITE, Coord { x: 5, y: 17 }, margin);
+        font.render_text(&map_coord_txt.as_str(), 17, evnt, window, constants::WHITE, [5.0, 17.0], Some(margin));
 
         let mut render_entity_name = |entity: &Entity| {
-            let e_name_coord = Coord {
-                x: entity.map_coord.x * 64,
-                y: (entity.map_coord.y * 64) - 64
-            };
+            let e_name_coord = [
+                entity.map_coord.x as f64 * 64.0,
+                (entity.map_coord.y * 64) as f64 - 64.0
+            ];
             let final_color = match entity.r#type {
-                entity::EntityType::Player => self.player_color,
-                entity::EntityType::Monster => self.mob_color,
+                EntityType::Player => self.player_color,
+                EntityType::Monster => self.mob_color,
             };
-            font.render_text(entity.get_name().as_str(), evnt, window, final_color, e_name_coord, margin);
+            font.render_text(entity.get_name().as_str(), 17, evnt, window, final_color, e_name_coord, Some(margin));
         };
 
         render_entity_name(&game_data.player);
