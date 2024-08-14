@@ -32,6 +32,38 @@ impl Font {
         self.font.as_mut().unwrap()
     }
 
+    pub fn render_text(&mut self, text: &str, font_size: u32, evnt : &Event, window: &mut PistonWindow, color: [f32;4], pos: [f64; 2], margin: Option<&Size>) {
+        let x = pos[0];
+        let y = pos[1];
+
+        let text_width = self.get().width(font_size, text).unwrap();
+        let mut width_cursor = 0.0;
+        let mut newline = 0;
+        let text_split_by_newline : Vec<&str> = text.split("\n").collect();
+
+        let final_margin = match margin {
+            Some(m) => m.clone(),
+            None => Size { width: 0.0, height: 0.0}
+        };
+
+        window.draw_2d(evnt, |ctx, gl, device| {
+            let _: Vec<_> = text_split_by_newline.iter().enumerate().map(|(index, text)| {
+                width_cursor += self.get().width(font_size, text).unwrap();
+                if width_cursor > text_width {
+                    newline += 1;
+                }
+
+                let _ = text::Text::new_color(color, font_size).draw(
+                    text,
+                    self.get(),
+                    &ctx.draw_state,
+                    ctx.transform.trans(final_margin.width + x as f64, final_margin.height + y as f64 + ((index + newline) * font_size as usize) as f64 ), gl
+                );
+                self.font.as_mut().unwrap().factory.encoder.flush(device);
+            }).collect();
+        });
+    }
+
     pub fn get_text_render_size(&mut self, font_size: u32, text: &str) -> Result<[f64; 2], FontError> {
         let mut x = 0.0;
         let mut y = 0.0;
@@ -49,23 +81,49 @@ impl Font {
         Ok([x, y])
     }
 
-    pub fn render_text(&mut self, text: &str, font_size: u32, evnt : &Event, window: &mut PistonWindow, color: [f32;4], pos: [f64; 2], margin: Option<&Size>) {
+    pub fn text_height_for_max_width(&mut self, text: &str, font_size: u32, max_width: f64) -> u32 {
+        let mut width_cursor = 0.0;
+        let mut newlines = 1;
+
+        for char in text.chars() {
+            if let Ok(ch) = self.get().character(font_size, char) {
+                width_cursor += ch.advance_width();
+                if width_cursor > max_width {
+                    width_cursor = 0.0;
+                    newlines += 1;
+                }
+            }
+        }
+        return newlines * font_size;
+    }
+
+    pub fn render_text_max_width(&mut self, text: &str, font_size: u32, evnt : &Event, window: &mut PistonWindow, color: [f32;4], pos: [f64; 2], max_text_width: f64, scissor: [u32;4]) {
         let x = pos[0];
         let y = pos[1];
-        let text_split_by_newline : Vec<&str> = text.split("\n").collect();
 
-        let final_margin = match margin {
-            Some(m) => m.clone(),
-            None => Size { width: 0.0, height: 0.0}
-        };
+        let mut width_cursor = 0.0;
+        let mut final_text = text.to_string();
+ 
+        for (ind, char) in text.chars().enumerate() {
+            if let Ok(ch) = self.get().character(font_size, char) {
+                width_cursor += ch.advance_width();
+                if width_cursor > max_text_width {
+                    width_cursor = 0.0;
+                    let end = ind + 1;
+                    final_text.replace_range(ind..end, "\n");
+                }
+            }
+        }
+
+        let text_split_by_newline : Vec<&str> = final_text.split("\n").collect();
 
         window.draw_2d(evnt, |ctx, gl, device| {
             let _: Vec<_> = text_split_by_newline.iter().enumerate().map(|(index, text)| {
                 let _ = text::Text::new_color(color, font_size).draw(
                     text,
                     self.get(),
-                    &ctx.draw_state,
-                    ctx.transform.trans(final_margin.width + x as f64, final_margin.height + y as f64 + (index * font_size as usize) as f64 ), gl
+                    &DrawState::default().scissor(scissor),
+                    ctx.transform.trans(x as f64, y as f64 + (index * font_size as usize) as f64 ), gl
                 );
                 self.font.as_mut().unwrap().factory.encoder.flush(device);
             }).collect();

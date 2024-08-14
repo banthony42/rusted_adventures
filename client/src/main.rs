@@ -35,7 +35,10 @@ fn run_game() {
     let mut game = Game::new(&mut window);
 
     game.font.load(&mut window);
-    game.handle_resize(window.size());
+    game.resize_window(&ResizeArgs {
+        window_size: window.size().into(),
+        draw_size: window.draw_size().into()
+    });
 
     while let Some(e) = window.next() {
 
@@ -63,6 +66,10 @@ fn run_game() {
 
         if let Some(args) = e.mouse_cursor_args() {
             game.mouse_cursor_args(args);
+        }
+
+        if let Some(args) = e.mouse_scroll_args() {
+            game.mouse_scroll_args(args);
         }
     }
 }

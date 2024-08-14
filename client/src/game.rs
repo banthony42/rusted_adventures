@@ -4,17 +4,13 @@ use piston_window::*;
 
 use crate::{
     client::GameData,
-    constants,
-    entity::Name,
+    constants::*,
     interface::Interface,
     utils::get_timestamp,
     world::{
-        Coord, MapData, World
+        MapData, World
     },
-    ui::{
-        font::Font,
-        text_field::TextField
-    },
+    ui::font::Font,
     chat::Chat
 };
 
@@ -74,7 +70,7 @@ impl Game {
         };
 
         return Game {
-            margin: Size { width: constants::MAP_WIDTH_CENTER as f64, height: constants::MAP_HEIGHT_CENTER as f64 },
+            margin: Size { width: MAP_WIDTH_CENTER as f64, height: MAP_HEIGHT_CENTER as f64 },
             hard_textures: load_hard_drown_assets(window),
             world: World::new(window),
             interface: Interface::new(),
@@ -88,7 +84,7 @@ impl Game {
 
     pub fn render(&mut self, evnt : &Event, window: &mut PistonWindow) {
         window.draw_2d(evnt, |_ctx, gl, _device| {
-            clear(constants::BLACK, gl);
+            clear(BLACK, gl);
         });
 
         self.world.render(evnt, window, &self);
@@ -150,15 +146,19 @@ impl Game {
         self.chat.mouse_cursor_args(args);
     }
 
+    pub fn mouse_scroll_args(&mut self, args: [f64; 2]) {
+        self.chat.mouse_scroll_args(args);
+    }
+
     pub fn handle_resize(&mut self, new_size: Size) {
-        if new_size.width as usize >= constants::MAP_WIDTH {
-            self.margin.width = ((new_size.width as usize - constants::MAP_WIDTH) / 2) as f64;
+        if new_size.width as usize >= MAP_WIDTH {
+            self.margin.width = ((new_size.width as usize - MAP_WIDTH) / 2) as f64;
         } else {
             self.margin.width = 0.0;
         }
 
-        if new_size.height as usize >= constants::GAME_HEIGHT {
-            self.margin.height = ((new_size.height as usize - constants::GAME_HEIGHT) / 2) as f64;
+        if new_size.height as usize >= GAME_HEIGHT {
+            self.margin.height = ((new_size.height as usize - GAME_HEIGHT) / 2) as f64;
         } else {
             self.margin.height = 0.0;
         }

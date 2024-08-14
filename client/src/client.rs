@@ -17,12 +17,25 @@ impl GameData {
         // Simulate server game data response
         return r#"[
                 {
-                    "name" : "Walter White",
+                    "name" : "fealhach",
                     "type" : "Player",
                     "texture" : "Character",
                     "map_coord": {
                         "x": 4,
-                        "y": 4
+                        "y": 5
+                    },
+                    "world_coord": {
+                        "x": 0,
+                        "y": 0
+                    }
+                },
+                {
+                    "name" : "-smirnof-",
+                    "type" : "Player",
+                    "texture" : "Character",
+                    "map_coord": {
+                        "x": 6,
+                        "y": 5
                     },
                     "world_coord": {
                         "x": 0,

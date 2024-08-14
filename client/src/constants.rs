@@ -16,6 +16,11 @@ pub const GUI_HEIGHT:usize = 192;
 pub const GUI_WIDTH_CENTER:usize = (WINDOW_WIDTH - GUI_WIDTH) / 2;
 pub const GAME_HEIGHT:usize = MAP_HEIGHT + GUI_HEIGHT;
 
+pub const GUI_CHAT_X: usize = 20;
+pub const GUI_CHAT_Y: usize = MAP_HEIGHT + 18;
+pub const GUI_CHAT_WIDTH: usize = 408; 
+pub const GUI_CHAT_HEIGHT: usize = 140;
+
 // Window size
 pub const WINDOW_WIDTH:usize = MAP_WIDTH;
 pub const WINDOW_HEIGHT:usize = MAP_HEIGHT + GUI_HEIGHT;
