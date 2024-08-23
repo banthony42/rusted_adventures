@@ -58,7 +58,7 @@ impl Interface {
     pub fn render_text_overlay(&mut self, evnt : &Event, window: &mut PistonWindow, font: &mut Font, margin: &Size, world: &HashMap<Coord, MapData>, game_data: &GameData) {
         let map_data = world.get(&game_data.player.world_coord).unwrap();
         let map_coord_txt = format!("{}\nCoordonnées: {}, {}", map_data.info, game_data.player.world_coord.x, game_data.player.world_coord.y);
-        font.render_text(&map_coord_txt.as_str(), UI_OVERLAY_FONT_SIZE, evnt, window, constants::WHITE, [5.0, 17.0], Some(margin));
+        font.render_text(&map_coord_txt.as_str(), UI_OVERLAY_FONT_SIZE, evnt, window, color::WHITE, [5.0, 17.0], Some(margin));
 
         let mut render_entity_name = |entity: &Entity| {
             let name_width_with_font = font.get().width(UI_OVERLAY_FONT_SIZE, entity.get_name().as_str()).unwrap();

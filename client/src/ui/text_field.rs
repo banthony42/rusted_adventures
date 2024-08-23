@@ -1,5 +1,4 @@
 use piston_window::*;
-use piston_window::rectangle::*;
 use types::Color;
 
 

@@ -3,23 +3,12 @@ use piston_window::rectangle::*;
 
 use super::font::Font;
 
-
-// Move utils.rs in common lib easily accessible for ui folder modules
-
-use std::time::{SystemTime, UNIX_EPOCH};
-
-fn get_timestamp() -> u128 {
-    return SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_millis();
-}
-
 pub struct InputField {
     focus: bool,
     mouseover: bool,
     font_size: u32,
     content: String,
+    content_width: f64,
     cursor_timer: u128,
     cursor_hidden: bool,
     rect: Rectangle,
@@ -51,6 +40,7 @@ impl InputField {
             font_size: font_size,
             rect_settings: rect_settings,
             content: String::new(),
+            content_width: 0.0,
             cursor_timer: 0,
             cursor_hidden: false,
             rect: rect,
@@ -58,12 +48,43 @@ impl InputField {
         }
     }
 
-    pub fn clean(&mut self) {
-        self.content.clear()
-    }
-
     pub fn get_content(&self) -> String {
         self.content.trim().to_string()
+    }
+
+    pub fn clean(&mut self) {
+        self.content.clear();
+        self.content_width = 0.0;
+    }
+
+    fn erase_last_char(&mut self, font: &mut Font) {
+        match self.content.pop() {
+            Some(char) => {
+                match font.get_text_render_size(self.font_size, char.to_string().as_str()) {
+                    Ok(text_size) => self.content_width -= text_size[0],
+                    Err(_) => {}
+                }
+            },
+            None => {}
+        }
+
+        // Should never happend
+        if self.content_width < 0.0 {
+            self.content_width = 0.0;
+        }
+    }
+
+    fn add_text(&mut self, text: &str, font: &mut Font) {
+        match font.get_text_render_size(self.font_size, text) {
+            Ok(text_size) => {
+                let max_content_width = self.rect_settings[2] - 4.0;
+                if self.content_width + text_size[0] < max_content_width {
+                    self.content.push_str(text);
+                    self.content_width += text_size[0];
+                }
+            },
+            Err(_) => {}
+        }
     }
 
     pub fn render(&self, evnt : &Event, window: &mut PistonWindow, font: &mut Font) {
@@ -115,9 +136,9 @@ impl InputField {
         }
     }
 
-    pub fn text_input(&mut self, args: String) {
+    pub fn text_input(&mut self, args: String, font: &mut Font) {
         if self.focus {
-            self.content.push_str(args.as_str());
+            self.add_text(args.as_str(), font);
         }
     }
 
@@ -138,7 +159,7 @@ impl InputField {
         self.mouseover = false;
     }
         
-    pub fn key_press(&mut self, args: &Button) {
+    pub fn key_press(&mut self, args: &Button, font: &mut Font) {
 
         if let Button::Mouse(MouseButton::Left) = args {
             match self.mouseover {
@@ -152,9 +173,7 @@ impl InputField {
         }
 
         if let Button::Keyboard(Key::Backspace) = args {
-            if self.content.len() > 0 {
-                let _ = self.content.drain(self.content.len() - 1 .. self.content.len());
-            }
+            self.erase_last_char(font);
         }
     }
 

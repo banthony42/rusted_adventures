@@ -2,7 +2,12 @@ use std::fs;
 use std::collections::HashMap;
 use piston_window::*;
 // use opengl_graphics::{Texture, TextureSettings};
-use serde::{de::{Visitor}, Deserialize, Deserializer, Serialize};
+use serde::{
+    de::Visitor,
+    Deserialize,
+    Deserializer,
+    Serialize
+};
 
 use crate::{
     constants,
@@ -283,7 +288,7 @@ impl World {
             let y = (sprite.frames[sprite.frame_index].tilemap_index as u32 / constants::TILEMAP_WIDTH) as f64;
 
             // TODO: delete map_img from struct Game and create Image here to draw the map
-            let map_img = Image::new()
+            Image::new()
             .src_rect(src_rect)
             .draw(sprite_texture,
                 &DrawState::default(),

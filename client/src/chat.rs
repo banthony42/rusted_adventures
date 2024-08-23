@@ -12,7 +12,8 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub enum MessageType {
+enum MessageType {
+    Info,
     General,
     Private
 }
@@ -22,12 +23,15 @@ pub struct Message {
     time: String,
     content: String,
     channel: MessageType,
-    sender: String,
+    sender: Option<String>,
 }
 
 impl Message {
     pub fn format(&self) -> String {
-        format!("[{}]: {}: {}", self.time, self.sender, self.content)
+        match &self.sender {
+            Some(sender) => format!("[{}]: {}: {}", self.time, sender, self.content),
+            None => format!("[{}]: {}", self.time, self.content),
+        }
     }
 }
 
@@ -36,6 +40,7 @@ impl ContentFormat for Message {
         match self.channel {
             MessageType::General => (color::BLACK, self.format()),
             MessageType::Private => (color::CYAN, self.format()),
+            MessageType::Info => (color::hex("06cc2a"), self.format()),
         }
     }
 }
@@ -48,6 +53,7 @@ pub struct Chat {
     content: Vec<Message>,
 }
 
+const CHAT_MAX_MSG: usize = 20;
 const CHAT_FONT_SIZE: u32 = 17;
 const CHAT_TIME_FORMAT : &str = "%H:%M:%S";
 
@@ -68,15 +74,21 @@ impl Chat {
                     ]),
             client_name: client_name,
             margin: Size { width: 0.0, height: 0.0 },
-            content: vec![ // TODO: Configure maximum size
-                Message {  // TODO: remove this ! (tmp message to populate the chat)
-                    content: String::from("Yooo !"),
-                    time: Utc::now().format(CHAT_TIME_FORMAT).to_string(),
-                    channel: MessageType::Private,
-                    sender: String::from("fealhach")
-                }
-            ]
+            content: vec![]
         }
+    }
+
+    fn log(&mut self, text: &str, channel: MessageType) {
+        self.push_back_message(Message {
+            time: Utc::now().format(CHAT_TIME_FORMAT).to_string(),
+            content: text.to_string(),
+            channel: channel,
+            sender: None,
+        });
+    }
+
+    pub fn log_info(&mut self, text: &str) {
+        self.log(text, MessageType::Info);
     }
 
     pub fn render(&mut self, evnt : &Event, window: &mut PistonWindow, font: &mut Font) {
@@ -89,8 +101,8 @@ impl Chat {
         self.text_field.update(delta_ts, self.content.clone());
     }
 
-    pub fn text_input(&mut self, args: String) {
-        self.input_field.text_input(args);
+    pub fn text_input(&mut self, args: String, font: &mut Font) {
+        self.input_field.text_input(args, font);
     }
 
     pub fn mouse_cursor_args(&mut self, args: [f64; 2]) {
@@ -101,21 +113,29 @@ impl Chat {
         self.text_field.mouse_scroll_args(args);
     }
 
-    pub fn key_press(&mut self, args: &Button) {
-        self.input_field.key_press(args);
+    fn push_back_message(&mut self, msg: Message) {
+        let mut tmp = vec![msg];
+        tmp.append(&mut self.content);
+        self.content = tmp;
+        self.content.truncate(CHAT_MAX_MSG);
+
+        // We should call an external closure here, stored at Chat::new()
+        // passing the Message to it
+        // Therefore this closure will send the msg to the server
+    }
+
+    pub fn key_press(&mut self, args: &Button, font: &mut Font) {
+        self.input_field.key_press(args, font);
 
         if let Button::Keyboard(Key::Return) = args {
             let user_input = self.input_field.get_content();
             if user_input.is_empty() == false {
-                let mut a = vec![
-                    Message {
-                        content: user_input,
-                        time: Utc::now().format(CHAT_TIME_FORMAT).to_string(),
-                        channel: MessageType::General,
-                        sender: self.client_name.clone()
-                }];
-                a.append(&mut self.content);
-                self.content = a;
+                self.push_back_message(Message {
+                    content: user_input,
+                    time: Utc::now().format(CHAT_TIME_FORMAT).to_string(),
+                    channel: MessageType::General,
+                    sender: Some(self.client_name.clone())
+                });
                 self.input_field.clean();
                 self.text_field.set_scroll(0.0);
             }

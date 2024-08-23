@@ -24,7 +24,3 @@ pub const GUI_CHAT_HEIGHT: usize = 140;
 // Window size
 pub const WINDOW_WIDTH:usize = MAP_WIDTH;
 pub const WINDOW_HEIGHT:usize = MAP_HEIGHT + GUI_HEIGHT;
-
-// Colors
-pub const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
-pub const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];

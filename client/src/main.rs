@@ -1,5 +1,3 @@
-use std::env::args;
-
 use piston_window::*;
 
 mod constants;

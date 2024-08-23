@@ -3,15 +3,13 @@ use std::collections::HashMap;
 use piston_window::*;
 
 use crate::{
+    chat::Chat,
     client::GameData,
     constants::*,
     interface::Interface,
-    utils::get_timestamp,
-    world::{
-        MapData, World
-    },
     ui::font::Font,
-    chat::Chat
+    utils::get_timestamp,
+    world::{MapData, World}
 };
 
 #[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
@@ -69,6 +67,9 @@ impl Game {
             }
         };
 
+        let mut chat = Chat::new(String::from("Sulfurel"));
+        chat.log_info("Bienvenue dans RPG!");
+
         return Game {
             margin: Size { width: MAP_WIDTH_CENTER as f64, height: MAP_HEIGHT_CENTER as f64 },
             hard_textures: load_hard_drown_assets(window),
@@ -78,13 +79,13 @@ impl Game {
             ts: get_timestamp(),
             delta_ts: 0,
             font: Font::new(),
-            chat: Chat::new(String::from("Sulfurel"))
+            chat: chat
         }
     }
 
     pub fn render(&mut self, evnt : &Event, window: &mut PistonWindow) {
         window.draw_2d(evnt, |_ctx, gl, _device| {
-            clear(BLACK, gl);
+            clear(color::BLACK, gl);
         });
 
         self.world.render(evnt, window, &self);
@@ -108,7 +109,7 @@ impl Game {
     }
 
     pub fn key_press(&mut self, args: &Button) {
-        self.chat.key_press(&args);
+        self.chat.key_press(&args, &mut self.font);
     
         let map_data: &MapData = &self.world.world[&self.fetched_data.player.world_coord];
         if let &Button::Keyboard(key) = args {
@@ -139,7 +140,7 @@ impl Game {
     }
 
     pub fn text_input(&mut self, args: String) {
-        self.chat.text_input(args);
+        self.chat.text_input(args, &mut self.font);
     }
 
     pub fn mouse_cursor_args(&mut self, args: [f64; 2]) {
