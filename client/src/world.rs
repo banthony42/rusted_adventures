@@ -196,7 +196,7 @@ impl<'de> Visitor<'de> for TilesetsDeserializer {
 
         // Iter on all frames objects
         while let Some(frame_obj) = seq.next_element::<serde_json::Value>()? {
-            tilesets.push(format!("../assets/{}", frame_obj.get("image")
+            tilesets.push(format!("../assets/maps/{}", frame_obj.get("image")
                 .expect("tilesets not found.")
                 .as_str()
                 .expect("Fail to get tilesets image JSON key as &str.")
@@ -236,8 +236,8 @@ impl World {
     pub fn new(window : &mut PistonWindow) -> Self {
 
         let __world  = HashMap::from([
-            (Coord { x:0, y:0 }, MapImport { path: String::from("../assets/map.0.0/sprite.json"), info: String::from("Plaines")}),
-            (Coord { x:1, y:0 }, MapImport { path: String::from("../assets/map.1.0/sprite.json"), info: String::from("Plaines")})
+            (Coord { x:0, y:0 }, MapImport { path: String::from("../assets/maps/map.0.0/sprite.json"), info: String::from("Plaines")}),
+            (Coord { x:1, y:0 }, MapImport { path: String::from("../assets/maps/map.1.0/sprite.json"), info: String::from("Plaines")})
         ]);
 
         let mut world = World {

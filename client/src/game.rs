@@ -22,8 +22,8 @@ pub enum GameTexture {
 fn load_hard_drown_assets(window: &mut PistonWindow) -> HashMap<GameTexture, G2dTexture> {
     // Load whole hard drown PNG interface
     let assets: Vec<&str> = vec![
-        "../assets/v2/interface_1024x192_grid16.png",
-        "../assets/v3/character.png"
+        "../assets/interface/interface_1024x192_grid16.png",
+        "../assets/characters/character.png"
     ];
 
     let loaded_assets : HashMap<GameTexture, G2dTexture> = assets.iter().map(|path| {
