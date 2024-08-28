@@ -19,7 +19,8 @@ impl GameData {
                 {
                     "name" : "fealhach",
                     "type" : "Player",
-                    "texture" : "Character",
+                    "race" : "Character",
+                    "state": "Idle",
                     "map_coord": {
                         "x": 4,
                         "y": 5
@@ -32,7 +33,8 @@ impl GameData {
                 {
                     "name" : "-smirnof-",
                     "type" : "Player",
-                    "texture" : "Character",
+                    "race" : "Character",
+                    "state": "Run",
                     "map_coord": {
                         "x": 6,
                         "y": 5
@@ -45,7 +47,8 @@ impl GameData {
                 {
                     "name": "Bouftou",
                     "type" : "Monster",
-                    "texture": "Bouftou",
+                    "race": "Bouftou",
+                    "state": "Idle",
                     "map_coord": {
                         "x": 10,
                         "y": 10
@@ -64,7 +67,8 @@ impl GameData {
         return r#"{
                 "name": "Sulfurel",
                 "type": "Player",
-                "texture": "Character",
+                "race": "Character",
+                "state": "Idle",
                 "map_coord": {
                     "x": 8,
                     "y": 8,

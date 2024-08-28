@@ -1,27 +1,15 @@
 use std::collections::HashMap;
-
 use piston_window::*;
-use graphics::*;
-use types::{Color};
+use types::Color;
 
 use crate::{
-    client::GameData,
-    constants,
-    entity::{
+    assets::HardTexture, client::GameData, constants, entity::{
         Entity,
         EntityType,
         Name
-    },
-    game::{
-        Game,
-        GameTexture
-    },
-    world::{
+    }, game::Game, ui::font::Font, world::{
         Coord,
         MapData
-    },
-    ui::{
-        font::Font
     }
 };
 
@@ -47,7 +35,7 @@ impl Interface {
 
     pub fn render(&self, evnt : &Event, window: &mut PistonWindow, game: &Game) {
         window.draw_2d(evnt, |ctx, gl, _device| {
-            self.img.draw(&game.hard_textures[&GameTexture::Interface] , &DrawState::default(), ctx.transform, gl);                   
+            self.img.draw(&game.hard_textures[&HardTexture::Interface] , &DrawState::default(), ctx.transform, gl);
         });
     }
 

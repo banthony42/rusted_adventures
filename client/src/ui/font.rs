@@ -75,7 +75,7 @@ impl Font {
                         y = character.top();
                     }
                 },
-                Err(e) => { return Err(FontError::CharacterPreload); }
+                Err(_) => { return Err(FontError::CharacterPreload); }
             }
         }
         Ok([x, y])

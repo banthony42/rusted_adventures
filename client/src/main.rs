@@ -9,6 +9,7 @@ mod utils;
 mod interface;
 mod ui;
 mod chat;
+mod assets;
 
 use game::Game;
 

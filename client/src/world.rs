@@ -24,12 +24,10 @@ pub struct Coord {
 pub struct Frame {
     pub tilemap_index: u16,     // The sprite number in the tilemap, define WHERE the sprite should be drawn.
     pub tileset_index: u8,      // The sprite number in the tileset, define WHICH sprite to pick in the tileset.
-    pub frame_number: u8,
 }
 
 #[derive(Deserialize, Debug, Default)]
 pub struct Sprite {
-    pub layer_name: String,
     pub tileset: u8,
     pub collider: bool,
     pub frames: Vec<Frame>,
@@ -39,8 +37,6 @@ pub struct Sprite {
 
 #[derive(Deserialize, Debug)]
 struct Map {
-    width: u32,
-    height: u32,
     #[serde(rename(deserialize = "layers"))]
     #[serde(deserialize_with = "deserialize_sprites")]
     sprites: Vec<Sprite>,
@@ -83,15 +79,8 @@ impl<'de> Visitor<'de> for SpriteDeserializer {
                 .as_array()
                 .expect("Fail to get cels JSON array as Vector.");
 
-            // println!("--- Layer:\"{layer_name}\" ---");
             let mut frames : Vec<Frame> = Vec::new();
             for cel in cels {
-                // dbg!(&cel);
-
-                let frame_number = cel.get("frame")
-                    .expect("\"frame\" key not found in JSON.")
-                    .as_u64()
-                    .expect("Fail to get frame JSON key as u64.") as u8;
 
                 let tilemap = cel.get("tilemap")
                     .expect("\"tilemap\" not found in JSON.")
@@ -104,7 +93,6 @@ impl<'de> Visitor<'de> for SpriteDeserializer {
                     .expect("Fail to get tiles JSON array as Vector.");
 
                 frames.push(Frame {
-                    frame_number:  frame_number,
                     tilemap_index: 0,
                     tileset_index: 0,
                 });
@@ -124,7 +112,6 @@ impl<'de> Visitor<'de> for SpriteDeserializer {
 
                     sprites.push(Sprite {
                         collider: if layer_name == "Collider" { true } else {false },
-                        layer_name: layer_name.clone(),
                         tileset: tileset,
                         frames: frames.clone(),
                         timer: 0,

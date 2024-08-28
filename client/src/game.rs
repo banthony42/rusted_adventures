@@ -1,50 +1,13 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use piston_window::*;
 
 use crate::{
-    chat::Chat,
-    client::GameData,
-    constants::*,
-    interface::Interface,
-    ui::font::Font,
-    utils::get_timestamp,
-    world::{MapData, World}
+    assets::{load_assets, load_hard_drown_assets, EntityAssets, GameAsset, HardTexture}, chat::Chat, client::GameData, constants::*, interface::Interface, ui::font::Font, utils::get_timestamp, world::{MapData, World}
 };
 
-#[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub enum GameTexture {
-    Character,
-    Bouftou,
-    Interface
-}
-
-fn load_hard_drown_assets(window: &mut PistonWindow) -> HashMap<GameTexture, G2dTexture> {
-    // Load whole hard drown PNG interface
-    let assets: Vec<&str> = vec![
-        "../assets/interface/interface_1024x192_grid16.png",
-        "../assets/characters/character.png"
-    ];
-
-    let loaded_assets : HashMap<GameTexture, G2dTexture> = assets.iter().map(|path| {
-        let text = match Texture::from_path(&mut window.create_texture_context(), path, Flip::None, &TextureSettings::new()) {
-            Ok(texture) => texture,
-            Err(texture_error) => {
-                println!("Fail to load hard drown texture : {} : {}", path, texture_error);
-                std::process::exit(2);
-            }
-        };
-        return match path.split("/").last().unwrap() {
-            "interface_1024x192_grid16.png" => (GameTexture::Interface, text),
-            "character.png" => (GameTexture::Character, text),
-            _ => todo!()
-        };
-    }).collect();
-    return loaded_assets;
-}
-
 pub struct Game {
-    pub hard_textures: HashMap<GameTexture, G2dTexture>,
+    pub hard_textures: HashMap<HardTexture, G2dTexture>,
+    pub assets : HashMap<EntityAssets, GameAsset>,
     pub margin: Size,
     pub world: World,
     pub interface: Interface,
@@ -73,6 +36,7 @@ impl Game {
         return Game {
             margin: Size { width: MAP_WIDTH_CENTER as f64, height: MAP_HEIGHT_CENTER as f64 },
             hard_textures: load_hard_drown_assets(window),
+            assets: load_assets(window),
             world: World::new(window),
             interface: Interface::new(),
             fetched_data: g_data,
@@ -104,8 +68,14 @@ impl Game {
         self.delta_ts = get_timestamp() - self.ts;
         self.ts = get_timestamp();
 
-        self.chat.update(self.delta_ts);
         self.world.update(self.delta_ts, &self.fetched_data.player.world_coord);
+
+        self.fetched_data.player.update(self.delta_ts, &self.assets);
+        for entity in self.fetched_data.entities.iter_mut() {
+            entity.update(self.delta_ts, &self.assets);
+        }
+
+        self.chat.update(self.delta_ts);
     }
 
     pub fn key_press(&mut self, args: &Button) {
