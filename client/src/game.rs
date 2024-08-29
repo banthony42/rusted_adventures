@@ -80,33 +80,11 @@ impl Game {
 
     pub fn key_press(&mut self, args: &Button) {
         self.chat.key_press(&args, &mut self.font);
-    
-        let map_data: &MapData = &self.world.world[&self.fetched_data.player.world_coord];
-        if let &Button::Keyboard(key) = args {
-            match key {
-                piston::Key::Up => {
-                    self.fetched_data.player.move_y(-1, &map_data.sprites, &self.world);
-                },
-                piston::Key::Down => {
-                    self.fetched_data.player.move_y(1, &map_data.sprites, &self.world);
-                },
-                piston::Key::Left => {
-                    self.fetched_data.player.move_x(-1, &map_data.sprites, &self.world);
-                },
-                piston::Key::Right => {
-                    self.fetched_data.player.move_x(1, &map_data.sprites, &self.world);
-                },
-                _ => {}
-           }
-        }
+        self.fetched_data.player.key_press(args, &self.world);
     }
 
     pub fn key_release(&mut self, args: &Button) {
-        if let &Button::Keyboard(key) = args {
-            match key {
-                _ => {}
-           }
-        }
+        self.fetched_data.player.key_release(args);
     }
 
     pub fn text_input(&mut self, args: String) {

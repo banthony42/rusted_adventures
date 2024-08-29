@@ -1,5 +1,5 @@
 
-use std::collections::HashMap;
+use std::{collections::HashMap, default};
 
 use serde::{Deserialize, Serialize};
 use piston_window::*;
@@ -21,6 +21,13 @@ pub enum EntityRaces {
     Bouftou
 }
 
+#[derive(Debug, Default)]
+enum Orientation {
+    #[default]
+    Est,
+    West
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entity {
     pub name: String,
@@ -31,6 +38,12 @@ pub struct Entity {
     pub frame_number: usize,
     #[serde(skip)]
     pub timer: u128,
+    #[serde(skip)]
+    pub move_timer: u128,
+    #[serde(skip)]
+    pub allow_movement: bool,
+    #[serde(skip)]
+    pub orientation: Orientation,
     pub map_coord: Coord,
     pub world_coord: Coord,
 }
@@ -48,11 +61,28 @@ impl Name for Entity {
     }
 }
 
+const MOVE_LIMIT: u128 = 150;
+
 impl Entity {
 
+    fn change_state(&mut self, new_state: Animations) {
+        if self.state != new_state {
+            self.state = new_state;
+            self.frame_number = 0;
+            self.timer = 0;
+        }
+    }
+
     pub fn move_x(&mut self, step: i8,  sprites: &Vec<Sprite>, world: &World) -> bool {
+        self.change_state(Animations::Run);
+        if self.allow_movement {
+            self.allow_movement = false
+        } else {
+            return true;
+        }
         if step > 0 {
             // Right
+            self.orientation = Orientation::Est;
             if self.map_coord.x < (TILEMAP_WIDTH - 1) as i32 {
                 let tile_index = (self.map_coord.x + step as i32) + (self.map_coord.y * TILEMAP_WIDTH as i32);
  
@@ -80,6 +110,7 @@ impl Entity {
             }
         } else {
             // Left
+            self.orientation = Orientation::West;
             if self.map_coord.x > 0 {
                 let tile_index = (self.map_coord.x + step as i32) + (self.map_coord.y * TILEMAP_WIDTH as i32);
                 let a : Vec<&Sprite> = sprites.iter()
@@ -110,6 +141,12 @@ impl Entity {
     }
 
     pub fn move_y(&mut self, step: i8, sprites: &Vec<Sprite>, world: &World) -> bool {
+        self.change_state(Animations::Run);
+        if self.allow_movement {
+            self.allow_movement = false
+        } else {
+            return true;
+        }
         if step > 0 {
             // Down
             if self.map_coord.y < (TILEMAP_HEIGHT - 1) as i32 {
@@ -188,6 +225,11 @@ impl Entity {
                         game.margin.width as f64 + self.map_coord.x as f64 * 64.0,
                         game.margin.height as f64 + (self.map_coord.y as f64 * 64.0) - 64.0);
 
+                    let trans = match self.orientation {
+                        Orientation::Est => trans,
+                        Orientation::West => trans.flip_h().trans(-64.0, 0.0),
+                    };
+
                     Image::new()
                         .src_rect(asset.frames[self.frame_number].src_rect)
                         .draw(&asset.texture, &DrawState::default(),trans, gl);
@@ -198,15 +240,17 @@ impl Entity {
     }
 
     pub fn update(&mut self, delta_ts: u128, assets: &HashMap<EntityAssets, GameAsset>) {
-        let a = match self.race {
-            EntityRaces::Character => EntityAssets::Character(self.state),
-            EntityRaces::Bouftou => EntityAssets::Bouftou,
-        };
+        if self.move_timer >= MOVE_LIMIT {
+            self.move_timer = 0;
+            self.allow_movement = true;
+        } else if self.allow_movement == false {
+            self.move_timer += delta_ts;
+        }
 
-        match assets.get(&a) {
+        match assets.get(self.animation_lookup()) {
             Some(asset) => {
                 if self.timer >= asset.frames[self.frame_number].duration {
-                    if self.frame_number >= asset.frames.len() - 1 {
+                    if self.frame_number >= (asset.frames.len() - 1) {
                         self.frame_number = 0;
                     } else {
                         self.frame_number += 1;
@@ -217,6 +261,43 @@ impl Entity {
                 }
             },
             None => {}
+        }
+    }
+
+    pub fn key_press(&mut self, args: &Button, world: &World) {
+        let map_data = &world.world[&self.world_coord];
+        if let &Button::Keyboard(key) = args {
+            match key {
+                piston::Key::Up => {
+                    self.move_y(-1, &map_data.sprites, &world);
+                },
+                piston::Key::Down => {
+                    self.move_y(1, &map_data.sprites, &world);
+                },
+                piston::Key::Left => {
+                    self.move_x(-1, &map_data.sprites, &world);
+                },
+                piston::Key::Right => {
+                    self.move_x(1, &map_data.sprites, &world);
+                },
+                _ => {}
+           }
+        }
+    }
+
+    pub fn key_release(&mut self, args: &Button) {
+        if let &Button::Keyboard(key) = args {
+            match key {
+                piston::Key::Up | 
+                piston::Key::Down |
+                piston::Key::Left |
+                piston::Key::Right => {
+                    self.change_state(Animations::Idle);
+                    self.move_timer = 0;
+                    self.allow_movement = true;
+                },
+                _ => {}
+           }
         }
     }
 }

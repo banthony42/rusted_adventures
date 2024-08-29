@@ -34,7 +34,7 @@ impl GameData {
                     "name" : "-smirnof-",
                     "type" : "Player",
                     "race" : "Character",
-                    "state": "Run",
+                    "state": "Idle",
                     "map_coord": {
                         "x": 6,
                         "y": 5
