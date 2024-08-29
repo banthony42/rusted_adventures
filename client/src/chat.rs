@@ -1,21 +1,16 @@
+use crate::{
+    constants::*,
+    ui::{font::Font, input_field::InputField, text_field::ContentFormat, text_field::TextField},
+};
 use chrono::Utc;
 use piston_window::*;
 use types::Color;
-use crate::{
-    constants::*,
-    ui::{
-        font::Font,
-        input_field::InputField,
-        text_field::TextField,
-        text_field::ContentFormat
-    }
-};
 
 #[derive(Clone)]
 enum MessageType {
     Info,
     General,
-    Private
+    Private,
 }
 
 #[derive(Clone)]
@@ -55,26 +50,27 @@ pub struct Chat {
 
 const CHAT_MAX_MSG: usize = 20;
 const CHAT_FONT_SIZE: u32 = 17;
-const CHAT_TIME_FORMAT : &str = "%H:%M:%S";
+const CHAT_TIME_FORMAT: &str = "%H:%M:%S";
 
 impl Chat {
-
     pub fn new(client_name: String) -> Self {
         Chat {
-            input_field: InputField::new([ 16.0, 928.0 ],
-                CHAT_FONT_SIZE,
-                416.0),
+            input_field: InputField::new([16.0, 928.0], CHAT_FONT_SIZE, 416.0),
             text_field: TextField::new(
                 CHAT_FONT_SIZE,
                 [
                     GUI_CHAT_X as u32,
                     GUI_CHAT_Y as u32,
                     GUI_CHAT_WIDTH as u32,
-                    GUI_CHAT_HEIGHT as u32
-                    ]),
+                    GUI_CHAT_HEIGHT as u32,
+                ],
+            ),
             client_name: client_name,
-            margin: Size { width: 0.0, height: 0.0 },
-            content: vec![]
+            margin: Size {
+                width: 0.0,
+                height: 0.0,
+            },
+            content: vec![],
         }
     }
 
@@ -91,7 +87,7 @@ impl Chat {
         self.log(text, MessageType::Info);
     }
 
-    pub fn render(&mut self, evnt : &Event, window: &mut PistonWindow, font: &mut Font) {
+    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
         self.input_field.render(evnt, window, font);
         self.text_field.render(evnt, window, font);
     }
@@ -134,7 +130,7 @@ impl Chat {
                     content: user_input,
                     time: Utc::now().format(CHAT_TIME_FORMAT).to_string(),
                     channel: MessageType::General,
-                    sender: Some(self.client_name.clone())
+                    sender: Some(self.client_name.clone()),
                 });
                 self.input_field.clean();
                 self.text_field.set_scroll(0.0);

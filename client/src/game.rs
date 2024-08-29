@@ -1,13 +1,20 @@
-use std::collections::HashMap;
 use piston_window::*;
+use std::collections::HashMap;
 
 use crate::{
-    assets::{load_assets, load_hard_drown_assets, EntityAssets, GameAsset, HardTexture}, chat::Chat, client::GameData, constants::*, interface::Interface, ui::font::Font, utils::get_timestamp, world::{MapData, World}
+    assets::{load_assets, load_hard_drown_assets, EntityAssets, GameAsset, HardTexture},
+    chat::Chat,
+    client::GameData,
+    constants::*,
+    interface::Interface,
+    ui::font::Font,
+    utils::get_timestamp,
+    world::{MapData, World},
 };
 
 pub struct Game {
     pub hard_textures: HashMap<HardTexture, G2dTexture>,
-    pub assets : HashMap<EntityAssets, GameAsset>,
+    pub assets: HashMap<EntityAssets, GameAsset>,
     pub margin: Size,
     pub world: World,
     pub interface: Interface,
@@ -15,11 +22,10 @@ pub struct Game {
     pub ts: u128,
     pub delta_ts: u128,
     pub font: Font,
-    pub chat: Chat
+    pub chat: Chat,
 }
 
 impl Game {
-
     pub fn new(window: &mut PistonWindow) -> Self {
         let g_data = match GameData::get_data_from_server() {
             Ok(data) => data,
@@ -34,7 +40,10 @@ impl Game {
         chat.log_info("Bienvenue dans RPG!");
 
         return Game {
-            margin: Size { width: MAP_WIDTH_CENTER as f64, height: MAP_HEIGHT_CENTER as f64 },
+            margin: Size {
+                width: MAP_WIDTH_CENTER as f64,
+                height: MAP_HEIGHT_CENTER as f64,
+            },
             hard_textures: load_hard_drown_assets(window),
             assets: load_assets(window),
             world: World::new(window),
@@ -43,11 +52,11 @@ impl Game {
             ts: get_timestamp(),
             delta_ts: 0,
             font: Font::new(),
-            chat: chat
-        }
+            chat: chat,
+        };
     }
 
-    pub fn render(&mut self, evnt : &Event, window: &mut PistonWindow) {
+    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow) {
         window.draw_2d(evnt, |_ctx, gl, _device| {
             clear(color::BLACK, gl);
         });
@@ -59,16 +68,24 @@ impl Game {
         for entity in self.fetched_data.entities.iter() {
             entity.render(evnt, window, &self);
         }
-        
+
         self.chat.render(evnt, window, &mut self.font);
-        self.interface.render_text_overlay(evnt, window, &mut self.font, &self.margin, &self.world.world, &self.fetched_data);
+        self.interface.render_text_overlay(
+            evnt,
+            window,
+            &mut self.font,
+            &self.margin,
+            &self.world.world,
+            &self.fetched_data,
+        );
     }
 
     pub fn update(&mut self, _args: &UpdateArgs) {
         self.delta_ts = get_timestamp() - self.ts;
         self.ts = get_timestamp();
 
-        self.world.update(self.delta_ts, &self.fetched_data.player.world_coord);
+        self.world
+            .update(self.delta_ts, &self.fetched_data.player.world_coord);
 
         self.fetched_data.player.update(self.delta_ts, &self.assets);
         for entity in self.fetched_data.entities.iter_mut() {
@@ -118,7 +135,10 @@ impl Game {
         let window_height = args.window_size[1];
         println!("==> Resized: {window_width}x{window_height}");
 
-        self.handle_resize(Size { width: window_width, height: window_height });
+        self.handle_resize(Size {
+            width: window_width,
+            height: window_height,
+        });
         self.interface.resize(&self.margin);
         self.chat.resize(&self.margin);
     }

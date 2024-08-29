@@ -1,15 +1,15 @@
 use piston_window::*;
 
-mod constants;
-mod game;
-mod entity;
-mod world;
+mod assets;
+mod chat;
 mod client;
-mod utils;
+mod constants;
+mod entity;
+mod game;
 mod interface;
 mod ui;
-mod chat;
-mod assets;
+mod utils;
+mod world;
 
 use game::Game;
 
@@ -17,18 +17,25 @@ fn run_game() {
     let opengl = OpenGL::V3_2;
 
     // Create a Glutin window.
-    let mut window: PistonWindow =  match WindowSettings::new("rpg", [constants::WINDOW_WIDTH as u32, constants::WINDOW_HEIGHT as u32])
-        .graphics_api(opengl)
-        .fullscreen(false)
-        .exit_on_esc(true)
-        .resizable(true)
-        .build() {
-            Ok(window) => window,
-            Err(window_error) => {
-                println!("Fail to create Glutin Window: {}", window_error);
-                std::process::exit(2);
-            }
-        };
+    let mut window: PistonWindow = match WindowSettings::new(
+        "rpg",
+        [
+            constants::WINDOW_WIDTH as u32,
+            constants::WINDOW_HEIGHT as u32,
+        ],
+    )
+    .graphics_api(opengl)
+    .fullscreen(false)
+    .exit_on_esc(true)
+    .resizable(true)
+    .build()
+    {
+        Ok(window) => window,
+        Err(window_error) => {
+            println!("Fail to create Glutin Window: {}", window_error);
+            std::process::exit(2);
+        }
+    };
 
     // Create a new game and run it.
     let mut game = Game::new(&mut window);
@@ -36,11 +43,10 @@ fn run_game() {
     game.font.load(&mut window);
     game.resize_window(&ResizeArgs {
         window_size: window.size().into(),
-        draw_size: window.draw_size().into()
+        draw_size: window.draw_size().into(),
     });
 
     while let Some(e) = window.next() {
-
         game.render(&e, &mut window);
 
         if let Some(args) = e.press_args() {
@@ -72,7 +78,6 @@ fn run_game() {
         }
     }
 }
-
 
 fn main() {
     run_game();

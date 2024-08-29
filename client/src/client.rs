@@ -1,18 +1,13 @@
+use crate::{entity::Entity, world::Coord};
 use serde::{Deserialize, Serialize};
-use crate::{
-    entity::Entity,
-    world::Coord
-};
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GameData {
     pub player: Entity,
-    pub entities: Vec<Entity>
+    pub entities: Vec<Entity>,
 }
 
 impl GameData {
-
     fn fetch_entities_data(_world_coord: &Coord) -> &'static str {
         // Simulate server game data response
         return r#"[
@@ -59,7 +54,7 @@ impl GameData {
                     }
                 }
             ]
-        "#
+        "#;
     }
 
     fn fetch_player_data() -> &'static str {
@@ -78,7 +73,7 @@ impl GameData {
                     "x": 0,
                     "y": 0
                 }
-        }"#
+        }"#;
     }
 
     pub fn get_data_from_server() -> Result<GameData, String> {
@@ -86,15 +81,26 @@ impl GameData {
 
         let p_data = match serde_json::from_str::<Entity>(json_player_data) {
             Ok(game_data) => game_data,
-            Err(error) => return Err(format!("client: get_data_from_server: Error while deserializing data. {error}"))
+            Err(error) => {
+                return Err(format!(
+                    "client: get_data_from_server: Error while deserializing data. {error}"
+                ))
+            }
         };
 
         let json_entities_data = Self::fetch_entities_data(&p_data.world_coord);
         let e_data = match serde_json::from_str::<Vec<Entity>>(json_entities_data) {
             Ok(game_data) => game_data,
-            Err(error) => return Err(format!("client: get_data_from_server: Error while deserializing data. {error}"))
+            Err(error) => {
+                return Err(format!(
+                    "client: get_data_from_server: Error while deserializing data. {error}"
+                ))
+            }
         };
 
-        return Ok(GameData { player: p_data, entities: e_data });
+        return Ok(GameData {
+            player: p_data,
+            entities: e_data,
+        });
     }
 }
