@@ -6,10 +6,33 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
 
 use crate::{constants, game::Game};
 
-#[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Coord {
     pub x: i32,
     pub y: i32,
+}
+
+impl Coord {
+    pub fn is_null(&self) -> bool {
+        return self.x == 0 && self.y == 0;
+    }
+}
+
+impl std::ops::Add for Coord {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl std::ops::AddAssign for Coord {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -233,10 +256,6 @@ pub struct World {
     pub world: HashMap<Coord, MapData>,
 }
 
-pub enum WorldError {
-    UnknownMap,
-}
-
 impl World {
     pub fn new(window: &mut PistonWindow) -> Self {
         let __world = HashMap::from([
@@ -365,10 +384,21 @@ impl World {
             .collect::<Vec<_>>();
     }
 
-    pub fn get_world_map(&self, coord: &Coord) -> Result<&MapData, WorldError> {
-        match self.world.get(&coord) {
-            Some(map_data) => return Ok(map_data),
-            None => Err(WorldError::UnknownMap),
-        }
+    fn get_map(&self, coord: &Coord) -> Option<(Coord, &MapData)> {
+        let map = match self.world.get(coord) {
+            Some(map_data) => map_data,
+            None => return None,
+        };
+        return Some((coord.clone(), map));
+    }
+
+    pub fn get_east_map(&self, coord: &Coord) -> Option<(Coord, &MapData)> {
+        let coord_tentative = coord.clone() + Coord { x: 1, y: 0 };
+        self.get_map(&coord_tentative)
+    }
+
+    pub fn get_west_map(&self, coord: &Coord) -> Option<(Coord, &MapData)> {
+        let coord_tentative = coord.clone() + Coord { x: -1, y: 0 };
+        self.get_map(&coord_tentative)
     }
 }

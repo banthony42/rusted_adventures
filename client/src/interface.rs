@@ -5,7 +5,7 @@ use types::Color;
 use crate::{
     assets::HardTexture,
     client::GameData,
-    constants,
+    constants::{self, PLAYER_HEIGHT},
     entity::{Entity, EntityType, Name},
     game::Game,
     ui::font::Font,
@@ -87,8 +87,8 @@ impl Interface {
                 .unwrap();
 
             let e_name_coord = [
-                entity.map_coord.x as f64 * 64.0 + 32.0 - (name_width_with_font / 2.0),
-                (entity.map_coord.y * 64) as f64 - 64.0,
+                entity.map_coord.x as f64 - (name_width_with_font / 2.0),
+                entity.map_coord.y as f64 - PLAYER_HEIGHT as f64,
             ];
             let final_color = match entity.r#type {
                 EntityType::Player => self.player_color,

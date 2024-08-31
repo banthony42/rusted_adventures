@@ -9,7 +9,7 @@ use crate::{
     interface::Interface,
     ui::font::Font,
     utils::get_timestamp,
-    world::{MapData, World},
+    world::World,
 };
 
 pub struct Game {
@@ -87,9 +87,11 @@ impl Game {
         self.world
             .update(self.delta_ts, &self.fetched_data.player.world_coord);
 
-        self.fetched_data.player.update(self.delta_ts, &self.assets);
+        self.fetched_data
+            .player
+            .update(self.delta_ts, &self.assets, &self.world);
         for entity in self.fetched_data.entities.iter_mut() {
-            entity.update(self.delta_ts, &self.assets);
+            entity.update(self.delta_ts, &self.assets, &self.world);
         }
 
         self.chat.update(self.delta_ts);
@@ -97,7 +99,7 @@ impl Game {
 
     pub fn key_press(&mut self, args: &Button) {
         self.chat.key_press(&args, &mut self.font);
-        self.fetched_data.player.key_press(args, &self.world);
+        self.fetched_data.player.key_press(args);
     }
 
     pub fn key_release(&mut self, args: &Button) {

@@ -17,8 +17,8 @@ impl GameData {
                     "race" : "Character",
                     "state": "Idle",
                     "map_coord": {
-                        "x": 4,
-                        "y": 5
+                        "x": 300,
+                        "y": 300
                     },
                     "world_coord": {
                         "x": 0,
@@ -31,8 +31,8 @@ impl GameData {
                     "race" : "Character",
                     "state": "Idle",
                     "map_coord": {
-                        "x": 6,
-                        "y": 5
+                        "x": 364,
+                        "y": 364
                     },
                     "world_coord": {
                         "x": 0,
@@ -45,8 +45,8 @@ impl GameData {
                     "race": "Bouftou",
                     "state": "Idle",
                     "map_coord": {
-                        "x": 10,
-                        "y": 10
+                        "x": 750,
+                        "y": 550
                     },
                     "world_coord": {
                         "x": 0,
@@ -65,8 +65,8 @@ impl GameData {
                 "race": "Character",
                 "state": "Idle",
                 "map_coord": {
-                    "x": 8,
-                    "y": 8,
+                    "x": 500,
+                    "y": 500,
                     "label": "Mountain"
                 },
                 "world_coord": {

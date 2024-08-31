@@ -23,3 +23,8 @@ pub const GUI_CHAT_HEIGHT: usize = 140;
 // Window size
 pub const WINDOW_WIDTH: usize = MAP_WIDTH;
 pub const WINDOW_HEIGHT: usize = MAP_HEIGHT + GUI_HEIGHT;
+
+// Player Assets
+pub const PLAYER_WIDTH: usize = 64;
+pub const PLAYER_HEIGHT: usize = 128;
+pub const PLAYER_CENTER_X: usize = PLAYER_WIDTH / 2;
