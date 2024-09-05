@@ -86,7 +86,12 @@ impl Entity {
                     Animations::Run => &EntityAssets::Character(Animations::Run),
                 }
             }
-            EntityRaces::Bouftou => &EntityAssets::Bouftou,
+            EntityRaces::Bouftou => {
+                match self.state {
+                    Animations::Idle => &EntityAssets::Bouftou(Animations::Idle),
+                    Animations::Run => &EntityAssets::Bouftou(Animations::Run),
+                }
+            },
         }
     }
 

@@ -102,7 +102,7 @@ pub enum Animations {
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Copy)]
 pub enum EntityAssets {
     Character(Animations),
-    Bouftou,
+    Bouftou(Animations),
 }
 
 pub fn load_assets(window: &mut PistonWindow) -> HashMap<EntityAssets, GameAsset> {
@@ -115,6 +115,10 @@ pub fn load_assets(window: &mut PistonWindow) -> HashMap<EntityAssets, GameAsset
             EntityAssets::Character(Animations::Run),
             "../assets/tests/character_animation-Run.json",
         ),
+        (
+            EntityAssets::Bouftou(Animations::Idle),
+            "../assets/tests/bouftou_animation-Idle.json",
+        )
     ];
 
     return assets_list
