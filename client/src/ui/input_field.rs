@@ -3,6 +3,7 @@ use piston_window::*;
 
 use super::font::Font;
 
+#[derive(Clone)]
 pub struct InputField {
     focus: bool,
     mouseover: bool,
@@ -14,6 +15,7 @@ pub struct InputField {
     rect: Rectangle,
     rect_settings: [f64; 4],
     margin: Size,
+    masked: bool,
 }
 
 impl InputField {
@@ -42,16 +44,54 @@ impl InputField {
                 width: 0.0,
                 height: 0.0,
             },
+            masked: false,
         }
+    }
+
+    pub fn masked(mut self, masked: bool) -> Self {
+        self.masked = masked;
+        self
+    }
+
+    pub fn set_height(mut self, height: f64) -> Self {
+        self.rect_settings[3] = (self.font_size as f64 + 4.0).max(height) as f64;
+        self
+    }
+
+    pub fn set_radius(mut self, radius: f64) -> Self {
+        self.rect = self.rect.shape(Shape::Round(radius, 32));
+        self
     }
 
     pub fn get_content(&self) -> String {
         self.content.trim().to_string()
     }
 
+    pub fn is_focus(&self) -> bool {
+        self.focus
+    }
+
+    pub fn set_focus(&mut self, focus: bool) {
+        self.focus = focus
+    }
+
     pub fn clean(&mut self) {
         self.content.clear();
         self.content_width = 0.0;
+    }
+
+    fn get_content_or_masked(&self) -> String {
+        if self.masked {
+            let s: String = self
+                .content
+                .chars()
+                .map(|x| match x {
+                    _ => "•",
+                })
+                .collect();
+            return s;
+        }
+        return self.content.clone();
     }
 
     fn erase_last_char(&mut self, font: &mut Font) {
@@ -104,7 +144,7 @@ impl InputField {
                         + (self.rect_settings[3] - self.font_size as f64) / 2.0,
                 ];
                 font.render_text(
-                    self.content.as_str(),
+                    self.get_content_or_masked().as_str(),
                     self.font_size,
                     evnt,
                     window,
@@ -120,8 +160,8 @@ impl InputField {
             true => { /* Don't render the cursor, should be hidden */ }
             false => {
                 if self.focus {
-                    if let Ok(content_size) =
-                        font.get_text_render_size(self.font_size, self.content.as_str())
+                    if let Ok(content_size) = font
+                        .get_text_render_size(self.font_size, self.get_content_or_masked().as_str())
                     {
                         if let Ok(char_template) = font.get().character(self.font_size, '|') {
                             let cursor_pos = [
@@ -156,13 +196,13 @@ impl InputField {
         }
     }
 
-    pub fn text_input(&mut self, args: String, font: &mut Font) {
+    pub fn text_input(&mut self, args: &String, font: &mut Font) {
         if self.focus {
             self.add_text(args.as_str(), font);
         }
     }
 
-    pub fn mouse_cursor_args(&mut self, args: [f64; 2]) {
+    pub fn mouse_cursor_args(&mut self, args: &[f64; 2]) {
         let mouse_x = args[0];
         let mouse_y = args[1];
         let rect_left = self.rect_settings[0] + self.margin.width;
@@ -191,8 +231,10 @@ impl InputField {
             }
         }
 
-        if let Button::Keyboard(Key::Backspace) = args {
-            self.erase_last_char(font);
+        if self.focus {
+            if let Button::Keyboard(Key::Backspace) = args {
+                self.erase_last_char(font);
+            }
         }
     }
 

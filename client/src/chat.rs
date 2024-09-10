@@ -97,15 +97,15 @@ impl Chat {
         self.text_field.update(delta_ts, self.content.clone());
     }
 
-    pub fn text_input(&mut self, args: String, font: &mut Font) {
+    pub fn text_input(&mut self, args: &String, font: &mut Font) {
         self.input_field.text_input(args, font);
     }
 
-    pub fn mouse_cursor_args(&mut self, args: [f64; 2]) {
+    pub fn mouse_cursor_args(&mut self, args: &[f64; 2]) {
         self.input_field.mouse_cursor_args(args);
     }
 
-    pub fn mouse_scroll_args(&mut self, args: [f64; 2]) {
+    pub fn mouse_scroll_args(&mut self, args: &[f64; 2]) {
         self.text_field.mouse_scroll_args(args);
     }
 
@@ -124,16 +124,18 @@ impl Chat {
         self.input_field.key_press(args, font);
 
         if let Button::Keyboard(Key::Return) = args {
-            let user_input = self.input_field.get_content();
-            if user_input.is_empty() == false {
-                self.push_back_message(Message {
-                    content: user_input,
-                    time: Utc::now().format(CHAT_TIME_FORMAT).to_string(),
-                    channel: MessageType::General,
-                    sender: Some(self.client_name.clone()),
-                });
-                self.input_field.clean();
-                self.text_field.set_scroll(0.0);
+            if self.input_field.is_focus() {
+                let user_input = self.input_field.get_content();
+                if user_input.is_empty() == false {
+                    self.push_back_message(Message {
+                        content: user_input,
+                        time: Utc::now().format(CHAT_TIME_FORMAT).to_string(),
+                        channel: MessageType::General,
+                        sender: Some(self.client_name.clone()),
+                    });
+                    self.input_field.clean();
+                    self.text_field.set_scroll(0.0);
+                }
             }
         }
     }

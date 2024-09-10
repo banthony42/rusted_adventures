@@ -75,7 +75,7 @@ where
         self.content = text;
     }
 
-    pub fn mouse_scroll_args(&mut self, args: [f64; 2]) {
+    pub fn mouse_scroll_args(&mut self, args: &[f64; 2]) {
         self.set_scroll(self.scroll + (args[1]));
     }
 

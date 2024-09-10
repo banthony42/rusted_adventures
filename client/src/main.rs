@@ -1,4 +1,7 @@
+use login::Login;
 use piston_window::*;
+use states::GameState;
+use utils::get_timestamp;
 
 mod assets;
 mod chat;
@@ -7,13 +10,11 @@ mod constants;
 mod entity;
 mod game;
 mod interface;
+mod login;
+mod states;
 mod ui;
 mod utils;
 mod world;
-mod states;
-
-use states::*;
-
 
 fn run_game() {
     let opengl = OpenGL::V3_2;
@@ -28,7 +29,7 @@ fn run_game() {
     )
     .graphics_api(opengl)
     .fullscreen(false)
-    .exit_on_esc(true)
+    .exit_on_esc(false)
     .resizable(true)
     .build()
     {
@@ -39,7 +40,10 @@ fn run_game() {
         }
     };
 
-    let mut state: Box<dyn GameState> = Box::new(Login { login: false });
+    let mut login_state = Login::new();
+    login_state.font.load(&mut window);
+    let mut state: Box<dyn GameState> = Box::new(login_state);
+    let mut ts: u128 = 0;
 
     while let Some(e) = window.next() {
         state.render(&e, &mut window);
@@ -57,19 +61,20 @@ fn run_game() {
         }
 
         if let Some(args) = e.update_args() {
-           state.update(&args);
+            state.update(&args, get_timestamp() - ts);
+            ts = get_timestamp();
         }
 
         if let Some(args) = e.text_args() {
-            state.text_input(args);
+            state.text_input(&args);
         }
 
         if let Some(args) = e.mouse_cursor_args() {
-            state.mouse_cursor_args(args);
+            state.mouse_cursor_args(&args);
         }
 
         if let Some(args) = e.mouse_scroll_args() {
-            state.mouse_scroll_args(args);
+            state.mouse_scroll_args(&args);
         }
         state = state.state_update(&mut window);
     }

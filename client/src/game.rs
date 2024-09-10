@@ -8,8 +8,8 @@ use crate::{
     constants::*,
     interface::Interface,
     ui::font::Font,
-    utils::get_timestamp,
-    world::World, GameState, Login,
+    world::World,
+    GameState, Login,
 };
 
 pub struct Game {
@@ -19,11 +19,9 @@ pub struct Game {
     pub world: World,
     pub interface: Interface,
     pub fetched_data: GameData,
-    pub ts: u128,
-    pub delta_ts: u128,
     pub font: Font,
     pub chat: Chat,
-    pub logout: bool
+    pub logout: bool,
 }
 
 impl Game {
@@ -51,29 +49,25 @@ impl Game {
             world: World::new(window),
             interface: Interface::new(),
             fetched_data: g_data,
-            ts: get_timestamp(),
-            delta_ts: 0,
             font: Font::new(),
             chat: chat,
         };
     }
-
-    pub fn handle_resize(&mut self, new_size: Size) {
-        if new_size.width as usize >= MAP_WIDTH {
-            self.margin.width = ((new_size.width as usize - MAP_WIDTH) / 2) as f64;
-        } else {
-            self.margin.width = 0.0;
-        }
-
-        if new_size.height as usize >= GAME_HEIGHT {
-            self.margin.height = ((new_size.height as usize - GAME_HEIGHT) / 2) as f64;
-        } else {
-            self.margin.height = 0.0;
-        }
-    }
 }
 
 impl GameState for Game {
+    fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
+        if self.logout {
+            let mut login_state = Login::new();
+            login_state.font.load(window);
+            login_state.resize_window(&ResizeArgs {
+                window_size: window.size().into(),
+                draw_size: window.draw_size().into(),
+            });
+            return Box::new(login_state);
+        }
+        self
+    }
 
     fn render(&mut self, evnt: &Event, window: &mut PistonWindow) {
         window.draw_2d(evnt, |_ctx, gl, _device| {
@@ -99,21 +93,18 @@ impl GameState for Game {
         );
     }
 
-    fn update(&mut self, _args: &UpdateArgs) {
-        self.delta_ts = get_timestamp() - self.ts;
-        self.ts = get_timestamp();
-
+    fn update(&mut self, _args: &UpdateArgs, delta_ts: u128) {
         self.world
-            .update(self.delta_ts, &self.fetched_data.player.world_coord);
+            .update(delta_ts, &self.fetched_data.player.world_coord);
 
         self.fetched_data
             .player
-            .update(self.delta_ts, &self.assets, &self.world);
+            .update(delta_ts, &self.assets, &self.world);
         for entity in self.fetched_data.entities.iter_mut() {
-            entity.update(self.delta_ts, &self.assets, &self.world);
+            entity.update(delta_ts, &self.assets, &self.world);
         }
 
-        self.chat.update(self.delta_ts);
+        self.chat.update(delta_ts);
     }
 
     fn key_press(&mut self, args: &Button) {
@@ -122,7 +113,7 @@ impl GameState for Game {
 
         if let &Button::Keyboard(key) = args {
             match key {
-                piston::Key::Delete => self.logout = true,
+                piston::Key::Escape => self.logout = true,
                 _ => {}
             }
         }
@@ -132,34 +123,31 @@ impl GameState for Game {
         self.fetched_data.player.key_release(args);
     }
 
-    fn text_input(&mut self, args: String) {
+    fn text_input(&mut self, args: &String) {
         self.chat.text_input(args, &mut self.font);
     }
 
-    fn mouse_cursor_args(&mut self, args: [f64; 2]) {
+    fn mouse_cursor_args(&mut self, args: &[f64; 2]) {
         self.chat.mouse_cursor_args(args);
     }
 
-    fn mouse_scroll_args(&mut self, args: [f64; 2]) {
+    fn mouse_scroll_args(&mut self, args: &[f64; 2]) {
         self.chat.mouse_scroll_args(args);
-    }
-    
-    fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
-        if self.logout {
-            return Box::new(Login { login : false });
-        }
-        self
     }
 
     fn resize_window(&mut self, args: &ResizeArgs) {
         let window_width = args.window_size[0];
         let window_height = args.window_size[1];
-        println!("==> Resized: {window_width}x{window_height}");
+        println!("==> (Game)Resized: {window_width}x{window_height}");
 
-        self.handle_resize(Size {
-            width: window_width,
-            height: window_height,
-        });
+        self.margin = self.handle_resize(
+            Size {
+                width: window_width,
+                height: window_height,
+            },
+            MAP_WIDTH,
+            GAME_HEIGHT,
+        );
         self.interface.resize(&self.margin);
         self.chat.resize(&self.margin);
     }
