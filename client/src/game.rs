@@ -9,7 +9,7 @@ use crate::{
     interface::Interface,
     ui::font::Font,
     utils::get_timestamp,
-    world::World,
+    world::World, GameState, Login,
 };
 
 pub struct Game {
@@ -23,6 +23,7 @@ pub struct Game {
     pub delta_ts: u128,
     pub font: Font,
     pub chat: Chat,
+    pub logout: bool
 }
 
 impl Game {
@@ -40,6 +41,7 @@ impl Game {
         chat.log_info("Bienvenue dans RPG!");
 
         return Game {
+            logout: false,
             margin: Size {
                 width: MAP_WIDTH_CENTER as f64,
                 height: MAP_HEIGHT_CENTER as f64,
@@ -56,7 +58,24 @@ impl Game {
         };
     }
 
-    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow) {
+    pub fn handle_resize(&mut self, new_size: Size) {
+        if new_size.width as usize >= MAP_WIDTH {
+            self.margin.width = ((new_size.width as usize - MAP_WIDTH) / 2) as f64;
+        } else {
+            self.margin.width = 0.0;
+        }
+
+        if new_size.height as usize >= GAME_HEIGHT {
+            self.margin.height = ((new_size.height as usize - GAME_HEIGHT) / 2) as f64;
+        } else {
+            self.margin.height = 0.0;
+        }
+    }
+}
+
+impl GameState for Game {
+
+    fn render(&mut self, evnt: &Event, window: &mut PistonWindow) {
         window.draw_2d(evnt, |_ctx, gl, _device| {
             clear(color::BLACK, gl);
         });
@@ -80,7 +99,7 @@ impl Game {
         );
     }
 
-    pub fn update(&mut self, _args: &UpdateArgs) {
+    fn update(&mut self, _args: &UpdateArgs) {
         self.delta_ts = get_timestamp() - self.ts;
         self.ts = get_timestamp();
 
@@ -97,42 +116,42 @@ impl Game {
         self.chat.update(self.delta_ts);
     }
 
-    pub fn key_press(&mut self, args: &Button) {
+    fn key_press(&mut self, args: &Button) {
         self.chat.key_press(&args, &mut self.font);
         self.fetched_data.player.key_press(args);
+
+        if let &Button::Keyboard(key) = args {
+            match key {
+                piston::Key::Delete => self.logout = true,
+                _ => {}
+            }
+        }
     }
 
-    pub fn key_release(&mut self, args: &Button) {
+    fn key_release(&mut self, args: &Button) {
         self.fetched_data.player.key_release(args);
     }
 
-    pub fn text_input(&mut self, args: String) {
+    fn text_input(&mut self, args: String) {
         self.chat.text_input(args, &mut self.font);
     }
 
-    pub fn mouse_cursor_args(&mut self, args: [f64; 2]) {
+    fn mouse_cursor_args(&mut self, args: [f64; 2]) {
         self.chat.mouse_cursor_args(args);
     }
 
-    pub fn mouse_scroll_args(&mut self, args: [f64; 2]) {
+    fn mouse_scroll_args(&mut self, args: [f64; 2]) {
         self.chat.mouse_scroll_args(args);
     }
-
-    pub fn handle_resize(&mut self, new_size: Size) {
-        if new_size.width as usize >= MAP_WIDTH {
-            self.margin.width = ((new_size.width as usize - MAP_WIDTH) / 2) as f64;
-        } else {
-            self.margin.width = 0.0;
+    
+    fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
+        if self.logout {
+            return Box::new(Login { login : false });
         }
-
-        if new_size.height as usize >= GAME_HEIGHT {
-            self.margin.height = ((new_size.height as usize - GAME_HEIGHT) / 2) as f64;
-        } else {
-            self.margin.height = 0.0;
-        }
+        self
     }
 
-    pub fn resize_window(&mut self, args: &ResizeArgs) {
+    fn resize_window(&mut self, args: &ResizeArgs) {
         let window_width = args.window_size[0];
         let window_height = args.window_size[1];
         println!("==> Resized: {window_width}x{window_height}");

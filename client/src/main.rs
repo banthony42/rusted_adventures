@@ -10,8 +10,10 @@ mod interface;
 mod ui;
 mod utils;
 mod world;
+mod states;
 
-use game::Game;
+use states::*;
+
 
 fn run_game() {
     let opengl = OpenGL::V3_2;
@@ -37,45 +39,39 @@ fn run_game() {
         }
     };
 
-    // Create a new game and run it.
-    let mut game = Game::new(&mut window);
-
-    game.font.load(&mut window);
-    game.resize_window(&ResizeArgs {
-        window_size: window.size().into(),
-        draw_size: window.draw_size().into(),
-    });
+    let mut state: Box<dyn GameState> = Box::new(Login { login: false });
 
     while let Some(e) = window.next() {
-        game.render(&e, &mut window);
+        state.render(&e, &mut window);
 
         if let Some(args) = e.press_args() {
-            game.key_press(&args);
+            state.key_press(&args);
         }
 
         if let Some(args) = e.release_args() {
-            game.key_release(&args);
+            state.key_release(&args);
         }
 
         if let Some(args) = e.resize_args() {
-            game.resize_window(&args);
+            state.resize_window(&args);
         }
 
         if let Some(args) = e.update_args() {
-            game.update(&args);
+           state.update(&args);
         }
 
         if let Some(args) = e.text_args() {
-            game.text_input(args);
+            state.text_input(args);
         }
 
         if let Some(args) = e.mouse_cursor_args() {
-            game.mouse_cursor_args(args);
+            state.mouse_cursor_args(args);
         }
 
         if let Some(args) = e.mouse_scroll_args() {
-            game.mouse_scroll_args(args);
+            state.mouse_scroll_args(args);
         }
+        state = state.state_update(&mut window);
     }
 }
 
