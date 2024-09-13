@@ -10,6 +10,7 @@ mod constants;
 mod entity;
 mod game;
 mod interface;
+mod loading;
 mod login;
 mod states;
 mod ui;

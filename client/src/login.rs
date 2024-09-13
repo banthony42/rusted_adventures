@@ -1,8 +1,5 @@
-use std::process::exit;
-
 use crate::{
-    constants::*,
-    ui::{font::Font, input_field::InputField},
+    constants::*, loading::Loading, ui::{font::Font, input_field::InputField}
 };
 use piston_window::*;
 
@@ -65,11 +62,14 @@ impl GameState for Login {
         if self.login {
             let mut game_state = Game::new(window);
             game_state.font.load(window);
-            game_state.resize_window(&ResizeArgs {
+
+            let mut loading_state = Loading::new(Box::new(game_state), 5000);
+            loading_state.font.load(window);
+            loading_state.resize_window(&ResizeArgs {
                 window_size: window.size().into(),
                 draw_size: window.draw_size().into(),
             });
-            return Box::new(game_state);
+            return Box::new(loading_state);
         }
         self
     }
@@ -133,7 +133,7 @@ impl GameState for Login {
                         self.username.set_focus(true);
                     }
                 }
-                piston::Key::Escape => exit(0),
+                piston::Key::Escape => std::process::exit(0),
                 piston::Key::Return => self.login = self.connect_user(),
                 _ => {}
             }
