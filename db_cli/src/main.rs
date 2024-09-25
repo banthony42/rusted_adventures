@@ -1,15 +1,12 @@
 #[macro_use]
-mod schema;
-mod db;
-mod models;
 mod accounts_operations;
 mod args;
 
 use clap::Parser;
 
-use args::DBCliArgs;
-use args::Commands;
 use accounts_operations::handle_account;
+use args::Commands;
+use args::DBCliArgs;
 
 fn main() {
     let args = DBCliArgs::parse();

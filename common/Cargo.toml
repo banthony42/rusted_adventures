@@ -1,0 +1,9 @@
+[package]
+name = "common"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+argon2 = { version = "0.5.3", features = ["std"] }
+diesel = { version = "2.2.0", features = ["postgres"] }
+dotenvy = "0.15"

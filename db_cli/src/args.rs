@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 
-use crate::models::NewAccount;
+use common::database::models::NewAccount;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
