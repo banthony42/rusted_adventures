@@ -1,8 +1,6 @@
-use clap::{
-    Args, 
-    Parser, 
-    Subcommand
-};
+use clap::{Args, Parser, Subcommand};
+
+use crate::models::NewAccount;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
@@ -14,7 +12,7 @@ pub struct DBCliArgs {
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Create, update, delete or show accounts
-    Account(AccountCommand)
+    Account(AccountCommand),
 }
 
 #[derive(Debug, Args)]
@@ -25,13 +23,13 @@ pub struct AccountCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum AccountSubcommand {
-    /// Create a new account
+    /// Create an new account
     Create(CreateAccount),
 
     /// Update an existing account
     Update(UpdateAccount),
 
-    /// Delete a account
+    /// Delete an account
     Delete(DeleteAccount),
 
     /// Show all accounts
@@ -45,6 +43,15 @@ pub struct CreateAccount {
 
     /// The email of the account
     pub password: String,
+}
+
+impl Into<NewAccount> for CreateAccount {
+    fn into(self) -> NewAccount {
+        NewAccount {
+            login: self.login,
+            password: self.password,
+        }
+    }
 }
 
 #[derive(Debug, Args)]
