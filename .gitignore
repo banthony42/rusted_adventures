@@ -24,5 +24,7 @@ Cargo.lock
 assets/inspirations/
 assets/gabarit/
 
+common/*codegen
+
 R&D/
 local/
