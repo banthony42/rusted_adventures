@@ -104,3 +104,100 @@ impl GameData {
         });
     }
 }
+
+use authentication::authenticate_client::AuthenticateClient;
+use authentication::{AuthReply, AuthRequest};
+use std::error::Error;
+use std::sync::Arc;
+use std::sync::Mutex;
+pub mod authentication {
+    include!("../../common/GRPC_codegen/authentication.rs");
+}
+
+pub struct TaskData {
+    pub steps: u16,
+    pub step: u16,
+    pub success: bool,
+}
+
+#[derive(Clone)]
+pub struct ConnectionTask {
+    data: Arc<Mutex<TaskData>>,
+    login: String,
+    password: String,
+    timeout: u128,
+}
+
+impl ConnectionTask {
+    pub fn new(login: String, password: String) -> Self {
+        let data = TaskData {
+            steps: 3,
+            step: 0,
+            success: false,
+        };
+
+        ConnectionTask {
+            data: Arc::new(Mutex::new(data)),
+            login: login,
+            password: password,
+            timeout: 10000,
+        }
+    }
+
+    pub fn get_timeout(&self) -> u128 {
+        self.timeout
+    }
+
+    pub fn get_shared_data(&self) -> Arc<Mutex<TaskData>> {
+        self.data.clone()
+    }
+
+    async fn connect_user(&self) -> Result<String, Box<dyn Error + Send + Sync>> {
+        println!("connect_user begin");
+        let mut client = AuthenticateClient::connect("http://127.0.0.1:2121").await?;
+
+        let request = tonic::Request::new(AuthRequest {
+            login: self.login.clone(),
+            password: self.password.clone(),
+        });
+
+        let response: tonic::Response<AuthReply> = client.authenticate_user(request).await?;
+
+        let mut locked_task = self.data.lock().unwrap();
+        locked_task.step += 1;
+        println!("connect_user end");
+        Ok(response.into_inner().token)
+    }
+
+    async fn dummy_api_request_1(
+        &self,
+        token: &String,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
+        let mut locked_task = self.data.lock().unwrap();
+        locked_task.step += 1;
+        Ok(())
+    }
+
+    async fn dummy_api_request_2(
+        &self,
+        token: &String,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+        let mut locked_task = self.data.lock().unwrap();
+        locked_task.step += 1;
+        Ok(())
+    }
+
+    pub async fn task(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let token = self.connect_user().await?;
+        tokio::join!(
+            self.dummy_api_request_1(&token),
+            self.dummy_api_request_2(&token)
+        );
+
+        let mut locked_task = self.data.lock().unwrap();
+        locked_task.success = true;
+        Ok(())
+    }
+}

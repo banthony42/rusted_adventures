@@ -2,21 +2,20 @@ use graphics::{clear, color};
 use piston_window::*;
 use rectangle::Shape;
 use std::sync::Arc;
+use std::sync::Mutex;
 use tokio::runtime::{Builder, Runtime};
-use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
+use crate::client::ConnectionTask;
+use crate::client::TaskData;
+use crate::login::Login;
 use crate::{constants::*, states::GameState, ui::font::Font};
 
-pub struct Task {
-    pub data: Option<String>,
-}
-
 pub struct Loading {
-    rt: Runtime,
+    _rt: Runtime,
     timeout: u128,
     task: JoinHandle<()>,
-    task_data: Arc<Mutex<Task>>,
+    task_data: Arc<Mutex<TaskData>>,
     next_state: Box<dyn GameState>,
     margin: Size,
     progress: u128,
@@ -27,32 +26,29 @@ pub struct Loading {
 ** Loading state take the next state, an async task to run and a timeout
 ** This state launch the async task and display a progress bar at the same time.
 ** When the task is finished the state pass to next_state
-** TODO: When the timeout is reached we should pass to the previous state.
+** TODO: When the timeout is reached we should pass to the previous state. => Done but it's a bit hide / implicit should be more explicit
 */
 
 impl Loading {
-    pub fn new<F, Fut>(next_state: Box<dyn GameState>, timeout: u128, async_func: F) -> Self
-    where
-        F: FnOnce(Arc<Mutex<Task>>) -> Fut + std::marker::Send + 'static,
-        Fut: std::future::Future<Output = ()> + std::marker::Send,
-    {
+    pub fn new(next_state: Box<dyn GameState>, task: ConnectionTask) -> Self {
         let runtime = Builder::new_multi_thread()
             .worker_threads(1)
             .enable_all()
             .build()
             .unwrap();
 
-        let amt = Arc::new(Mutex::new(Task { data: None }));
-        let amt_shared = amt.clone();
+        let amt = task.get_shared_data();
+        let timeout = task.get_timeout();
+
         let master_task = runtime.spawn(async move {
             tokio::select! {
-                _ = async { println!("===> Timeout Task begin"); tokio::time::sleep(tokio::time::Duration::from_millis(timeout as u64)).await;  println!("===> Timeout Task finished") } => {},
-                _ = async_func(amt_shared) => {}
-            }
+                _ = async { tokio::time::sleep(tokio::time::Duration::from_millis(task.get_timeout() as u64)).await; } => {},
+                _ = task.task() => {},
+            };
         });
 
         Loading {
-            rt: runtime,
+            _rt: runtime,
             task: master_task,
             task_data: amt,
             timeout: timeout,
@@ -74,14 +70,22 @@ const LOGIN_TITLE_POS: [f64; 2] = [WINDOW_WIDTH_CENTER as f64, PROGRESS_BAR_HEIG
 
 impl GameState for Loading {
     fn state_update(mut self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
-        if self.task.is_finished() && self.progress >= self.timeout + 300 {
+        if self.task.is_finished() && self.progress >= self.timeout + 100 {
+            // +100: Continue displaying progress bar during 100ms when it reached it's maximum
             self.next_state.resize_window(&ResizeArgs {
                 window_size: window.size().into(),
                 draw_size: window.draw_size().into(),
             });
             // Pass fetched data to the next state
-            // let fetch_data = self.task_data.lock().unwrap().data.clone();
             // self.next_state.pass_fetch_data(fetch_data);
+            let fetch_data = self.task_data.lock().unwrap();
+            if !fetch_data.success {
+                let mut login_state = Login::new();
+                // login_state.pass_task_data(fetch_data);
+                login_state.font.load(window);
+                return Box::new(login_state);
+            }
+            // self.next_state.pass_task_data(fetch_data);
             return self.next_state;
         }
         return self;
@@ -115,10 +119,12 @@ impl GameState for Loading {
             let mut progress_rect = bg_rect.clone();
             progress_rect[2] = progress_width;
 
-            Rectangle::new([1.0; 4])
-                .color(color::WHITE)
-                .shape(Shape::Round(8.0, 32))
-                .draw(progress_rect, &_ctx.draw_state, _ctx.transform, gl);
+            if progress_width > 10.0 {
+                Rectangle::new([1.0; 4])
+                    .color(color::WHITE)
+                    .shape(Shape::Round(8.0, 32))
+                    .draw(progress_rect, &_ctx.draw_state, _ctx.transform, gl);
+            }
         });
 
         let title_width = self.font.get().width(TITLE_FONT_SIZE, TITLE).unwrap();
@@ -135,10 +141,33 @@ impl GameState for Loading {
     }
 
     fn update(&mut self, _args: &UpdateArgs, _delta_ts: u128) {
-        if self.task.is_finished() && self.progress < self.timeout {
-            self.progress = self.timeout;
+        // if self.task.is_finished() {
+        //     if self.progress < self.timeout {
+        //         self.progress = self.timeout;
+        //     } else {
+        //         self.progress += _delta_ts;
+        //     }
+        // } else {
+        //     let task_data = self.task_data.lock().unwrap();
+        //     let time_prog = self.timeout * task_data.step as u128 / task_data.steps as u128;
+        //     if self.progress < time_prog {
+        //         self.progress = time_prog;
+        //     }
+        // }
+
+        if self.task.is_finished() {
+            self.progress += _delta_ts * 20; // quickly increase progress bar to it's maximum
         } else {
-            self.progress += _delta_ts;
+            let task_data = self.task_data.lock().unwrap();
+            let time_prog = self.timeout * task_data.step as u128 / (task_data.steps + 1) as u128; // + 1 therefore when all steps are finished our progress land to
+            if self.progress < time_prog {
+                self.progress = time_prog;
+                println!(
+                    "===> progress: {} - {}",
+                    task_data.step as f64 / task_data.steps as f64,
+                    time_prog
+                );
+            }
         }
     }
 
