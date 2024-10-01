@@ -1,5 +1,10 @@
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
 use crate::{
-    constants::*, loading::Loading, ui::{font::Font, input_field::InputField}
+    constants::*,
+    loading::{Loading, Task},
+    ui::{font::Font, input_field::InputField},
 };
 use piston_window::*;
 
@@ -8,6 +13,12 @@ use crate::{
     game::Game,
     states::GameState,
 };
+
+use authentication::authenticate_client::AuthenticateClient;
+use authentication::AuthRequest;
+pub mod authentication {
+    include!("../../common/GRPC_codegen/authentication.rs");
+}
 
 pub struct Login {
     login: bool,
@@ -63,7 +74,28 @@ impl GameState for Login {
             let mut game_state = Game::new(window);
             game_state.font.load(window);
 
-            let mut loading_state = Loading::new(Box::new(game_state), 5000);
+            let input_login = self.username.get_content();
+            let input_password = self.password.get_content();
+
+            let connection_task = |task: Arc<Mutex<Task>>| async move {
+                let client = AuthenticateClient::connect("http://127.0.0.1:2121").await;
+
+                let request = tonic::Request::new(AuthRequest {
+                    login: input_login,
+                    password: input_password,
+                });
+
+                let response = client
+                    .expect("client connect error")
+                    .authenticate_user(request)
+                    .await;
+
+                let mut locked_task = task.lock().await;
+                locked_task.data = Some(format!("{:?}", response));
+                println!("===> Auth response: {:?}", response);
+            };
+
+            let mut loading_state = Loading::new(Box::new(game_state), 5000, connection_task);
             loading_state.font.load(window);
             loading_state.resize_window(&ResizeArgs {
                 window_size: window.size().into(),
