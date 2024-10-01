@@ -4,7 +4,7 @@ use diesel::result::DatabaseErrorKind;
 
 use crate::args::{AccountCommand, AccountSubcommand, CreateAccount, DeleteAccount, UpdateAccount};
 
-use common::authenticate::Authenticate;
+use common::authenticator::Authenticator;
 use common::database::db::Database;
 use common::database::models::{Account, NewAccount};
 
@@ -22,7 +22,7 @@ pub fn create_account(create_account: CreateAccount) {
 
     let connection = &mut Database::new().establish_connection();
     let mut new_account: NewAccount = create_account.into();
-    new_account.password = Authenticate::new().hash_password(new_account.password);
+    new_account.password = Authenticator::default().hash_password(new_account.password);
 
     match diesel::insert_into(accounts)
         .values(&new_account)
@@ -50,8 +50,9 @@ pub fn update_account(update_account: UpdateAccount) {
     let current_password = rpassword::prompt_password("Old password: ")
         .expect("An error occured user prompt for current password.");
 
+    let auth_user = Authenticator::new(update_account.login.clone());
     // Try to authenticate user
-    if !Authenticate::new().authenticate_user(&update_account.login, &current_password) {
+    if !auth_user.authenticate(&current_password) {
         println!("Invalid Login or Password.");
         std::process::exit(1)
     }
@@ -64,7 +65,7 @@ pub fn update_account(update_account: UpdateAccount) {
     }
 
     // Hash and update user Account in DB
-    let new_hash = Authenticate::new().hash_password(new_password);
+    let new_hash = auth_user.hash_password(new_password);
     diesel::update(accounts)
         .filter(login.eq(update_account.login))
         .set(password.eq(new_hash))

@@ -8,28 +8,48 @@ use crate::database::db::Database;
 use crate::database::models::Account;
 use crate::database::schema::accounts;
 
-pub struct Authenticate<'a> {
+pub struct Authenticator<'a> {
+    login: String,
     argon2: Argon2<'a>,
 }
 
-impl Authenticate<'_> {
-    pub fn new() -> Self {
-        let argon2_owasp_params =
-            match Params::new(19 * 1024, 2, 1, Some(Params::DEFAULT_OUTPUT_LEN)) {
-                Ok(p) => p,
-                Err(e) => {
-                    println!("Error while hashing password: {:?}", e);
-                    std::process::exit(1);
-                }
-            };
+fn create_argon2_context() -> Params {
+    match Params::new(19 * 1024, 2, 1, Some(Params::DEFAULT_OUTPUT_LEN)) {
+        Ok(p) => p,
+        Err(e) => {
+            println!("Error while hashing password: {:?}", e);
+            std::process::exit(1);
+        }
+    }
+}
 
+impl Default for Authenticator<'_> {
+    fn default() -> Self {
         let argon2 = Argon2::new(
             Algorithm::Argon2id,
             Version::default(),
-            argon2_owasp_params.clone(),
+            create_argon2_context(),
         );
 
-        Authenticate { argon2: argon2 }
+        Self {
+            login: Default::default(),
+            argon2: argon2,
+        }
+    }
+}
+
+impl Authenticator<'_> {
+    pub fn new(login: String) -> Self {
+        let argon2 = Argon2::new(
+            Algorithm::Argon2id,
+            Version::default(),
+            create_argon2_context(),
+        );
+
+        Authenticator {
+            argon2: argon2,
+            login: login,
+        }
     }
 
     pub fn hash_password(&self, password: String) -> String {
@@ -45,14 +65,17 @@ impl Authenticate<'_> {
         return hash_pasword;
     }
 
-    pub fn authenticate_user(&self, login: &String, password: &String) -> bool {
+    pub fn authenticate(&self, password: &String) -> bool {
         let connection = &mut Database::new().establish_connection();
         // Get the user account in DB
-        let account_to_auth = accounts::table
-            .find(login)
+        let account_to_auth = match accounts::table
+            .find(&self.login)
             .select(Account::as_select())
             .first(connection)
-            .expect("Invalid Login or Password.");
+        {
+            Ok(account) => account,
+            Err(err) => return false,
+        };
 
         // Import user hashed password and verify it
         let parsed_hash = PasswordHash::new(&account_to_auth.password)

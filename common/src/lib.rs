@@ -1,2 +1,2 @@
-pub mod authenticate;
+pub mod authenticator;
 pub mod database;
