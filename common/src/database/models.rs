@@ -6,6 +6,7 @@ use diesel::prelude::*;
 pub struct NewAccount {
     pub login: String,
     pub password: String,
+    pub session_token: String,
 }
 
 #[derive(Debug, Queryable, Selectable)]
@@ -13,4 +14,5 @@ pub struct NewAccount {
 pub struct Account {
     pub login: String,
     pub password: String,
+    pub session_token: String,
 }

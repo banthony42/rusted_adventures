@@ -50,6 +50,7 @@ impl Into<NewAccount> for CreateAccount {
         NewAccount {
             login: self.login,
             password: self.password,
+            session_token: String::default(),
         }
     }
 }
