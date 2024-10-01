@@ -1,0 +1,11 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+diesel = { version = "2.2.0", features = ["postgres"] }
+tokio = { version = "1.40.0", features = ["full"] }
+tonic = "0.12"
+prost = "0.13"
+common = { path = "../common" }
