@@ -54,7 +54,7 @@ const CHAT_TIME_FORMAT: &str = "%H:%M:%S";
 
 impl Chat {
     pub fn new(client_name: String) -> Self {
-        Chat {
+        let mut new_instance = Chat {
             input_field: InputField::new([16.0, 928.0], CHAT_FONT_SIZE, 416.0),
             text_field: TextField::new(
                 CHAT_FONT_SIZE,
@@ -71,7 +71,9 @@ impl Chat {
                 height: 0.0,
             },
             content: vec![],
-        }
+        };
+        new_instance.log_info("Bienvenue dans RPG!");
+        return new_instance;
     }
 
     fn log(&mut self, text: &str, channel: MessageType) {

@@ -4,7 +4,7 @@ use types::Color;
 
 use crate::{
     assets::HardTexture,
-    client::GameData,
+    client::FakeGameData,
     constants::{self, PLAYER_HEIGHT},
     entity::{Entity, EntityType, Name},
     game::Game,
@@ -63,7 +63,7 @@ impl Interface {
         font: &mut Font,
         margin: &Size,
         world: &HashMap<Coord, MapData>,
-        game_data: &GameData,
+        game_data: &FakeGameData,
     ) {
         let map_data = world.get(&game_data.player.world_coord).unwrap();
         let map_coord_txt = format!(

@@ -318,10 +318,7 @@ impl World {
     }
 
     pub fn render(&self, evnt: &Event, window: &mut PistonWindow, game: &Game) {
-        let map_data = self
-            .world
-            .get(&game.fetched_data.player.world_coord)
-            .unwrap();
+        let map_data = self.world.get(&game.fake_gdata.player.world_coord).unwrap();
         window.draw_2d(evnt, |ctx, gl, _device| {
             let _ = map_data
                 .sprites

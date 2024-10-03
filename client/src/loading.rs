@@ -5,8 +5,10 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::runtime::{Builder, Runtime};
 use tokio::task::JoinHandle;
+use tokio::time::{sleep, Duration};
 
 use crate::client::ConnectionTask;
+use crate::client::GameData;
 use crate::client::TaskData;
 use crate::login::Login;
 use crate::{constants::*, states::GameState, ui::font::Font};
@@ -16,6 +18,7 @@ pub struct Loading {
     timeout: u128,
     task: JoinHandle<()>,
     task_data: Arc<Mutex<TaskData>>,
+    server_data: Vec<GameData>,
     next_state: Box<dyn GameState>,
     margin: Size,
     progress: u128,
@@ -42,16 +45,17 @@ impl Loading {
 
         let master_task = runtime.spawn(async move {
             tokio::select! {
-                _ = async { tokio::time::sleep(tokio::time::Duration::from_millis(task.get_timeout() as u64)).await; } => {},
+                _ = async { sleep(Duration::from_millis(task.get_timeout() as u64)).await; } => {},
                 _ = task.task() => {},
             };
         });
 
         Loading {
             _rt: runtime,
+            server_data: Vec::new(),
             task: master_task,
             task_data: amt,
-            timeout: timeout,
+            timeout: timeout as u128,
             progress: 0,
             next_state: next_state,
             font: Font::new(),
@@ -69,23 +73,27 @@ const PROGRESS_BAR_HEIGHT: f64 = WINDOW_HEIGHT as f64 / 2.0;
 const LOGIN_TITLE_POS: [f64; 2] = [WINDOW_WIDTH_CENTER as f64, PROGRESS_BAR_HEIGHT - 20.0];
 
 impl GameState for Loading {
+    fn pass_server_data(&mut self, data: Vec<GameData>) {
+        self.server_data = data;
+    }
+
     fn state_update(mut self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
+        // timeout + 100 => keep displaying progress bar during 100ms when it reached it's maximum
         if self.task.is_finished() && self.progress >= self.timeout + 100 {
-            // +100: Continue displaying progress bar during 100ms when it reached it's maximum
             self.next_state.resize_window(&ResizeArgs {
                 window_size: window.size().into(),
                 draw_size: window.draw_size().into(),
             });
+
             // Pass fetched data to the next state
-            // self.next_state.pass_fetch_data(fetch_data);
             let fetch_data = self.task_data.lock().unwrap();
             if !fetch_data.success {
                 let mut login_state = Login::new();
-                // login_state.pass_task_data(fetch_data);
+                login_state.pass_server_data(fetch_data.data.clone());
                 login_state.font.load(window);
                 return Box::new(login_state);
             }
-            // self.next_state.pass_task_data(fetch_data);
+            self.next_state.pass_server_data(fetch_data.data.clone());
             return self.next_state;
         }
         return self;

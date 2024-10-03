@@ -1,6 +1,10 @@
 use piston_window::*;
 
+use crate::client::GameData;
+
 pub trait GameState {
+    fn pass_server_data(&mut self, data: Vec<GameData>);
+
     fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState>;
     fn render(&mut self, evnt: &Event, window: &mut PistonWindow);
 

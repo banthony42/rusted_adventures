@@ -1,4 +1,4 @@
-use crate::client::ConnectionTask;
+use crate::client::{ConnectionTask, GameData};
 use crate::{
     constants::*,
     loading::Loading,
@@ -17,6 +17,7 @@ pub struct Login {
     pub font: Font,
     username: InputField,
     password: InputField,
+    server_data: Vec<GameData>,
     margin: Size,
     background: [f64; 4],
 }
@@ -38,6 +39,7 @@ impl Login {
     pub fn new() -> Self {
         Login {
             login: false,
+            server_data: Vec::new(),
             font: Font::new(),
             username: InputField::new(USERNAME_POS, FIELD_FONT_SIZE, FIELD_WIDTH as f64)
                 .set_radius(FIELD_RADIUS)
@@ -61,6 +63,11 @@ impl Login {
 }
 
 impl GameState for Login {
+    fn pass_server_data(&mut self, data: Vec<GameData>) {
+        self.server_data = data;
+        println!("{:?}", self.server_data)
+    }
+
     fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
         if self.login {
             let mut game_state = Game::new(window);

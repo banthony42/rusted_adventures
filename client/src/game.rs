@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use crate::{
     assets::{load_assets, load_hard_drown_assets, EntityAssets, GameAsset, HardTexture},
     chat::Chat,
-    client::GameData,
+    client::{FakeGameData, GameData},
     constants::*,
     interface::Interface,
     ui::font::Font,
@@ -18,7 +18,8 @@ pub struct Game {
     pub margin: Size,
     pub world: World,
     pub interface: Interface,
-    pub fetched_data: GameData,
+    pub fake_gdata: FakeGameData,
+    pub server_data: Vec<GameData>,
     pub font: Font,
     pub chat: Chat,
     pub logout: bool,
@@ -26,7 +27,7 @@ pub struct Game {
 
 impl Game {
     pub fn new(window: &mut PistonWindow) -> Self {
-        let g_data = match GameData::get_data_from_server() {
+        let fg_data = match FakeGameData::get_data_from_server() {
             Ok(data) => data,
             Err(error) => {
                 // TODO: should not exit
@@ -34,9 +35,6 @@ impl Game {
                 std::process::exit(1);
             }
         };
-
-        let mut chat = Chat::new(String::from("Sulfurel"));
-        chat.log_info("Bienvenue dans RPG!");
 
         return Game {
             logout: false,
@@ -48,14 +46,25 @@ impl Game {
             assets: load_assets(window),
             world: World::new(window),
             interface: Interface::new(),
-            fetched_data: g_data,
+            fake_gdata: fg_data,
+            server_data: Vec::new(), // TODO: will replace fg_data
             font: Font::new(),
-            chat: chat,
+            chat: Chat::new(String::from("Sulfurel")),
         };
     }
 }
 
 impl GameState for Game {
+    fn pass_server_data(&mut self, data: Vec<GameData>) {
+        data.iter().for_each(|gd| match gd {
+            GameData::Token(_) => {}
+            GameData::Message(name) => self.fake_gdata.player.name = name.clone(), //TMP use message to get player name
+            GameData::Entities(_vec) => {}
+        });
+        self.server_data = data;
+        self.chat = Chat::new(self.fake_gdata.player.name.clone());
+    }
+
     fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
         if self.logout {
             let mut login_state = Login::new();
@@ -77,8 +86,8 @@ impl GameState for Game {
         self.world.render(evnt, window, &self);
         self.interface.render(evnt, window, &self);
 
-        self.fetched_data.player.render(evnt, window, &self);
-        for entity in self.fetched_data.entities.iter() {
+        self.fake_gdata.player.render(evnt, window, &self);
+        for entity in self.fake_gdata.entities.iter() {
             entity.render(evnt, window, &self);
         }
 
@@ -89,18 +98,18 @@ impl GameState for Game {
             &mut self.font,
             &self.margin,
             &self.world.world,
-            &self.fetched_data,
+            &self.fake_gdata,
         );
     }
 
     fn update(&mut self, _args: &UpdateArgs, delta_ts: u128) {
         self.world
-            .update(delta_ts, &self.fetched_data.player.world_coord);
+            .update(delta_ts, &self.fake_gdata.player.world_coord);
 
-        self.fetched_data
+        self.fake_gdata
             .player
             .update(delta_ts, &self.assets, &self.world);
-        for entity in self.fetched_data.entities.iter_mut() {
+        for entity in self.fake_gdata.entities.iter_mut() {
             entity.update(delta_ts, &self.assets, &self.world);
         }
 
@@ -109,8 +118,9 @@ impl GameState for Game {
 
     fn key_press(&mut self, args: &Button) {
         self.chat.key_press(&args, &mut self.font);
-        self.fetched_data.player.key_press(args);
+        self.fake_gdata.player.key_press(args);
 
+        println!("====> Player connected: {:?}", self.server_data);
         if let &Button::Keyboard(key) = args {
             match key {
                 piston::Key::Escape => self.logout = true,
@@ -120,7 +130,7 @@ impl GameState for Game {
     }
 
     fn key_release(&mut self, args: &Button) {
-        self.fetched_data.player.key_release(args);
+        self.fake_gdata.player.key_release(args);
     }
 
     fn text_input(&mut self, args: &String) {

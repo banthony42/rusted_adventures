@@ -81,7 +81,7 @@ where
 
     pub fn set_scroll(&mut self, scroll: f64) {
         self.scroll = scroll;
-        if self.scroll >= self.content.len() as f64 {
+        if !self.content.is_empty() && self.scroll >= self.content.len() as f64 {
             self.scroll = (self.content.len() - 1) as f64;
         }
         if self.scroll < 0.0 {

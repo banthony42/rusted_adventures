@@ -86,11 +86,9 @@ impl Entity {
                     Animations::Run => &EntityAssets::Character(Animations::Run),
                 }
             }
-            EntityRaces::Bouftou => {
-                match self.state {
-                    Animations::Idle => &EntityAssets::Bouftou(Animations::Idle),
-                    Animations::Run => &EntityAssets::Bouftou(Animations::Run),
-                }
+            EntityRaces::Bouftou => match self.state {
+                Animations::Idle => &EntityAssets::Bouftou(Animations::Idle),
+                Animations::Run => &EntityAssets::Bouftou(Animations::Run),
             },
         }
     }
@@ -108,10 +106,12 @@ impl Entity {
                         // Offset the character to bottom center it on the point controlled by the user's keyboard.
                         .trans(PLAYER_CENTER_X as f64 * -1.0, PLAYER_HEIGHT as f64 * -1.0);
 
-                    // Flip the sprite according to Est/Wes direction 
-                    trans = match self.offset.x.is_negative() || self.orientation == Orientation::West {
+                    // Flip the sprite according to Est/Wes direction
+                    trans = match self.offset.x.is_negative()
+                        || self.orientation == Orientation::West
+                    {
                         true => trans.flip_h().trans(PLAYER_WIDTH as f64 * -1.0, 0.0),
-                        false => trans
+                        false => trans,
                     };
 
                     let map_scissor = [
@@ -184,11 +184,24 @@ impl Entity {
                 None => {}
             }
         }
-        self.map_coord.x = self.map_coord.x.min(MAP_WIDTH as i32).max(PLAYER_CENTER_X as i32);
-        self.map_coord.y = self.map_coord.y.min(MAP_HEIGHT as i32).max(PLAYER_CENTER_X as i32);
+        self.map_coord.x = self
+            .map_coord
+            .x
+            .min(MAP_WIDTH as i32)
+            .max(PLAYER_CENTER_X as i32);
+        self.map_coord.y = self
+            .map_coord
+            .y
+            .min(MAP_HEIGHT as i32)
+            .max(PLAYER_CENTER_X as i32);
     }
 
-    pub fn update(&mut self, delta_ts: u128, assets: &HashMap<EntityAssets, GameAsset>, world: &World) {
+    pub fn update(
+        &mut self,
+        delta_ts: u128,
+        assets: &HashMap<EntityAssets, GameAsset>,
+        world: &World,
+    ) {
         if self.detect_map_collisions(world) == false {
             self.map_coord += self.offset;
             self.detect_map_change(world);

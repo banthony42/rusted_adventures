@@ -1,13 +1,14 @@
+use crate::game::Game;
 use crate::{entity::Entity, world::Coord};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct GameData {
+pub struct FakeGameData {
     pub player: Entity,
     pub entities: Vec<Entity>,
 }
 
-impl GameData {
+impl FakeGameData {
     fn fetch_entities_data(_world_coord: &Coord) -> &'static str {
         // Simulate server game data response
         return r#"[
@@ -76,7 +77,7 @@ impl GameData {
         }"#;
     }
 
-    pub fn get_data_from_server() -> Result<GameData, String> {
+    pub fn get_data_from_server() -> Result<FakeGameData, String> {
         let json_player_data = Self::fetch_player_data();
 
         let p_data = match serde_json::from_str::<Entity>(json_player_data) {
@@ -98,7 +99,7 @@ impl GameData {
             }
         };
 
-        return Ok(GameData {
+        return Ok(FakeGameData {
             player: p_data,
             entities: e_data,
         });
@@ -114,10 +115,18 @@ pub mod authentication {
     include!("../../common/GRPC_codegen/authentication.rs");
 }
 
+#[derive(Debug, Clone)]
+pub enum GameData {
+    Token(String),
+    Message(String),
+    Entities(Vec<bool>),
+}
+
 pub struct TaskData {
     pub steps: u16,
     pub step: u16,
     pub success: bool,
+    pub data: Vec<GameData>,
 }
 
 #[derive(Clone)]
@@ -125,7 +134,7 @@ pub struct ConnectionTask {
     data: Arc<Mutex<TaskData>>,
     login: String,
     password: String,
-    timeout: u128,
+    timeout: u64,
 }
 
 impl ConnectionTask {
@@ -134,6 +143,7 @@ impl ConnectionTask {
             steps: 3,
             step: 0,
             success: false,
+            data: Vec::new(),
         };
 
         ConnectionTask {
@@ -144,7 +154,7 @@ impl ConnectionTask {
         }
     }
 
-    pub fn get_timeout(&self) -> u128 {
+    pub fn get_timeout(&self) -> u64 {
         self.timeout
     }
 
@@ -162,11 +172,12 @@ impl ConnectionTask {
         });
 
         let response: tonic::Response<AuthReply> = client.authenticate_user(request).await?;
+        let token = response.into_inner().token.clone();
 
         let mut locked_task = self.data.lock().unwrap();
         locked_task.step += 1;
-        println!("connect_user end");
-        Ok(response.into_inner().token)
+        locked_task.data.push(GameData::Token(token.clone()));
+        Ok(token)
     }
 
     async fn dummy_api_request_1(
@@ -176,6 +187,7 @@ impl ConnectionTask {
         tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
         let mut locked_task = self.data.lock().unwrap();
         locked_task.step += 1;
+        locked_task.data.push(GameData::Message(self.login.clone()));
         Ok(())
     }
 
@@ -186,12 +198,20 @@ impl ConnectionTask {
         tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
         let mut locked_task = self.data.lock().unwrap();
         locked_task.step += 1;
+        locked_task.data.push(GameData::Entities(Vec::new()));
         Ok(())
     }
 
     pub async fn task(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
-        let token = self.connect_user().await?;
-        tokio::join!(
+        let token = match self.connect_user().await {
+            Ok(t) => t,
+            Err(e) => {
+                let mut locked_task = self.data.lock().unwrap();
+                locked_task.data.push(GameData::Message(e.to_string()));
+                return Err(e);
+            }
+        };
+        let _ = tokio::join!(
             self.dummy_api_request_1(&token),
             self.dummy_api_request_2(&token)
         );
