@@ -10,6 +10,7 @@ use tokio::time::{sleep, Duration};
 use crate::client::ConnectionTask;
 use crate::client::GameData;
 use crate::client::TaskData;
+use crate::client::TaskInterface;
 use crate::login::Login;
 use crate::{constants::*, states::GameState, ui::font::Font};
 

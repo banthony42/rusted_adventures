@@ -137,6 +137,43 @@ pub struct ConnectionTask {
     timeout: u64,
 }
 
+pub trait TaskInterface {
+    fn get_timeout(&self) -> u64;
+    fn get_shared_data(&self) -> Arc<Mutex<TaskData>>;
+    async fn task(&self) -> Result<(), Box<dyn Error + Send + Sync>>;
+}
+
+impl TaskInterface for ConnectionTask {
+    fn get_timeout(&self) -> u64 {
+        self.timeout
+    }
+
+    fn get_shared_data(&self) -> Arc<Mutex<TaskData>> {
+        self.data.clone()
+    }
+
+    async fn task(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let token = match self.connect_user().await {
+            Ok(t) => t,
+            Err(e) => {
+                let mut locked_task = self.data.lock().unwrap();
+                locked_task
+                    .data
+                    .push(GameData::Message(e.to_string()));
+                return Err(e);
+            }
+        };
+        let _ = tokio::join!(
+            self.dummy_api_request_1(&token),
+            self.dummy_api_request_2(&token)
+        );
+
+        let mut locked_task = self.data.lock().unwrap();
+        locked_task.success = true;
+        Ok(())
+    }
+}
+
 impl ConnectionTask {
     pub fn new(login: String, password: String) -> Self {
         let data = TaskData {
@@ -152,14 +189,6 @@ impl ConnectionTask {
             password: password,
             timeout: 10000,
         }
-    }
-
-    pub fn get_timeout(&self) -> u64 {
-        self.timeout
-    }
-
-    pub fn get_shared_data(&self) -> Arc<Mutex<TaskData>> {
-        self.data.clone()
     }
 
     async fn connect_user(&self) -> Result<String, Box<dyn Error + Send + Sync>> {
@@ -199,25 +228,6 @@ impl ConnectionTask {
         let mut locked_task = self.data.lock().unwrap();
         locked_task.step += 1;
         locked_task.data.push(GameData::Entities(Vec::new()));
-        Ok(())
-    }
-
-    pub async fn task(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
-        let token = match self.connect_user().await {
-            Ok(t) => t,
-            Err(e) => {
-                let mut locked_task = self.data.lock().unwrap();
-                locked_task.data.push(GameData::Message(e.to_string()));
-                return Err(e);
-            }
-        };
-        let _ = tokio::join!(
-            self.dummy_api_request_1(&token),
-            self.dummy_api_request_2(&token)
-        );
-
-        let mut locked_task = self.data.lock().unwrap();
-        locked_task.success = true;
         Ok(())
     }
 }
