@@ -12,9 +12,35 @@ pub struct Coord {
     pub y: i32,
 }
 
-impl Coord {
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Point {
+    pub x: f64,
+    pub y: f64,
+}
+
+impl Point {
     pub fn is_null(&self) -> bool {
-        return self.x == 0 && self.y == 0;
+        return self.x == 0.0 && self.y == 0.0;
+    }
+}
+
+impl Into<Coord> for Point {
+    fn into(self) -> Coord {
+        Coord {
+            x: self.x as i32,
+            y: self.y as i32,
+        }
+    }
+}
+
+impl std::ops::Mul<f64> for Point {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Self {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
     }
 }
 

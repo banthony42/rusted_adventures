@@ -11,7 +11,7 @@ use crate::{
         TILE_HEIGHT, TILE_WIDTH,
     },
     game::Game,
-    world::{Coord, Sprite, World},
+    world::{Coord, Point, Sprite, World},
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -48,7 +48,7 @@ pub struct Entity {
     #[serde(skip)]
     orientation: Orientation,
     #[serde(skip)]
-    pub offset: Coord,
+    pub offset: Point,
     pub map_coord: Coord,
     pub world_coord: Coord,
 }
@@ -66,7 +66,7 @@ impl Name for Entity {
     }
 }
 
-const PLAYER_SPEED: i32 = 2; // TODO float
+const PLAYER_SPEED: f64 = 350.0;
 
 impl Entity {
     fn change_state(&mut self, new_state: Animations) {
@@ -107,7 +107,7 @@ impl Entity {
                         .trans(PLAYER_CENTER_X as f64 * -1.0, PLAYER_HEIGHT as f64 * -1.0);
 
                     // Flip the sprite according to Est/Wes direction
-                    trans = match self.offset.x.is_negative()
+                    trans = match self.offset.x.is_sign_negative()
                         || self.orientation == Orientation::West
                     {
                         true => trans.flip_h().trans(PLAYER_WIDTH as f64 * -1.0, 0.0),
@@ -148,8 +148,7 @@ impl Entity {
         });
     }
 
-    fn detect_map_collisions(&self, world: &World) -> bool {
-        let mut pt = self.map_coord + self.offset;
+    fn detect_map_collisions(&self, world: &World, mut pt: Coord) -> bool {
         // Compute the sprite cell x,y coordinate
         pt.x = (pt.x - (pt.x % TILE_WIDTH as i32)) / 64;
         pt.y = (pt.y - (pt.y % TILE_HEIGHT as i32)) / 64;
@@ -202,15 +201,16 @@ impl Entity {
         assets: &HashMap<EntityAssets, GameAsset>,
         world: &World,
     ) {
-        if self.detect_map_collisions(world) == false {
-            self.map_coord += self.offset;
-            self.detect_map_change(world);
-        }
-
         if self.offset.is_null() {
             self.change_state(Animations::Idle);
         } else {
             self.change_state(Animations::Run);
+
+            let new_pos = self.map_coord + (self.offset * (delta_ts as f64 / 1000.0)).into();
+            if self.detect_map_collisions(world, new_pos.clone()) == false {
+                self.map_coord = new_pos;
+                self.detect_map_change(world);
+            }
         }
 
         match assets.get(self.animation_lookup()) {
@@ -242,10 +242,10 @@ impl Entity {
 
     fn stop_pos(&mut self, dir: Orientation) {
         match dir {
-            Orientation::Est => self.offset.x = 0,
-            Orientation::West => self.offset.x = 0,
-            Orientation::North => self.offset.y = 0,
-            Orientation::South => self.offset.y = 0,
+            Orientation::Est => self.offset.x = 0.0,
+            Orientation::West => self.offset.x = 0.0,
+            Orientation::North => self.offset.y = 0.0,
+            Orientation::South => self.offset.y = 0.0,
         };
     }
 
