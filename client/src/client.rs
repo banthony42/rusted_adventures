@@ -157,10 +157,11 @@ impl TaskInterface for ConnectionTask {
             Ok(t) => t,
             Err(e) => {
                 let mut locked_task = self.data.lock().unwrap();
+                let tonic_error_msg = tonic::Status::from_error(e);
                 locked_task
                     .data
-                    .push(GameData::Message(e.to_string()));
-                return Err(e);
+                    .push(GameData::Message(tonic_error_msg.message().to_string()));
+                return Err(tonic_error_msg.into());
             }
         };
         let _ = tokio::join!(

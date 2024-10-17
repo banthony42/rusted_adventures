@@ -34,6 +34,11 @@ const USERNAME_POS: [f64; 2] = [
     LOGIN_TITLE_POS[1] + 20.0,
 ];
 const PASSWORD_POS: [f64; 2] = [USERNAME_POS[0], USERNAME_POS[1] + FIELD_HEIGHT + 10.0];
+const MESSAGE_FONT_SIZE: u32 = 18;
+const MESSAGE_POS: [f64; 2] = [
+    PASSWORD_POS[0] + FIELD_WIDTH as f64 / 2.0,
+    PASSWORD_POS[1] + FIELD_HEIGHT + 50.0,
+];
 
 impl Login {
     pub fn new() -> Self {
@@ -113,6 +118,27 @@ impl GameState for Login {
             Some(&self.margin),
         );
 
+        let message: String = self
+            .server_data
+            .iter()
+            .map(|e| match e {
+                GameData::Message(msg) => msg.clone() + "\n",
+                _ => String::default(),
+            })
+            .collect();
+
+        if !message.is_empty() {
+            let msg_width = self.font.get().width(MESSAGE_FONT_SIZE, &message).unwrap();
+            self.font.render_text(
+                &message,
+                MESSAGE_FONT_SIZE,
+                evnt,
+                window,
+                color::YELLOW,
+                [MESSAGE_POS[0] - msg_width / 2.0, MESSAGE_POS[1]],
+                Some(&self.margin),
+            );
+        }
         self.username.render(evnt, window, &mut self.font);
         self.password.render(evnt, window, &mut self.font);
     }
