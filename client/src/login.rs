@@ -185,7 +185,7 @@ impl GameState for Login {
     fn resize_window(&mut self, args: &ResizeArgs) {
         let window_width = args.window_size[0];
         let window_height = args.window_size[1];
-        println!("==> (Login)Resized: {window_width}x{window_height}");
+        println!("==> (Login) Resized: {window_width}x{window_height}");
 
         self.margin = self.handle_resize(
             Size {

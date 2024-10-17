@@ -386,7 +386,7 @@ impl World {
         let map_data = self
             .world
             .get_mut(world_coord)
-            .expect(format!("====> Trying to get map_data from : {:?}", world_coord).as_str());
+            .expect(format!("==> Trying to get map_data from : {:?}", world_coord).as_str());
         let _ = map_data
             .sprites
             .iter_mut()

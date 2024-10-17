@@ -62,6 +62,7 @@ impl GameState for Game {
             GameData::Entities(_vec) => {}
         });
         self.server_data = data;
+        println!("==> (Game) Player connected: {:?}", self.server_data);
         self.chat = Chat::new(self.fake_gdata.player.name.clone());
     }
 
@@ -120,7 +121,6 @@ impl GameState for Game {
         self.chat.key_press(&args, &mut self.font);
         self.fake_gdata.player.key_press(args);
 
-        println!("====> Player connected: {:?}", self.server_data);
         if let &Button::Keyboard(key) = args {
             match key {
                 piston::Key::Escape => self.logout = true,
@@ -148,7 +148,7 @@ impl GameState for Game {
     fn resize_window(&mut self, args: &ResizeArgs) {
         let window_width = args.window_size[0];
         let window_height = args.window_size[1];
-        println!("==> (Game)Resized: {window_width}x{window_height}");
+        println!("==> (Game) Resized: {window_width}x{window_height}");
 
         self.margin = self.handle_resize(
             Size {
