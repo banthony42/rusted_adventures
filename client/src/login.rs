@@ -17,8 +17,8 @@ pub struct Login {
     pub font: Font,
     username: InputField,
     password: InputField,
-    server_data: Vec<GameData>,
     margin: Size,
+    message: String,
     background: [f64; 4],
 }
 
@@ -44,7 +44,6 @@ impl Login {
     pub fn new() -> Self {
         Login {
             login: false,
-            server_data: Vec::new(),
             font: Font::new(),
             username: InputField::new(USERNAME_POS, FIELD_FONT_SIZE, FIELD_WIDTH as f64)
                 .set_radius(FIELD_RADIUS)
@@ -57,20 +56,29 @@ impl Login {
                 width: 0.0,
                 height: 0.0,
             },
+            message: String::default(),
             background: [0.0, 0.0, WINDOW_WIDTH as f64, WINDOW_HEIGHT as f64],
         }
     }
 
-    pub fn connect_user(&self) -> bool {
-        // Dummy check, should connect to server
-        !self.username.get_content().is_empty() && !self.password.get_content().is_empty()
+    pub fn should_connect_user(&mut self) -> bool {
+        if self.username.get_content().is_empty() || self.password.get_content().is_empty() {
+            self.message = String::from("Please, enter login and password to connect.");
+            return false;
+        }
+        return true;
     }
 }
 
 impl GameState for Login {
     fn pass_server_data(&mut self, data: Vec<GameData>) {
-        self.server_data = data;
-        println!("{:?}", self.server_data)
+        self.message = data
+            .iter()
+            .map(|e| match e {
+                GameData::Message(msg) => msg.clone() + "\n",
+                _ => String::default(),
+            })
+            .collect();
     }
 
     fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
@@ -118,19 +126,10 @@ impl GameState for Login {
             Some(&self.margin),
         );
 
-        let message: String = self
-            .server_data
-            .iter()
-            .map(|e| match e {
-                GameData::Message(msg) => msg.clone() + "\n",
-                _ => String::default(),
-            })
-            .collect();
-
-        if !message.is_empty() {
+        if !self.message.is_empty() {
             let msg_width = self.font.get().width(MESSAGE_FONT_SIZE, &message).unwrap();
             self.font.render_text(
-                &message,
+                &self.message,
                 MESSAGE_FONT_SIZE,
                 evnt,
                 window,
@@ -176,7 +175,7 @@ impl GameState for Login {
                     }
                 }
                 piston::Key::Escape => std::process::exit(0),
-                piston::Key::Return => self.login = self.connect_user(),
+                piston::Key::Return => self.login = self.should_connect_user(),
                 _ => {}
             }
         }
