@@ -139,15 +139,13 @@ impl GameState for Loading {
             }
         });
 
-        let title_width = self.font.get().width(TITLE_FONT_SIZE, TITLE).unwrap();
-
-        self.font.render_text(
+        self.font.render_text_centered(
             TITLE,
             TITLE_FONT_SIZE,
             evnt,
             window,
             color::WHITE,
-            [LOGIN_TITLE_POS[0] - title_width / 2.0, LOGIN_TITLE_POS[1]],
+            [LOGIN_TITLE_POS[0], LOGIN_TITLE_POS[1]],
             Some(&self.margin),
         );
     }

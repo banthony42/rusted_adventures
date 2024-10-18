@@ -114,27 +114,24 @@ impl GameState for Login {
             rect.draw(final_position, &_ctx.draw_state, _ctx.transform, gl);
         });
 
-        let title_width = self.font.get().width(TITLE_FONT_SIZE, TITLE).unwrap();
-
-        self.font.render_text(
+        self.font.render_text_centered(
             TITLE,
             TITLE_FONT_SIZE,
             evnt,
             window,
             color::WHITE,
-            [LOGIN_TITLE_POS[0] - title_width / 2.0, LOGIN_TITLE_POS[1]],
+            [LOGIN_TITLE_POS[0], LOGIN_TITLE_POS[1]],
             Some(&self.margin),
         );
 
         if !self.message.is_empty() {
-            let msg_width = self.font.get().width(MESSAGE_FONT_SIZE, &message).unwrap();
-            self.font.render_text(
+            self.font.render_text_centered(
                 &self.message,
                 MESSAGE_FONT_SIZE,
                 evnt,
                 window,
                 color::YELLOW,
-                [MESSAGE_POS[0] - msg_width / 2.0, MESSAGE_POS[1]],
+                [MESSAGE_POS[0], MESSAGE_POS[1]],
                 Some(&self.margin),
             );
         }

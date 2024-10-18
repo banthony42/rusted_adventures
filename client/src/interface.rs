@@ -81,20 +81,15 @@ impl Interface {
         );
 
         let mut render_entity_name = |entity: &Entity| {
-            let name_width_with_font = font
-                .get()
-                .width(UI_OVERLAY_FONT_SIZE, entity.get_name().as_str())
-                .unwrap();
-
             let e_name_coord = [
-                entity.map_coord.x as f64 - (name_width_with_font / 2.0),
+                entity.map_coord.x as f64,
                 entity.map_coord.y as f64 - PLAYER_HEIGHT as f64,
             ];
             let final_color = match entity.r#type {
                 EntityType::Player => self.player_color,
                 EntityType::Monster => self.mob_color,
             };
-            font.render_text(
+            font.render_text_centered(
                 entity.get_name().as_str(),
                 17,
                 evnt,

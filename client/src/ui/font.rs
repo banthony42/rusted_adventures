@@ -10,6 +10,11 @@ pub enum FontError {
     CharacterPreload,
 }
 
+enum TextAlign {
+    Centered,
+    Left,
+}
+
 impl Font {
     pub fn new() -> Font {
         Font { font: None }
@@ -36,6 +41,28 @@ impl Font {
         self.font.as_mut().unwrap()
     }
 
+    pub fn render_text_centered(
+        &mut self,
+        text: &str,
+        font_size: u32,
+        evnt: &Event,
+        window: &mut PistonWindow,
+        color: [f32; 4],
+        pos: [f64; 2],
+        margin: Option<&Size>,
+    ) {
+        self.__render_text(
+            text,
+            font_size,
+            evnt,
+            window,
+            color,
+            pos,
+            margin,
+            TextAlign::Centered,
+        )
+    }
+
     pub fn render_text(
         &mut self,
         text: &str,
@@ -46,10 +73,38 @@ impl Font {
         pos: [f64; 2],
         margin: Option<&Size>,
     ) {
-        let x = pos[0];
-        let y = pos[1];
+        self.__render_text(
+            text,
+            font_size,
+            evnt,
+            window,
+            color,
+            pos,
+            margin,
+            TextAlign::Left,
+        )
+    }
 
+    fn __render_text(
+        &mut self,
+        text: &str,
+        font_size: u32,
+        evnt: &Event,
+        window: &mut PistonWindow,
+        color: [f32; 4],
+        pos: [f64; 2],
+        margin: Option<&Size>,
+        alignment: TextAlign,
+    ) {
+        let mut x = pos[0];
+        let y = pos[1];
         let text_width = self.get().width(font_size, text).unwrap();
+
+        match alignment {
+            TextAlign::Centered => x -= text_width / 2.0,
+            TextAlign::Left => { /* By design */ }
+        };
+
         let mut width_cursor = 0.0;
         let mut newline = 0;
         let text_split_by_newline: Vec<&str> = text.split("\n").collect();
