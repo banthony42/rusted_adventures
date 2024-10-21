@@ -1,6 +1,6 @@
 use login::Login;
 use piston_window::*;
-use states::GameState;
+use states::{GameState, StateFactory};
 use utils::get_timestamp;
 
 mod assets;
@@ -41,9 +41,7 @@ fn run_game() {
         }
     };
 
-    let mut login_state = Login::new();
-    login_state.font.load(&mut window);
-    let mut state: Box<dyn GameState> = Box::new(login_state);
+    let mut state: Box<dyn GameState> = StateFactory::<Login>::new(&mut window);
     let mut ts: u128 = 0;
 
     while let Some(e) = window.next() {

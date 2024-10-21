@@ -1,9 +1,14 @@
 use piston_window::*;
 
-use crate::client::GameData;
+use crate::{
+    client::{ConnectionTask, GameData},
+    game::Game,
+    loading::{Loading, LoadingNextState, LoadingTask},
+    login::Login,
+};
 
 pub trait GameState {
-    fn pass_server_data(&mut self, data: Vec<GameData>);
+    fn pass_data(&mut self, _data: Vec<GameData>) {}
 
     fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState>;
     fn render(&mut self, evnt: &Event, window: &mut PistonWindow);
@@ -34,4 +39,52 @@ pub trait GameState {
     fn text_input(&mut self, _args: &String) {}
     fn mouse_cursor_args(&mut self, _args: &[f64; 2]) {}
     fn mouse_scroll_args(&mut self, _args: &[f64; 2]) {}
+}
+
+pub struct StateFactory<T>
+where
+    T: GameState,
+{
+    __unused: T,
+}
+
+// Factory state Code common to all states
+impl<T> StateFactory<T>
+where
+    T: GameState,
+{
+    fn init_state(state: &mut T, window: &mut PistonWindow) {
+        state.resize_window(&ResizeArgs {
+            window_size: window.size().into(),
+            draw_size: window.draw_size().into(),
+        });
+    }
+}
+
+impl StateFactory<Login> {
+    pub fn new(window: &mut PistonWindow) -> Box<dyn GameState> {
+        let mut new_state = Login::new(window);
+        Self::init_state(&mut new_state, window);
+        Box::new(new_state)
+    }
+}
+
+impl StateFactory<Loading> {
+    pub fn new(
+        window: &mut PistonWindow,
+        next_state: LoadingNextState,
+        task: LoadingTask<ConnectionTask>,
+    ) -> Box<dyn GameState> {
+        let mut new_state = Loading::new(next_state, task, window);
+        Self::init_state(&mut new_state, window);
+        Box::new(new_state)
+    }
+}
+
+impl StateFactory<Game> {
+    pub fn new(window: &mut PistonWindow) -> Box<dyn GameState> {
+        let mut new_state = Game::new(window);
+        Self::init_state(&mut new_state, window);
+        Box::new(new_state)
+    }
 }

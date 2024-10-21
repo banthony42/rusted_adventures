@@ -7,6 +7,7 @@ use crate::{
     client::{FakeGameData, GameData},
     constants::*,
     interface::Interface,
+    states::StateFactory,
     ui::font::Font,
     world::World,
     GameState, Login,
@@ -36,6 +37,9 @@ impl Game {
             }
         };
 
+        let mut font = Font::new();
+        font.load(window);
+
         return Game {
             logout: false,
             margin: Size {
@@ -48,14 +52,14 @@ impl Game {
             interface: Interface::new(),
             fake_gdata: fg_data,
             server_data: Vec::new(), // TODO: will replace fg_data
-            font: Font::new(),
-            chat: Chat::new(String::from("Sulfurel")),
+            font: font,
+            chat: Chat::new(String::from("unknown")),
         };
     }
 }
 
 impl GameState for Game {
-    fn pass_server_data(&mut self, data: Vec<GameData>) {
+    fn pass_data(&mut self, data: Vec<GameData>) {
         data.iter().for_each(|gd| match gd {
             GameData::Token(_) => {}
             GameData::Message(name) => self.fake_gdata.player.name = name.clone(), //TMP use message to get player name
@@ -63,18 +67,14 @@ impl GameState for Game {
         });
         self.server_data = data;
         println!("==> (Game) Player connected: {:?}", self.server_data);
+        // TODO: get rid of this, should be handle at Game instanciation
         self.chat = Chat::new(self.fake_gdata.player.name.clone());
+        self.chat.resize(&self.margin);
     }
 
     fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
         if self.logout {
-            let mut login_state = Login::new();
-            login_state.font.load(window);
-            login_state.resize_window(&ResizeArgs {
-                window_size: window.size().into(),
-                draw_size: window.draw_size().into(),
-            });
-            return Box::new(login_state);
+            return StateFactory::<Login>::new(window);
         }
         self
     }

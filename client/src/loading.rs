@@ -1,3 +1,4 @@
+use core::panic;
 use graphics::{clear, color};
 use piston_window::*;
 use rectangle::Shape;
@@ -8,19 +9,24 @@ use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
 use crate::client::ConnectionTask;
-use crate::client::GameData;
 use crate::client::TaskData;
 use crate::client::TaskInterface;
+use crate::game::Game;
 use crate::login::Login;
+use crate::states::StateFactory;
 use crate::{constants::*, states::GameState, ui::font::Font};
+
+pub enum LoadingNextState {
+    Game,
+    Login,
+}
 
 pub struct Loading {
     _rt: Runtime,
     timeout: u128,
     task: JoinHandle<()>,
     task_data: Arc<Mutex<TaskData>>,
-    server_data: Vec<GameData>,
-    next_state: Box<dyn GameState>,
+    next_state: LoadingNextState,
     margin: Size,
     progress: u128,
     pub font: Font,
@@ -31,34 +37,49 @@ pub struct Loading {
 ** This state launch the async task and display a progress bar at the same time.
 ** When the task is finished the state pass to next_state
 */
+pub enum LoadingTask<T>
+where
+    T: TaskInterface,
+{
+    Connect(T),
+}
 
 impl Loading {
-    pub fn new(next_state: Box<dyn GameState>, task: ConnectionTask) -> Self {
+    pub fn new(
+        next_state: LoadingNextState,
+        task: LoadingTask<ConnectionTask>,
+        window: &mut PistonWindow,
+    ) -> Self {
         let runtime = Builder::new_multi_thread()
             .worker_threads(1)
             .enable_all()
             .build()
             .unwrap();
 
-        let amt = task.get_shared_data();
-        let timeout = task.get_timeout();
+        let _task = match task {
+            LoadingTask::Connect(connect_task) => connect_task,
+        };
+
+        let amt = _task.get_shared_data();
+        let timeout = _task.get_timeout();
 
         let master_task = runtime.spawn(async move {
             tokio::select! {
-                _ = async { sleep(Duration::from_millis(task.get_timeout() as u64)).await; } => {},
-                _ = task.task() => {},
+                _ = async { sleep(Duration::from_millis(_task.get_timeout() as u64)).await; } => {},
+                _ = _task.task() => {},
             };
         });
 
+        let mut font = Font::new();
+        font.load(window);
         Loading {
             _rt: runtime,
-            server_data: Vec::new(),
             task: master_task,
             task_data: amt,
             timeout: timeout as u128,
             progress: 0,
             next_state: next_state,
-            font: Font::new(),
+            font: font,
             margin: Size {
                 width: 0.0,
                 height: 0.0,
@@ -73,34 +94,23 @@ const PROGRESS_BAR_HEIGHT: f64 = WINDOW_HEIGHT as f64 / 2.0;
 const LOGIN_TITLE_POS: [f64; 2] = [WINDOW_WIDTH_CENTER as f64, PROGRESS_BAR_HEIGHT - 20.0];
 
 impl GameState for Loading {
-    fn pass_server_data(&mut self, data: Vec<GameData>) {
-        self.server_data = data;
-    }
-
-    fn state_update(mut self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
+    fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
         // timeout + 100 => keep displaying progress bar during 100ms when it reached it's maximum
-        if self.task.is_finished() && self.progress >= self.timeout + 100 {
-            self.next_state.resize_window(&ResizeArgs {
-                window_size: window.size().into(),
-                draw_size: window.draw_size().into(),
-            });
-
-            // Pass fetched data to the next state
-            let fetch_data = self.task_data.lock().unwrap();
-            if !fetch_data.success {
-                let mut login_state = Login::new();
-                login_state.pass_server_data(fetch_data.data.clone());
-                login_state.font.load(window);
-                login_state.resize_window(&ResizeArgs {
-                    window_size: window.size().into(),
-                    draw_size: window.draw_size().into(),
-                });
-                return Box::new(login_state);
-            }
-            self.next_state.pass_server_data(fetch_data.data.clone());
-            return self.next_state;
+        if !self.task.is_finished() || self.progress < self.timeout + 100 {
+            return self;
         }
-        return self;
+
+        let fetch_data = self.task_data.lock().unwrap();
+        let mut new_state = match fetch_data.success {
+            true => match self.next_state {
+                LoadingNextState::Game => StateFactory::<Game>::new(window),
+                LoadingNextState::Login => StateFactory::<Login>::new(window),
+            },
+            false => StateFactory::<Login>::new(window),
+        };
+
+        new_state.pass_data(fetch_data.data.clone()); // TODO: pass data at instanciation
+        return new_state;
     }
 
     fn render(&mut self, evnt: &Event, window: &mut PistonWindow) {
@@ -180,5 +190,24 @@ impl GameState for Loading {
             WINDOW_WIDTH,
             WINDOW_HEIGHT,
         );
+    }
+
+    fn handle_resize(&mut self, new_size: Size, max_width: usize, max_height: usize) -> Size {
+        let mut margin: Size = Size {
+            width: 0.0,
+            height: 0.0,
+        };
+        if new_size.width as usize >= max_width {
+            margin.width = ((new_size.width as usize - max_width) / 2) as f64;
+        } else {
+            margin.width = 0.0;
+        }
+
+        if new_size.height as usize >= max_height {
+            margin.height = ((new_size.height as usize - max_height) / 2) as f64;
+        } else {
+            margin.height = 0.0;
+        }
+        return margin;
     }
 }

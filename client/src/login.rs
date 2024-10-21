@@ -1,4 +1,6 @@
 use crate::client::{ConnectionTask, GameData};
+use crate::loading::{LoadingNextState, LoadingTask};
+use crate::states::StateFactory;
 use crate::{
     constants::*,
     loading::Loading,
@@ -41,10 +43,13 @@ const MESSAGE_POS: [f64; 2] = [
 ];
 
 impl Login {
-    pub fn new() -> Self {
+    pub fn new(window: &mut PistonWindow) -> Self {
+        let mut font = Font::new();
+        font.load(window);
+
         Login {
             login: false,
-            font: Font::new(),
+            font: font,
             username: InputField::new(USERNAME_POS, FIELD_FONT_SIZE, FIELD_WIDTH as f64)
                 .set_radius(FIELD_RADIUS)
                 .set_height(FIELD_HEIGHT),
@@ -71,7 +76,7 @@ impl Login {
 }
 
 impl GameState for Login {
-    fn pass_server_data(&mut self, data: Vec<GameData>) {
+    fn pass_data(&mut self, data: Vec<GameData>) {
         self.message = data
             .iter()
             .map(|e| match e {
@@ -83,22 +88,14 @@ impl GameState for Login {
 
     fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
         if self.login {
-            let mut game_state = Game::new(window);
-            game_state.font.load(window);
-
-            let input_login = self.username.get_content();
-            let input_password = self.password.get_content();
-
-            let mut loading_state = Loading::new(
-                Box::new(game_state),
-                ConnectionTask::new(input_login, input_password),
+            return StateFactory::<Loading>::new(
+                window,
+                LoadingNextState::Game,
+                LoadingTask::Connect(ConnectionTask::new(
+                    self.username.get_content(),
+                    self.password.get_content(),
+                )),
             );
-            loading_state.font.load(window);
-            loading_state.resize_window(&ResizeArgs {
-                window_size: window.size().into(),
-                draw_size: window.draw_size().into(),
-            });
-            return Box::new(loading_state);
         }
         self
     }
