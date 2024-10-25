@@ -1,4 +1,3 @@
-use crate::game::Game;
 use crate::{entity::Entity, world::Coord};
 use serde::{Deserialize, Serialize};
 
@@ -111,6 +110,7 @@ use authentication::{AuthReply, AuthRequest};
 use std::error::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
+use tonic::async_trait;
 pub mod authentication {
     include!("../../common/GRPC_codegen/authentication.rs");
 }
@@ -137,12 +137,14 @@ pub struct ConnectionTask {
     timeout: u64,
 }
 
-pub trait TaskInterface {
+#[async_trait]
+pub trait TaskInterface: Send + Sync {
     fn get_timeout(&self) -> u64;
     fn get_shared_data(&self) -> Arc<Mutex<TaskData>>;
     async fn task(&self) -> Result<(), Box<dyn Error + Send + Sync>>;
 }
 
+#[async_trait]
 impl TaskInterface for ConnectionTask {
     fn get_timeout(&self) -> u64 {
         self.timeout

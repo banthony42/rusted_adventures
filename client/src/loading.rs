@@ -8,7 +8,6 @@ use tokio::runtime::{Builder, Runtime};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
-use crate::client::ConnectionTask;
 use crate::client::TaskData;
 use crate::client::TaskInterface;
 use crate::game::Game;
@@ -37,17 +36,10 @@ pub struct Loading {
 ** This state launch the async task and display a progress bar at the same time.
 ** When the task is finished the state pass to next_state
 */
-pub enum LoadingTask<T>
-where
-    T: TaskInterface,
-{
-    Connect(T),
-}
-
 impl Loading {
     pub fn new(
         next_state: LoadingNextState,
-        task: LoadingTask<ConnectionTask>,
+        task: Box<dyn TaskInterface>,
         window: &mut PistonWindow,
     ) -> Self {
         let runtime = Builder::new_multi_thread()
@@ -56,17 +48,13 @@ impl Loading {
             .build()
             .unwrap();
 
-        let _task = match task {
-            LoadingTask::Connect(connect_task) => connect_task,
-        };
-
-        let amt = _task.get_shared_data();
-        let timeout = _task.get_timeout();
+        let amt = task.get_shared_data();
+        let timeout = task.get_timeout();
 
         let master_task = runtime.spawn(async move {
             tokio::select! {
-                _ = async { sleep(Duration::from_millis(_task.get_timeout() as u64)).await; } => {},
-                _ = _task.task() => {},
+                _ = async { sleep(Duration::from_millis(task.get_timeout())).await; } => {},
+                _ = task.task() => {},
             };
         });
 

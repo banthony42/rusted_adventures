@@ -1,5 +1,5 @@
 use crate::client::{ConnectionTask, GameData};
-use crate::loading::{LoadingNextState, LoadingTask};
+use crate::loading::LoadingNextState;
 use crate::states::StateFactory;
 use crate::{
     constants::*,
@@ -10,7 +10,6 @@ use piston_window::*;
 
 use crate::{
     constants::{WINDOW_HEIGHT, WINDOW_WIDTH},
-    game::Game,
     states::GameState,
 };
 
@@ -91,7 +90,7 @@ impl GameState for Login {
             return StateFactory::<Loading>::new(
                 window,
                 LoadingNextState::Game,
-                LoadingTask::Connect(ConnectionTask::new(
+                Box::new(ConnectionTask::new(
                     self.username.get_content(),
                     self.password.get_content(),
                 )),

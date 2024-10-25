@@ -1,9 +1,9 @@
 use piston_window::*;
 
 use crate::{
-    client::{ConnectionTask, GameData},
+    client::{GameData, TaskInterface},
     game::Game,
-    loading::{Loading, LoadingNextState, LoadingTask},
+    loading::{Loading, LoadingNextState},
     login::Login,
 };
 
@@ -73,7 +73,7 @@ impl StateFactory<Loading> {
     pub fn new(
         window: &mut PistonWindow,
         next_state: LoadingNextState,
-        task: LoadingTask<ConnectionTask>,
+        task: Box<dyn TaskInterface>,
     ) -> Box<dyn GameState> {
         let mut new_state = Loading::new(next_state, task, window);
         Self::init_state(&mut new_state, window);
