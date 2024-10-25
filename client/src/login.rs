@@ -1,6 +1,7 @@
-use crate::client::{ConnectionTask, GameData};
 use crate::loading::LoadingNextState;
 use crate::states::StateFactory;
+use crate::tasks::connection::ConnectionTask;
+use crate::tasks::task::GameData;
 use crate::{
     constants::*,
     loading::Loading,

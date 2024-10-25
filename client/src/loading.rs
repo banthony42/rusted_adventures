@@ -8,11 +8,11 @@ use tokio::runtime::{Builder, Runtime};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
-use crate::client::TaskData;
-use crate::client::TaskInterface;
 use crate::game::Game;
 use crate::login::Login;
 use crate::states::StateFactory;
+use crate::tasks::task::TaskData;
+use crate::tasks::task::TaskInterface;
 use crate::{constants::*, states::GameState, ui::font::Font};
 
 pub enum LoadingNextState {

@@ -4,10 +4,11 @@ use std::collections::HashMap;
 use crate::{
     assets::{load_assets, load_hard_drown_assets, EntityAssets, GameAsset, HardTexture},
     chat::Chat,
-    client::{FakeGameData, GameData},
+    client::FakeGameData,
     constants::*,
     interface::Interface,
     states::StateFactory,
+    tasks::task::GameData,
     ui::font::Font,
     world::World,
     GameState, Login,

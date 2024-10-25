@@ -13,6 +13,7 @@ mod interface;
 mod loading;
 mod login;
 mod states;
+mod tasks;
 mod ui;
 mod utils;
 mod world;
