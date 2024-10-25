@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FakeGameData {
     pub player: Entity,
+    pub token: String,
     pub entities: Vec<Entity>,
 }
 
@@ -101,6 +102,7 @@ impl FakeGameData {
         return Ok(FakeGameData {
             player: p_data,
             entities: e_data,
+            token: String::default(),
         });
     }
 }

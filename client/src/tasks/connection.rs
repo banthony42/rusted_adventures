@@ -1,5 +1,4 @@
 use super::task::{GameData, TaskData, TaskInterface};
-
 use authentication::authenticate_client::AuthenticateClient;
 use authentication::{AuthReply, AuthRequest};
 use std::error::Error;
@@ -54,12 +53,8 @@ impl TaskInterface for ConnectionTask {
 
 impl ConnectionTask {
     pub fn new(login: String, password: String) -> Self {
-        let data = TaskData {
-            steps: 3,
-            step: 0,
-            success: false,
-            data: Vec::new(),
-        };
+        let mut data = TaskData::default();
+        data.steps = 3;
 
         ConnectionTask {
             data: Arc::new(Mutex::new(data)),

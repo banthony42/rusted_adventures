@@ -16,6 +16,17 @@ pub struct TaskData {
     pub data: Vec<GameData>,
 }
 
+impl Default for TaskData {
+    fn default() -> Self {
+        Self {
+            steps: Default::default(),
+            step: Default::default(),
+            success: Default::default(),
+            data: Default::default(),
+        }
+    }
+}
+
 #[async_trait]
 pub trait TaskInterface: Send + Sync {
     fn get_timeout(&self) -> u64;

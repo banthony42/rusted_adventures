@@ -7,11 +7,12 @@ use crate::{
     client::FakeGameData,
     constants::*,
     interface::Interface,
+    loading::{Loading, LoadingNextState},
     states::StateFactory,
-    tasks::task::GameData,
+    tasks::{logout::LogoutTask, task::GameData},
     ui::font::Font,
     world::World,
-    GameState, Login,
+    GameState,
 };
 
 pub struct Game {
@@ -62,7 +63,7 @@ impl Game {
 impl GameState for Game {
     fn pass_data(&mut self, data: Vec<GameData>) {
         data.iter().for_each(|gd| match gd {
-            GameData::Token(_) => {}
+            GameData::Token(token) => self.fake_gdata.token = token.clone(),
             GameData::Message(name) => self.fake_gdata.player.name = name.clone(), //TMP use message to get player name
             GameData::Entities(_vec) => {}
         });
@@ -75,7 +76,14 @@ impl GameState for Game {
 
     fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
         if self.logout {
-            return StateFactory::<Login>::new(window);
+            return StateFactory::<Loading>::new(
+                window,
+                LoadingNextState::Login,
+                Box::new(LogoutTask::new(
+                    self.fake_gdata.player.name,
+                    self.fake_gdata.token,
+                )),
+            );
         }
         self
     }
