@@ -11,6 +11,7 @@ use crate::database::schema::accounts;
 pub struct Authenticator<'a> {
     login: String,
     argon2: Argon2<'a>,
+    connection: Option<PgConnection>,
 }
 
 fn create_argon2_context() -> Params {
@@ -34,6 +35,7 @@ impl Default for Authenticator<'_> {
         Self {
             login: Default::default(),
             argon2: argon2,
+            connection: None,
         }
     }
 }
@@ -49,7 +51,14 @@ impl Authenticator<'_> {
         Authenticator {
             argon2: argon2,
             login: login,
+            connection: None,
         }
+    }
+
+    fn connect_db(&mut self) {
+        if let None = &self.connection {
+            self.connection = Some(Database::new().establish_connection());
+        };
     }
 
     pub fn hash_password(&self, password: String) -> String {
@@ -65,16 +74,16 @@ impl Authenticator<'_> {
         return hash_pasword;
     }
 
-    pub fn authenticate(&self, password: &String) -> bool {
-        let connection = &mut Database::new().establish_connection();
+    pub fn authenticate(&mut self, password: &String) -> bool {
+        self.connect_db();
         // Get the user account in DB
         let account_to_auth = match accounts::table
             .find(&self.login)
             .select(Account::as_select())
-            .first(connection)
+            .first(self.connection.as_mut().unwrap())
         {
             Ok(account) => account,
-            Err(err) => return false,
+            Err(_) => return false,
         };
 
         // Import user hashed password and verify it
@@ -84,6 +93,41 @@ impl Authenticator<'_> {
         match self
             .argon2
             .verify_password(password.as_bytes(), &parsed_hash)
+        {
+            Ok(_) => true,
+            Err(_) => false,
+        }
+    }
+
+    fn get_token(&mut self) -> Option<String> {
+        self.connect_db();
+
+        match accounts::table
+            .find(&self.login)
+            .select(Account::as_select())
+            .first(self.connection.as_mut().unwrap())
+        {
+            Ok(account) => account.session_token,
+            Err(_) => {
+                println!("Authenticator: Fail to get token for: {}", self.login);
+                None
+            }
+        }
+    }
+
+    pub fn logout(&mut self, token: Option<String>) -> bool {
+        self.connect_db();
+        let _token = match token {
+            Some(token) => Some(token),
+            None => self.get_token(),
+        };
+
+        use crate::database::schema::accounts::dsl::*;
+        match diesel::update(accounts)
+            .filter(login.eq(&self.login))
+            .filter(session_token.eq(_token))
+            .set(session_token.eq(Option::<String>::None))
+            .get_result::<Account>(self.connection.as_mut().unwrap())
         {
             Ok(_) => true,
             Err(_) => false,

@@ -7,6 +7,6 @@ diesel::table! {
         #[max_length = 255]
         password -> Varchar,
         #[max_length = 255]
-        session_token -> Varchar,
+        session_token -> Nullable<Varchar>,
     }
 }

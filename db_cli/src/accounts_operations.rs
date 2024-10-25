@@ -50,7 +50,7 @@ pub fn update_account(update_account: UpdateAccount) {
     let current_password = rpassword::prompt_password("Old password: ")
         .expect("An error occured user prompt for current password.");
 
-    let auth_user = Authenticator::new(update_account.login.clone());
+    let mut auth_user = Authenticator::new(update_account.login.clone());
     // Try to authenticate user
     if !auth_user.authenticate(&current_password) {
         println!("Invalid Login or Password.");
@@ -71,6 +71,10 @@ pub fn update_account(update_account: UpdateAccount) {
         .set(password.eq(new_hash))
         .execute(connection)
         .expect("Error while updating account.");
+
+    if !auth_user.logout(None) {
+        println!("Logout failed.");
+    }
 }
 
 pub fn delete_account(delete_account: DeleteAccount) {

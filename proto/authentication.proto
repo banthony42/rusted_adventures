@@ -3,6 +3,7 @@ package Authentication;
 
 service Authenticate {
     rpc AuthenticateUser (AuthRequest) returns (AuthReply);
+    rpc Logout (LogoutRequest) returns (EmptyReply);
 }
 
 message AuthRequest {
@@ -12,4 +13,12 @@ message AuthRequest {
 
 message AuthReply {
     string token = 1;
+}
+
+message LogoutRequest {
+    string login = 1;
+    string token = 2;
+}
+
+message EmptyReply {   
 }
