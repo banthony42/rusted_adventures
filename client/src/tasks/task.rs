@@ -2,11 +2,14 @@ use std::error::Error;
 use std::sync::{Arc, Mutex};
 use tonic::async_trait;
 
+use crate::entity::Entity;
+
 #[derive(Debug, Clone)]
 pub enum GameData {
     Token(String),
     Message(String),
-    Entities(Vec<bool>),
+    Player(Entity),
+    Entities(Vec<Entity>),
 }
 
 pub struct TaskData {

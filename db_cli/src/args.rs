@@ -13,6 +13,20 @@ pub struct DBCliArgs {
 pub enum Commands {
     /// Create, update, delete or show accounts
     Account(AccountCommand),
+    /// Test commands to test things during dev
+    Test(TestCommand),
+}
+
+#[derive(Debug, Args)]
+pub struct TestCommand {
+    #[clap(subcommand)]
+    pub command: TestSubcommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum TestSubcommand {
+    /// Run Diesel / Postgresql custom types playground
+    CustomTypes,
 }
 
 #[derive(Debug, Args)]

@@ -14,13 +14,13 @@ use crate::{
     world::{Coord, Point, Sprite, World},
 };
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum EntityType {
     Player,
     Monster,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum EntityRaces {
     Character,
     Bouftou,
@@ -35,7 +35,7 @@ enum Orientation {
     South,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Entity {
     pub name: String,
     pub r#type: EntityType,

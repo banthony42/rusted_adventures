@@ -1,0 +1,53 @@
+syntax="proto3";
+package Authentication;
+
+service GameData {
+    rpc GetPlayer (PlayerRequest) returns (PlayerReply);
+    rpc GetMapData (MapDataRequest) returns (MapDataReply);
+}
+
+message Coord {
+    int32 x = 1;
+    int32 y = 2;
+}
+
+message Location {
+    Coord world = 1;
+    Coord map = 2;    
+}
+
+enum Classes {
+    Warrior = 0;
+}
+
+enum Race {
+    Player = 0;
+    Bouftou = 1;
+}
+
+message Entity {
+    string name = 1;
+    Race race = 2;
+}
+
+message PlayerEntity {
+    Entity entity = 1;
+    Classes class = 2;
+}
+
+message PlayerRequest {
+    string token = 1;
+}
+
+message PlayerReply {
+    PlayerEntity player = 1;
+    Location location = 2;
+}
+
+message MapDataRequest {
+    Coord world = 1;
+}
+
+message MapDataReply {
+    repeated Entity entities = 1; 
+}
