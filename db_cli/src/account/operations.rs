@@ -1,12 +1,12 @@
 use common::database::model::account::{Account, CreateAccount, UpdateAccount};
 use diesel::result::DatabaseErrorKind;
 
-use crate::args::{
-    AccountCommand, AccountSubcommand, CreateAccountCmd, DeleteAccountCmd, UpdateAccountCmd,
-};
-
 use common::authenticator::Authenticator;
 use common::database::db::Database;
+
+use super::{
+    AccountCommand, AccountSubcommand, CreateAccountCmd, DeleteAccountCmd, UpdateAccountCmd,
+};
 
 pub fn handle_account(account: AccountCommand) {
     match account.command {
@@ -17,7 +17,7 @@ pub fn handle_account(account: AccountCommand) {
     }
 }
 
-pub fn create_account(create_account: CreateAccountCmd) {
+fn create_account(create_account: CreateAccountCmd) {
     let connection = &mut Database::new().establish_connection();
 
     let mut new_account: CreateAccount = create_account.into();
@@ -37,7 +37,7 @@ pub fn create_account(create_account: CreateAccountCmd) {
     }
 }
 
-pub fn update_account(update_account: UpdateAccountCmd) {
+fn update_account(update_account: UpdateAccountCmd) {
     let connection = &mut Database::new().establish_connection();
 
     // ask user old password to authenticate him
@@ -75,7 +75,7 @@ pub fn update_account(update_account: UpdateAccountCmd) {
     }
 }
 
-pub fn delete_account(delete_account: DeleteAccountCmd) {
+fn delete_account(delete_account: DeleteAccountCmd) {
     let connection = &mut Database::new().establish_connection();
     match Account::delete(connection, &delete_account.login) {
         Ok(_) => {}
@@ -83,7 +83,7 @@ pub fn delete_account(delete_account: DeleteAccountCmd) {
     };
 }
 
-pub fn show_account() {
+fn show_account() {
     let connection = &mut Database::new().establish_connection();
     match Account::read_all(connection) {
         Ok(accounts) => accounts
