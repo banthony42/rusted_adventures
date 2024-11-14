@@ -141,6 +141,13 @@ cd common/src/database && diesel migration redo --migration-dir ./migrations
 
 7 - schema.rs has been created or updated at migration apply, you are ready to dev and build.
 
+Notes:
+To add new data to the Database: (without generate new migration)
+* Undo the migration running: `diesel migration revert --migration-dir ./migrations` or run `last_migration/down.sql` to your database.
+* Append new data to your `last_migration/up.sql` & `last_migration/down.sql`
+* Run `diesel migration run --migration-dir ./migrations` (will generate the new schema.rs)
+* Finally run `diesel migration redo --migration-dir ./migrations` to be sure down.sql is correct. 
+
 ## Tools
 
 - [Rust](https://www.rust-lang.org/fr/learn) [ [serde](https://serde.rs/) - [piston](https://www.piston.rs/) - [diesel](https://diesel.rs/) - [tokio](https://tokio.rs/) - [tonic](https://github.com/hyperium/tonic)]
