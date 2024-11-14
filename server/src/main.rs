@@ -4,8 +4,12 @@ use authentication::authenticate_server::{Authenticate, AuthenticateServer};
 use authentication::{AuthReply, AuthRequest, EmptyReply, LogoutRequest};
 use common::database::db::Database;
 use diesel::prelude::*;
+use tokio::runtime::{Builder, Runtime};
 use tonic::transport::Server;
 use tonic::Response;
+use world::engine::WorldEngine;
+
+mod world;
 
 pub mod authentication {
     include!("../../common/GRPC_codegen/authentication.rs");
@@ -71,10 +75,39 @@ impl Authenticate for RPGAuthenticate {
     }
 }
 
+fn run_world_engine_on_another_thread() -> Runtime {
+    let runtime = Builder::new_multi_thread()
+        .worker_threads(1)
+        .thread_name("RPG World Engine")
+        .enable_all()
+        .build()
+        .unwrap();
+
+    let world_engine = WorldEngine::new();
+    runtime.spawn(async move {
+        world_engine.run().await;
+    });
+
+    return runtime;
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "127.0.0.1:2121".parse()?;
     let rpg_authenticate = RPGAuthenticate::default();
+
+    // For setup simplicity the WorldEngine coexist within the Grpc Server.
+    // I insist on the term 'WorldENGINE' because it's not a server since it not handle connections or requests.
+    // We spawn a new thread where the WorldEngine will run (TODO: maybe we don't need the WorldEngine to be async for now)
+    // Goal is to share a Mutex on the Database access to ensure DB read/write atomicity
+    // Then the WorldEngine should update the world over the time (read/write)
+    // and the Grpc server will just answer to client request reading the DB when needed.
+    // Therefore with this approach it means that the Game States are stored in the postgresql DB.
+    // I know it's not the best solution, maybe a redis should be better for performance
+    // But again, the goal of the project is to learn rust, and i want to avoid
+    // heavy setup configuration / prerequisite.
+    // In addition i already know redis, where i totally discover and learn SQL like DB.
+    let _rt = run_world_engine_on_another_thread();
 
     Server::builder()
         .add_service(AuthenticateServer::new(rpg_authenticate))
