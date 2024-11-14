@@ -5,8 +5,7 @@ use password_hash::rand_core::OsRng;
 use password_hash::SaltString;
 
 use crate::database::db::Database;
-use crate::database::models::Account;
-use crate::database::schema::accounts;
+use crate::database::model::account::Account;
 
 pub struct Authenticator<'a> {
     login: String,
@@ -77,11 +76,7 @@ impl Authenticator<'_> {
     pub fn authenticate(&mut self, password: &String) -> bool {
         self.connect_db();
         // Get the user account in DB
-        let account_to_auth = match accounts::table
-            .find(&self.login)
-            .select(Account::as_select())
-            .first(self.connection.as_mut().unwrap())
-        {
+        let account_to_auth = match Account::read(self.connection.as_mut().unwrap(), &self.login) {
             Ok(account) => account,
             Err(_) => return false,
         };
@@ -101,12 +96,7 @@ impl Authenticator<'_> {
 
     fn get_token(&mut self) -> Option<String> {
         self.connect_db();
-
-        match accounts::table
-            .find(&self.login)
-            .select(Account::as_select())
-            .first(self.connection.as_mut().unwrap())
-        {
+        match Account::read(self.connection.as_mut().unwrap(), &self.login) {
             Ok(account) => account.session_token,
             Err(_) => {
                 println!("Authenticator: Fail to get token for: {}", self.login);
@@ -122,13 +112,7 @@ impl Authenticator<'_> {
             None => self.get_token(),
         };
 
-        use crate::database::schema::accounts::dsl::*;
-        match diesel::update(accounts)
-            .filter(login.eq(&self.login))
-            .filter(session_token.eq(_token))
-            .set(session_token.eq(Option::<String>::None))
-            .get_result::<Account>(self.connection.as_mut().unwrap())
-        {
+        match Account::logout(self.connection.as_mut().unwrap(), &self.login, _token) {
             Ok(_) => true,
             Err(_) => false,
         }

@@ -1,6 +1,5 @@
 use clap::{Args, Parser, Subcommand};
-
-use common::database::models::NewAccount;
+use common::database::model::account::CreateAccount;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
@@ -24,20 +23,20 @@ pub struct AccountCommand {
 #[derive(Debug, Subcommand)]
 pub enum AccountSubcommand {
     /// Create an new account
-    Create(CreateAccount),
+    Create(CreateAccountCmd),
 
     /// Update an existing account
-    Update(UpdateAccount),
+    Update(UpdateAccountCmd),
 
     /// Delete an account
-    Delete(DeleteAccount),
+    Delete(DeleteAccountCmd),
 
     /// Show all accounts
     Show,
 }
 
 #[derive(Debug, Args)]
-pub struct CreateAccount {
+pub struct CreateAccountCmd {
     /// The name of the account
     pub login: String,
 
@@ -45,9 +44,9 @@ pub struct CreateAccount {
     pub password: String,
 }
 
-impl Into<NewAccount> for CreateAccount {
-    fn into(self) -> NewAccount {
-        NewAccount {
+impl Into<CreateAccount> for CreateAccountCmd {
+    fn into(self) -> CreateAccount {
+        CreateAccount {
             login: self.login,
             password: self.password,
             session_token: None,
@@ -56,7 +55,7 @@ impl Into<NewAccount> for CreateAccount {
 }
 
 #[derive(Debug, Args)]
-pub struct UpdateAccount {
+pub struct UpdateAccountCmd {
     /// The name of the account
     pub login: String,
 
@@ -65,7 +64,7 @@ pub struct UpdateAccount {
 }
 
 #[derive(Debug, Args)]
-pub struct DeleteAccount {
+pub struct DeleteAccountCmd {
     /// The name of the account to delete
     pub login: String,
 }
