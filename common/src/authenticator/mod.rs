@@ -1,6 +1,9 @@
-use diesel::prelude::*;
+use argon2::{
+    password_hash, Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier,
+    Version,
+};
 
-use argon2::*;
+use diesel::PgConnection;
 use password_hash::rand_core::OsRng;
 use password_hash::SaltString;
 
@@ -102,6 +105,14 @@ impl Authenticator<'_> {
                 println!("Authenticator: Fail to get token for: {}", self.login);
                 None
             }
+        }
+    }
+
+    pub fn set_token(&mut self, token: &String) -> Result<(), diesel::result::Error> {
+        self.connect_db();
+        match Account::set_token(self.connection.as_mut().unwrap(), &self.login, token) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
         }
     }
 

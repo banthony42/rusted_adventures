@@ -2,8 +2,6 @@ use common::authenticator::Authenticator;
 
 use authentication::authenticate_server::{Authenticate, AuthenticateServer};
 use authentication::{AuthReply, AuthRequest, EmptyReply, LogoutRequest};
-use common::database::db::Database;
-use diesel::prelude::*;
 use tokio::runtime::{Builder, Runtime};
 use tonic::transport::Server;
 use tonic::Response;
@@ -27,22 +25,16 @@ impl Authenticate for RPGAuthenticate {
         let auth_req: AuthRequest = request.into_inner();
         println!("[Server]: [AuthenticateUser] : with: {:?}", auth_req);
 
-        if !Authenticator::new(auth_req.login.clone()).authenticate(&auth_req.password) {
+        let mut user = Authenticator::new(auth_req.login.clone());
+        if !user.authenticate(&auth_req.password) {
             println!("[Server]: [AuthenticateUser] : Error: Invalid login or password.");
             return Err(tonic::Status::invalid_argument("Invalid login or password"));
         }
         // Generate dummy session token TODO: replace by JWST
         let new_token = format!("{}-cafebab", auth_req.login);
 
-        // Store session token in DB for this user - TODO: move this in Authenticator
-        use common::database::schema::accounts::dsl::*;
-        let connection = &mut Database::new().establish_connection();
-
-        match diesel::update(accounts)
-            .filter(login.eq(auth_req.login))
-            .set(session_token.eq(Some(new_token.clone())))
-            .execute(connection)
-        {
+        // Store session token in DB for this user
+        match user.set_token(&new_token) {
             Ok(_) => {
                 println!(
                     "[Server]: [AuthenticateUser] : Success: token: {}",

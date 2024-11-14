@@ -42,6 +42,23 @@ impl Account {
         Ok(())
     }
 
+    /// Set session_token with the given token for the given user_login in DB
+    pub fn set_token(
+        db: &mut Connection,
+        user_login: &String,
+        token: &String,
+    ) -> QueryResult<Self> {
+        Self::update(
+            db,
+            user_login,
+            &UpdateAccount {
+                login: None,
+                password: None,
+                session_token: Some(Some(token.clone())),
+            },
+        )
+    }
+
     // Set the Account as logged out in DB for the given user_login
     pub fn logout(
         db: &mut Connection,
