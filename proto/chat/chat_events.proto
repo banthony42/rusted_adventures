@@ -1,0 +1,7 @@
+syntax="proto3";
+package RPG.package;
+
+enum ChatEventType {
+    BROADCAST = 0;
+    WHISPER = 1;
+}

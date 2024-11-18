@@ -1,12 +1,12 @@
 use super::task::{GameData, TaskData, TaskInterface};
-use authentication::rpg_authenticate_client::RpgAuthenticateClient;
-use authentication::{AuthReply, AuthRequest};
+use grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
+use grpc_codegen::{AuthReply, AuthRequest};
 use std::error::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tonic::async_trait;
 
-pub mod authentication {
+pub mod grpc_codegen {
     include!("../../../common/GRPC_codegen/rpg.package.rs");
 }
 

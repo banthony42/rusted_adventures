@@ -1,0 +1,23 @@
+syntax="proto3";
+package RPG.package;
+
+import "chat/chat_events.proto";
+
+enum ServerEventType {
+    SRV_INFO = 0;
+    SRV_WARN = 1;
+    SRV_DANG = 2;
+}
+
+message ServerChatEventType {
+    oneof event {
+        ServerEventType server_event = 1;
+        ChatEventType chat_event = 2;
+    };
+    optional string sender = 3;
+}
+
+message ServerChatEvent {
+    ServerChatEventType event = 1;
+    string text = 2;
+}

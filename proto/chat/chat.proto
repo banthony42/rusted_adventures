@@ -1,0 +1,9 @@
+syntax="proto3";
+package RPG.package;
+
+import "chat/client_chat_event.proto";
+import "chat/server_chat_event.proto";
+
+service RPGChat {
+    rpc Chat (stream ClientChatEvent) returns (stream ServerChatEvent);
+}
