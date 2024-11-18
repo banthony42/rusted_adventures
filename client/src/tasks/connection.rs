@@ -1,5 +1,5 @@
 use super::task::{GameData, TaskData, TaskInterface};
-use authentication::authenticate_client::AuthenticateClient;
+use authentication::rpg_authenticate_client::RpgAuthenticateClient;
 use authentication::{AuthReply, AuthRequest};
 use std::error::Error;
 use std::sync::Arc;
@@ -7,7 +7,7 @@ use std::sync::Mutex;
 use tonic::async_trait;
 
 pub mod authentication {
-    include!("../../../common/GRPC_codegen/authentication.rs");
+    include!("../../../common/GRPC_codegen/rpg.package.rs");
 }
 
 #[derive(Clone)]
@@ -65,7 +65,7 @@ impl ConnectionTask {
     }
 
     async fn connect_user(&self) -> Result<String, Box<dyn Error + Send + Sync>> {
-        let mut client = AuthenticateClient::connect("http://127.0.0.1:2121").await?;
+        let mut client = RpgAuthenticateClient::connect("http://127.0.0.1:2121").await?;
 
         let request = tonic::Request::new(AuthRequest {
             login: self.login.clone(),

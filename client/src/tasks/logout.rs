@@ -1,5 +1,5 @@
 use super::task::{GameData, TaskData, TaskInterface};
-use authentication::authenticate_client::AuthenticateClient;
+use authentication::rpg_authenticate_client::RpgAuthenticateClient;
 use authentication::LogoutRequest;
 use std::{
     error::Error,
@@ -8,7 +8,7 @@ use std::{
 use tonic::async_trait;
 
 pub mod authentication {
-    include!("../../../common/GRPC_codegen/authentication.rs");
+    include!("../../../common/GRPC_codegen/rpg.package.rs");
 }
 
 pub struct LogoutTask {
@@ -61,7 +61,7 @@ impl LogoutTask {
     }
 
     async fn logout(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
-        let mut client = AuthenticateClient::connect("http://127.0.0.1:2121").await?;
+        let mut client = RpgAuthenticateClient::connect("http://127.0.0.1:2121").await?;
         let request = LogoutRequest {
             login: self.login.clone(),
             token: self.token.clone(),

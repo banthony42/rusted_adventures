@@ -1,7 +1,13 @@
 syntax="proto3";
-package Authentication;
+package RPG.package;
 
-service Authenticate {
+import "generics.proto";
+
+// Handle client authentication for users.
+// At Login the server will send back a 'session' token 
+// required by all other services.
+// At Logout the server will revoke the user 'session' token.
+service RpgAuthenticate {
     rpc AuthenticateUser (AuthRequest) returns (AuthReply);
     rpc Logout (LogoutRequest) returns (EmptyReply);
 }
@@ -12,13 +18,16 @@ message AuthRequest {
 }
 
 message AuthReply {
+    // Session token needed to use all other services.
+    // This token have a TTL (Time To Live) and will be revoked
+    // when the TTL is exhausted or at Logout.
     string token = 1;
 }
 
+// Revoke a session token for the user.
+// The user login and token should match at server-side.
+// Revoked or outdated token can't be used anymore in other services.
 message LogoutRequest {
     string login = 1;
     string token = 2;
-}
-
-message EmptyReply {   
 }

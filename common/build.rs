@@ -6,6 +6,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tonic_build::configure()
         .out_dir(out_dir)
-        .compile_protos(&["../proto/authentication.proto"], &[".."])?;
+        .compile_protos(&["../proto/authentication.proto"], &["../proto"])?;
     Ok(())
 }

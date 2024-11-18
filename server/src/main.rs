@@ -1,6 +1,6 @@
 use common::authenticator::Authenticator;
 
-use authentication::authenticate_server::{Authenticate, AuthenticateServer};
+use authentication::rpg_authenticate_server::{RpgAuthenticate, RpgAuthenticateServer};
 use authentication::{AuthReply, AuthRequest, EmptyReply, LogoutRequest};
 use tokio::runtime::{Builder, Runtime};
 use tonic::transport::Server;
@@ -10,14 +10,14 @@ use world::engine::WorldEngine;
 mod world;
 
 pub mod authentication {
-    include!("../../common/GRPC_codegen/authentication.rs");
+    include!("../../common/GRPC_codegen/rpg.package.rs");
 }
 
 #[derive(Debug, Default)]
-struct RPGAuthenticate {}
+struct RpgAuthenticateService {}
 
 #[tonic::async_trait]
-impl Authenticate for RPGAuthenticate {
+impl RpgAuthenticate for RpgAuthenticateService {
     async fn authenticate_user(
         &self,
         request: tonic::Request<AuthRequest>,
@@ -86,7 +86,7 @@ fn run_world_engine_on_another_thread() -> Runtime {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "127.0.0.1:2121".parse()?;
-    let rpg_authenticate = RPGAuthenticate::default();
+    let rpg_authenticate = RpgAuthenticateService::default();
 
     // For setup simplicity the WorldEngine coexist within the Grpc Server.
     // I insist on the term 'WorldENGINE' because it's not a server since it not handle connections or requests.
@@ -102,7 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _rt = run_world_engine_on_another_thread();
 
     Server::builder()
-        .add_service(AuthenticateServer::new(rpg_authenticate))
+        .add_service(RpgAuthenticateServer::new(rpg_authenticate))
         .serve(addr)
         .await?;
 
