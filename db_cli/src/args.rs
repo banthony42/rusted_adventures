@@ -1,4 +1,5 @@
-use crate::account::AccountCommand;
+use super::account::AccountCommand;
+use super::grpc::GrpcCommand;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
@@ -12,4 +13,5 @@ pub struct DBCliArgs {
 pub enum Commands {
     /// Create, update, delete or show accounts
     Account(AccountCommand),
+    Grpc(GrpcCommand),
 }
