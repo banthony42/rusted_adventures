@@ -1,12 +1,8 @@
 use common::authenticator::Authenticator;
 
-use grpc_codegen::rpg_authenticate_server::RpgAuthenticate;
-use grpc_codegen::{AuthReply, AuthRequest, EmptyReply, LogoutRequest};
+use super::grpc_codegen::rpg_authenticate_server::RpgAuthenticate;
+use super::grpc_codegen::{AuthReply, AuthRequest, EmptyReply, LogoutRequest};
 use tonic::Response;
-
-pub mod grpc_codegen {
-    include!("../../../common/GRPC_codegen/rpg.package.rs");
-}
 
 #[derive(Debug, Default)]
 pub struct RpgAuthenticateService {}
