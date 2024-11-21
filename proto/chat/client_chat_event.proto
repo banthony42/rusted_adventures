@@ -3,14 +3,10 @@ package RPG.package;
 
 import "chat/chat_events.proto";
 
-message ClientChatEventType {
-    ChatEventType type = 1;
-    optional string recipient = 2;
-}
-
 message ClientChatEvent {
     string login = 1;
     string token = 2;
-    ClientChatEventType event = 3;
+    ChatEventType event = 3;
     string text = 4;
+    optional string recipient = 5;
 }
