@@ -5,6 +5,11 @@ use services::authenticate::grpc_codegen::rpg_authenticate_server::RpgAuthentica
 use services::authenticate::RpgAuthenticateService;
 use world::engine::WorldEngine;
 
+pub mod proto {
+    pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
+        include_bytes!("../../common/GRPC_codegen/rpg_services_descriptor.bin");
+}
+
 mod services;
 mod world;
 
@@ -29,6 +34,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "127.0.0.1:2121".parse()?;
     let rpg_authenticate = RpgAuthenticateService::default();
 
+    let reflection_service = tonic_reflection::server::Builder::configure()
+        .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
+        .build_v1()
+        .unwrap();
     // For setup simplicity the WorldEngine coexist within the Grpc Server.
     // I insist on the term 'WorldENGINE' because it's not a server since it not handle connections or requests.
     // We spawn a new thread where the WorldEngine will run (TODO: maybe we don't need the WorldEngine to be async for now)
@@ -43,6 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _rt = run_world_engine_on_another_thread();
 
     Server::builder()
+        .add_service(reflection_service)
         .add_service(RpgAuthenticateServer::new(rpg_authenticate))
         .serve(addr)
         .await?;
