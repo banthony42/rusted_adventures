@@ -85,6 +85,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("{}: Whisper: {}", receive.login, receive.text);
                     // Should find the player in the DB and ensure he is connected
                     // If it's the case send him the msg
+                    if receive.recipient.is_none() {
+                        return;
+                    }
+
                     let serv_data = ServerChatEvent {
                         text: receive.text,
                         sender: Some(receive.login),
@@ -92,7 +96,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     };
 
                     let registered_clients = shared_clients.lock().await;
-                    match registered_clients["sulfurel"].send(Ok(serv_data)).await {
+                    match registered_clients[&receive.recipient.unwrap()]
+                        .send(Ok(serv_data))
+                        .await
+                    {
                         Ok(suc) => println!("===> client transmit success: {:?}", suc),
                         Err(err) => println!("===> error transmitting to client: {:?}", err),
                     }

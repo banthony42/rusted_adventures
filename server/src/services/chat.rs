@@ -56,6 +56,7 @@ impl RpgChat for RpgChatService {
         //       on msg send it to SERVER_TX_CHANNEL
         let sender = self.client_event_tx.clone();
         tokio::spawn(async move {
+            println!("===> clien task: run ...");
             // Read client stream and at each data receive we should
             // send it to the master channel of the server
             while let Some(event) = client_stream_event.next().await {
