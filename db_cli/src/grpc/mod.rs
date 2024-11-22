@@ -19,12 +19,6 @@ pub enum GrpcSubcommand {
 pub struct ChatCmd {
     /// The sender name
     pub login: String,
-
-    /// The Chat event type to use
-    pub event: ChatCmdEventType,
-
-    /// The message content to send
-    pub text: String,
 }
 
 #[derive(Debug, Clone)]
