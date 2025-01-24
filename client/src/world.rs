@@ -63,13 +63,20 @@ impl std::ops::AddAssign for Coord {
 
 #[derive(Deserialize, Debug, Clone, Copy)]
 pub struct Frame {
-    pub tilemap_index: u16, // The sprite number in the tilemap, define WHERE the sprite should be drawn.
-    pub tileset_index: u8, // The sprite number in the tileset, define WHICH sprite to pick in the tileset.
+    pub tile_pos: u16, // The sprite number in the tilemap, define WHERE the sprite should be drawn.
+    pub tile: u8, // The sprite number in the tileset, define WHICH sprite to pick in the tileset.
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Default, Debug, Clone, Copy)]
+pub struct Offset {
+    pub x: u64,
+    pub y: u64,
+}
+
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct Sprite {
-    pub tileset: u8,
+    pub offset: Offset,
+    pub tileset_id: u8,
     pub collider: bool,
     pub frames: Vec<Frame>,
     pub timer: u128,
@@ -124,6 +131,23 @@ impl<'de> Visitor<'de> for SpriteDeserializer {
 
             let mut frames: Vec<Frame> = Vec::new();
             for cel in cels {
+                let bounds = cel
+                    .get("bounds")
+                    .expect("\"bounds\" not found in JSON.")
+                    .as_object()
+                    .expect("Fail to get bounds JSON key as object.");
+
+                let bounds_x = bounds
+                    .get("x")
+                    .expect("\"bounds.x\" not found in JSON.")
+                    .as_u64()
+                    .expect("Fail to get bounds.x JSON key as u64.");
+                let bounds_y = bounds
+                    .get("y")
+                    .expect("\"bounds.y\" not found in JSON.")
+                    .as_u64()
+                    .expect("Fail to get bounds.y JSON key as u64.");
+
                 let tilemap = cel
                     .get("tilemap")
                     .expect("\"tilemap\" not found in JSON.")
@@ -137,8 +161,8 @@ impl<'de> Visitor<'de> for SpriteDeserializer {
                     .expect("Fail to get tiles JSON array as Vector.");
 
                 frames.push(Frame {
-                    tilemap_index: 0,
-                    tileset_index: 0,
+                    tile_pos: 0,
+                    tile: 0,
                 });
 
                 let _: Vec<_> = tiles
@@ -156,8 +180,8 @@ impl<'de> Visitor<'de> for SpriteDeserializer {
                             return;
                         }
 
-                        frames.last_mut().unwrap().tilemap_index = tile_index as u16;
-                        frames.last_mut().unwrap().tileset_index = tileset_index;
+                        frames.last_mut().unwrap().tile_pos = tile_index as u16;
+                        frames.last_mut().unwrap().tile = tileset_index;
 
                         sprites.push(Sprite {
                             collider: if layer_name == "Collider" {
@@ -165,7 +189,11 @@ impl<'de> Visitor<'de> for SpriteDeserializer {
                             } else {
                                 false
                             },
-                            tileset: tileset,
+                            offset: Offset {
+                                x: bounds_x,
+                                y: bounds_y,
+                            },
+                            tileset_id: tileset,
                             frames: frames.clone(),
                             timer: 0,
                             frame_index: 0,
@@ -350,8 +378,8 @@ impl World {
                 .sprites
                 .iter()
                 .map(|sprite| {
-                    let sprite_texture = &map_data.tilesets[sprite.tileset as usize];
-                    let tile_number = sprite.frames[sprite.frame_index].tileset_index;
+                    let sprite_texture = &map_data.tilesets[sprite.tileset_id as usize];
+                    let tile_number = sprite.frames[sprite.frame_index].tile;
 
                     let src_rect = [
                         (tile_number as u32 % (sprite_texture.get_width() / constants::TILE_WIDTH)
@@ -362,9 +390,9 @@ impl World {
                         constants::TILE_HEIGHT as f64,
                     ];
 
-                    let x = (sprite.frames[sprite.frame_index].tilemap_index as u32
+                    let x = (sprite.frames[sprite.frame_index].tile_pos as u32
                         % constants::TILEMAP_WIDTH) as f64;
-                    let y = (sprite.frames[sprite.frame_index].tilemap_index as u32
+                    let y = (sprite.frames[sprite.frame_index].tile_pos as u32
                         / constants::TILEMAP_WIDTH) as f64;
 
                     // TODO: delete map_img from struct Game and create Image here to draw the map
@@ -372,8 +400,12 @@ impl World {
                         sprite_texture,
                         &DrawState::default(),
                         ctx.transform.trans(
-                            game.margin.width + x as f64 * constants::TILE_WIDTH as f64,
-                            game.margin.height + y as f64 * constants::TILE_HEIGHT as f64,
+                            game.margin.width
+                                + x as f64 * constants::TILE_WIDTH as f64
+                                + sprite.offset.x as f64,
+                            game.margin.height
+                                + y as f64 * constants::TILE_HEIGHT as f64
+                                + sprite.offset.y as f64,
                         ),
                         gl,
                     );

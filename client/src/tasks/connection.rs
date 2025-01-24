@@ -65,6 +65,10 @@ impl ConnectionTask {
     }
 
     async fn connect_user(&self) -> Result<String, Box<dyn Error + Send + Sync>> {
+        if self.login.eq("offline") {
+            return Ok(String::from("offline-token"));
+        }
+
         let mut client = RpgAuthenticateClient::connect("http://127.0.0.1:2121").await?;
 
         let request = tonic::Request::new(AuthRequest {

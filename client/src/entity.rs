@@ -160,7 +160,7 @@ impl Entity {
             .sprites
             .iter()
             .filter(|sprt| sprt.collider == false) // For all sprites collider for this map
-            .filter(|sprt| sprt.frames[sprt.frame_index].tilemap_index == tile_index as u16) // Does the entity is on the collider cell
+            .filter(|sprt| sprt.frames[sprt.frame_index].tile_pos == tile_index as u16) // Does the entity is on the collider cell
             .collect::<Vec<&Sprite>>()
             .is_empty();
     }
