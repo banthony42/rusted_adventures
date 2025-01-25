@@ -62,13 +62,12 @@ impl Interface {
         window: &mut PistonWindow,
         font: &mut Font,
         margin: &Size,
-        world: &HashMap<Coord, MapData>,
+        map_info: &String,
         game_data: &FakeGameData,
     ) {
-        let map_data = world.get(&game_data.player.world_coord).unwrap();
         let map_coord_txt = format!(
             "{}\nCoordonnées: {}, {}",
-            map_data.info, game_data.player.world_coord.x, game_data.player.world_coord.y
+            map_info, game_data.player.world_coord.x, game_data.player.world_coord.y
         );
         font.render_text(
             &map_coord_txt.as_str(),

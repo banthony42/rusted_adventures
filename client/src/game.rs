@@ -102,12 +102,18 @@ impl GameState for Game {
         }
 
         self.chat.render(evnt, window, &mut self.font);
+        let map_data = self
+            .world
+            .world
+            .get(&self.fake_gdata.player.world_coord)
+            .unwrap();
+
         self.interface.render_text_overlay(
             evnt,
             window,
             &mut self.font,
             &self.margin,
-            &self.world.world,
+            &map_data.info,
             &self.fake_gdata,
         );
     }

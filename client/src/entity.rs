@@ -11,7 +11,8 @@ use crate::{
         TILE_HEIGHT, TILE_WIDTH,
     },
     game::Game,
-    world::{Coord, Point, Sprite, World},
+    sprite::Sprite,
+    world::{Coord, Point, World},
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -154,13 +155,22 @@ impl Entity {
         pt.y = (pt.y - (pt.y % TILE_HEIGHT as i32)) / 64;
 
         // Compute the sprite cell number
-        let tile_index = pt.x + (pt.y * TILEMAP_WIDTH as i32);
+        let tile_index = pt.x as u32 + (pt.y as u32 * TILEMAP_WIDTH);
 
-        return world.world[&self.world_coord]
+        let map_data = world
+            .world
+            .get(&self.world_coord)
+            .expect(format!("==> Trying to get map_data from : {:?}", self.world_coord).as_str());
+
+        // Known issues:
+        // player change map, land on collider, make player stuck
+        // weird collision detected bottom left of the map 1,0
+        let cur_frame = &map_data.frames[map_data.f_ptr];
+        return cur_frame
             .sprites
             .iter()
             .filter(|sprt| sprt.collider == false) // For all sprites collider for this map
-            .filter(|sprt| sprt.frames[sprt.frame_index].tile_pos == tile_index as u16) // Does the entity is on the collider cell
+            .filter(|sprt| sprt.position == tile_index) // Does the entity is on the collider cell
             .collect::<Vec<&Sprite>>()
             .is_empty();
     }

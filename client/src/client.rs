@@ -71,7 +71,7 @@ impl FakeGameData {
                     "label": "Mountain"
                 },
                 "world_coord": {
-                    "x": 0,
+                    "x": 1,
                     "y": 0
                 }
         }"#;

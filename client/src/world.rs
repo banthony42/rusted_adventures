@@ -1,10 +1,19 @@
 use piston_window::*;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-// use opengl_graphics::{Texture, TextureSettings};
-use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
 
-use crate::{constants, game::Game};
+use crate::{
+    constants,
+    game::Game,
+    sprite::{Frame, Sprite},
+    tilemap::LoadedMap,
+};
+
+pub struct Offset {
+    pub x: u64,
+    pub y: u64,
+}
 
 #[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Coord {
@@ -61,244 +70,11 @@ impl std::ops::AddAssign for Coord {
     }
 }
 
-#[derive(Deserialize, Debug, Clone, Copy)]
-pub struct Frame {
-    pub tile_pos: u16, // The sprite number in the tilemap, define WHERE the sprite should be drawn.
-    pub tile: u8, // The sprite number in the tileset, define WHICH sprite to pick in the tileset.
-}
-
-#[derive(Deserialize, Default, Debug, Clone, Copy)]
-pub struct Offset {
-    pub x: u64,
-    pub y: u64,
-}
-
-#[derive(Deserialize, Debug, Default, Clone)]
-pub struct Sprite {
-    pub offset: Offset,
-    pub tileset_id: u8,
-    pub collider: bool,
-    pub frames: Vec<Frame>,
-    pub timer: u128,
-    pub frame_index: usize,
-}
-
-#[derive(Deserialize, Debug)]
-struct Map {
-    #[serde(rename(deserialize = "layers"))]
-    #[serde(deserialize_with = "deserialize_sprites")]
-    sprites: Vec<Sprite>,
-    #[serde(deserialize_with = "deserialize_frames")]
-    frames: Vec<f32>,
-    #[serde(deserialize_with = "deserialize_tilesets")]
-    tilesets: Vec<String>,
-}
-
-struct SpriteDeserializer;
-
-impl<'de> Visitor<'de> for SpriteDeserializer {
-    type Value = Vec<Sprite>;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("Could not deserialize into Sprite.")
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut sprites: Vec<Sprite> = Vec::new();
-
-        // Iter on all layers objects
-        while let Some(obj) = seq.next_element::<serde_json::Value>()? {
-            let layer_name = obj
-                .get("name")
-                .expect("Layer name not found.")
-                .to_string()
-                .replace("\"", "");
-
-            let tileset = obj
-                .get("tileset")
-                .expect("tileset not found.")
-                .as_u64()
-                .expect("Fail to get tileset JSON key as u64.") as u8;
-
-            let cels = obj
-                .get("cels")
-                .expect("\"cels\" array not found in JSON.")
-                .as_array()
-                .expect("Fail to get cels JSON array as Vector.");
-
-            let mut frames: Vec<Frame> = Vec::new();
-            for cel in cels {
-                let bounds = cel
-                    .get("bounds")
-                    .expect("\"bounds\" not found in JSON.")
-                    .as_object()
-                    .expect("Fail to get bounds JSON key as object.");
-
-                let bounds_x = bounds
-                    .get("x")
-                    .expect("\"bounds.x\" not found in JSON.")
-                    .as_u64()
-                    .expect("Fail to get bounds.x JSON key as u64.");
-                let bounds_y = bounds
-                    .get("y")
-                    .expect("\"bounds.y\" not found in JSON.")
-                    .as_u64()
-                    .expect("Fail to get bounds.y JSON key as u64.");
-
-                let tilemap = cel
-                    .get("tilemap")
-                    .expect("\"tilemap\" not found in JSON.")
-                    .as_object()
-                    .expect("Fail to get tilemap JSON key as object.");
-
-                let tiles = tilemap
-                    .get("tiles")
-                    .expect("\"tiles\" array not found in JSON.")
-                    .as_array()
-                    .expect("Fail to get tiles JSON array as Vector.");
-
-                frames.push(Frame {
-                    tile_pos: 0,
-                    tile: 0,
-                });
-
-                let _: Vec<_> = tiles
-                    .iter()
-                    .enumerate()
-                    .map(|(tile_index, tile)| {
-                        let tileset_index = tile
-                            .as_u64()
-                            .expect("Fail to get value from tiles JSON array as u64.")
-                            as u8;
-
-                        // Value 0 within tilemap is consider empty
-                        // It means that the sprite at this position is not define in this layer.
-                        if tileset_index == 0 {
-                            return;
-                        }
-
-                        frames.last_mut().unwrap().tile_pos = tile_index as u16;
-                        frames.last_mut().unwrap().tile = tileset_index;
-
-                        sprites.push(Sprite {
-                            collider: if layer_name == "Collider" {
-                                true
-                            } else {
-                                false
-                            },
-                            offset: Offset {
-                                x: bounds_x,
-                                y: bounds_y,
-                            },
-                            tileset_id: tileset,
-                            frames: frames.clone(),
-                            timer: 0,
-                            frame_index: 0,
-                        });
-                    })
-                    .collect();
-
-                if layer_name != "AnimatedSprites" {
-                    // Load several frames only for AnimatedSprites layer
-                    break;
-                }
-            }
-        }
-
-        Ok(sprites)
-    }
-}
-
-fn deserialize_sprites<'de, D>(deserializer: D) -> Result<Vec<Sprite>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserializer.deserialize_seq(SpriteDeserializer)
-}
-
-struct FramesDeserializer;
-
-impl<'de> Visitor<'de> for FramesDeserializer {
-    type Value = Vec<f32>;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("Could not deserialize into Vec<f32>.")
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut frames: Vec<f32> = Vec::new();
-
-        // Iter on all frames objects
-        while let Some(frame_obj) = seq.next_element::<serde_json::Value>()? {
-            frames.push(
-                frame_obj
-                    .get("duration")
-                    .expect("duration not found.")
-                    .as_f64()
-                    .expect("Fail to get duration JSON key as f32.") as f32
-                    * 1000.0,
-            )
-        }
-        return Ok(frames);
-    }
-}
-
-fn deserialize_frames<'de, D>(deserializer: D) -> Result<Vec<f32>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserializer.deserialize_seq(FramesDeserializer)
-}
-
-struct TilesetsDeserializer;
-
-impl<'de> Visitor<'de> for TilesetsDeserializer {
-    type Value = Vec<String>;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("Could not deserialize into Vec<String>.")
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut tilesets: Vec<String> = Vec::new();
-
-        // Iter on all frames objects
-        while let Some(frame_obj) = seq.next_element::<serde_json::Value>()? {
-            tilesets.push(format!(
-                "../assets/maps/{}",
-                frame_obj
-                    .get("image")
-                    .expect("tilesets not found.")
-                    .as_str()
-                    .expect("Fail to get tilesets image JSON key as &str.")
-                    .replace("\\", "/")
-            ))
-        }
-        return Ok(tilesets);
-    }
-}
-
-fn deserialize_tilesets<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserializer.deserialize_seq(TilesetsDeserializer)
-}
-
 pub struct MapData {
     pub info: String,
-    pub sprites: Vec<Sprite>,
-    pub frames: Vec<f32>,
-    pub tilesets: Vec<G2dTexture>, // TODO: merge with Sprite ; Split World from Deserializer
+    pub frames: Vec<Frame>,
+    pub timer: u128,
+    pub f_ptr: usize,
 }
 
 struct MapImport {
@@ -336,10 +112,10 @@ impl World {
         for (coord, map_import) in __world {
             let raw_data: String = fs::read_to_string(&map_import.path)
                 .expect("test_map_import: Unable to read file.");
-            let loaded_map = serde_json::from_str::<Map>(&raw_data)
+            let loaded_map = serde_json::from_str::<LoadedMap>(&raw_data)
                 .expect(&format!("Fail to load JSON map: {}", &map_import.path));
 
-            let tilesets = loaded_map
+            let tilesets: Vec<G2dTexture> = loaded_map
                 .tilesets
                 .iter()
                 .map(|path| {
@@ -358,13 +134,40 @@ impl World {
                 })
                 .collect();
 
+            let frames: Vec<Frame> = loaded_map
+                .frames
+                .iter()
+                .enumerate()
+                .map(|(index, duration)| {
+                    let sprites: Vec<Sprite> = loaded_map
+                        .sprites
+                        .iter()
+                        .filter(|lsprt| lsprt.frame == index)
+                        .map(|sprt| {
+                            Sprite::new(
+                                tilesets[sprt.tileset_id].clone(),
+                                sprt.tileset_index,
+                                Offset {
+                                    x: sprt.bound_x,
+                                    y: sprt.bound_y,
+                                },
+                                sprt.tile_index,
+                                sprt.collider,
+                            )
+                        })
+                        .collect();
+
+                    Frame::new(sprites, *duration)
+                })
+                .collect();
+
             world.world.insert(
                 coord,
                 MapData {
                     info: map_import.info,
-                    sprites: loaded_map.sprites,
-                    frames: loaded_map.frames,
-                    tilesets: tilesets,
+                    frames: frames,
+                    timer: 0,
+                    f_ptr: 0,
                 },
             );
         }
@@ -374,38 +177,21 @@ impl World {
     pub fn render(&self, evnt: &Event, window: &mut PistonWindow, game: &Game) {
         let map_data = self.world.get(&game.fake_gdata.player.world_coord).unwrap();
         window.draw_2d(evnt, |ctx, gl, _device| {
-            let _ = map_data
+            let _ = map_data.frames[map_data.f_ptr]
                 .sprites
                 .iter()
-                .map(|sprite| {
-                    let sprite_texture = &map_data.tilesets[sprite.tileset_id as usize];
-                    let tile_number = sprite.frames[sprite.frame_index].tile;
-
-                    let src_rect = [
-                        (tile_number as u32 % (sprite_texture.get_width() / constants::TILE_WIDTH)
-                            * constants::TILE_WIDTH) as f64,
-                        (tile_number as u32 / (sprite_texture.get_width() / constants::TILE_WIDTH)
-                            * constants::TILE_HEIGHT) as f64,
-                        constants::TILE_WIDTH as f64,
-                        constants::TILE_HEIGHT as f64,
-                    ];
-
-                    let x = (sprite.frames[sprite.frame_index].tile_pos as u32
-                        % constants::TILEMAP_WIDTH) as f64;
-                    let y = (sprite.frames[sprite.frame_index].tile_pos as u32
-                        / constants::TILEMAP_WIDTH) as f64;
-
-                    // TODO: delete map_img from struct Game and create Image here to draw the map
-                    Image::new().src_rect(src_rect).draw(
-                        sprite_texture,
+                .map(|sprt| {
+                    let pos = sprt.get_tile_position();
+                    Image::new().src_rect(sprt.get_src_rect()).draw(
+                        sprt.get_texture(),
                         &DrawState::default(),
                         ctx.transform.trans(
                             game.margin.width
-                                + x as f64 * constants::TILE_WIDTH as f64
-                                + sprite.offset.x as f64,
+                                + pos[0] as f64 * constants::TILE_WIDTH as f64
+                                + sprt.offset.x as f64,
                             game.margin.height
-                                + y as f64 * constants::TILE_HEIGHT as f64
-                                + sprite.offset.y as f64,
+                                + pos[1] as f64 * constants::TILE_HEIGHT as f64
+                                + sprt.offset.y as f64,
                         ),
                         gl,
                     );
@@ -419,24 +205,18 @@ impl World {
             .world
             .get_mut(world_coord)
             .expect(format!("==> Trying to get map_data from : {:?}", world_coord).as_str());
-        let _ = map_data
-            .sprites
-            .iter_mut()
-            .map(|sprite| {
-                // When the timer for the frame reach the total duration for this frame
-                // Pass to the next frame.
-                if sprite.timer >= (map_data.frames[sprite.frame_index]) as u128 {
-                    if sprite.frame_index >= (sprite.frames.len() - 1) {
-                        sprite.frame_index = 0;
-                    } else {
-                        sprite.frame_index += 1;
-                    }
-                    sprite.timer = 0;
-                } else {
-                    sprite.timer += delta_ts;
-                }
-            })
-            .collect::<Vec<_>>();
+
+        let frame = &map_data.frames[map_data.f_ptr];
+        if map_data.timer >= frame.duration as u128 {
+            map_data.timer = 0;
+            if map_data.f_ptr >= (map_data.frames.len() - 1) {
+                map_data.f_ptr = 0;
+            } else {
+                map_data.f_ptr += 1;
+            }
+        } else {
+            map_data.timer += delta_ts;
+        }
     }
 
     fn get_map(&self, coord: &Coord) -> Option<(Coord, &MapData)> {
