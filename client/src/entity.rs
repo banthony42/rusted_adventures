@@ -12,7 +12,7 @@ use crate::{
     },
     game::Game,
     sprite::Sprite,
-    world::{Coord, Point, World},
+    world::{Coord, Point, World, WorldCoord},
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -149,22 +149,19 @@ impl Entity {
         });
     }
 
-    fn detect_map_collisions(&self, world: &World, mut pt: Coord) -> bool {
+    fn detect_map_collisions(&self, world: &World, mut w_pos: WorldCoord) -> bool {
         // Compute the sprite cell x,y coordinate
-        pt.x = (pt.x - (pt.x % TILE_WIDTH as i32)) / 64;
-        pt.y = (pt.y - (pt.y % TILE_HEIGHT as i32)) / 64;
+        w_pos.map.x = (w_pos.map.x - (w_pos.map.x % TILE_WIDTH as i32)) / 64;
+        w_pos.map.y = (w_pos.map.y - (w_pos.map.y % TILE_HEIGHT as i32)) / 64;
 
         // Compute the sprite cell number
-        let tile_index = pt.x as u32 + (pt.y as u32 * TILEMAP_WIDTH);
+        let tile_index = w_pos.map.x as u32 + (w_pos.map.y as u32 * TILEMAP_WIDTH);
 
         let map_data = world
             .world
-            .get(&self.world_coord)
+            .get(&w_pos.world)
             .expect(format!("==> Trying to get map_data from : {:?}", self.world_coord).as_str());
 
-        // Known issues:
-        // player change map, land on collider, make player stuck
-        // weird collision detected bottom left of the map 1,0
         let cur_frame = &map_data.frames[map_data.f_ptr];
         return cur_frame
             .sprites
@@ -175,31 +172,31 @@ impl Entity {
             .is_empty();
     }
 
-    fn detect_map_change(&mut self, world: &World) {
-        if self.map_coord.x >= MAP_WIDTH as i32 {
-            match world.get_east_map(&self.world_coord) {
+    fn detect_map_change(&mut self, world: &World, w_pos: &mut WorldCoord) {
+        if w_pos.map.x >= MAP_WIDTH as i32 {
+            match world.get_east_map(&w_pos.world) {
                 Some(e) => {
-                    self.map_coord.x = 0;
-                    self.world_coord = e.0;
+                    w_pos.map.x = 0;
+                    w_pos.world = e.0;
                 }
                 None => {}
             }
-        } else if self.map_coord.x <= PLAYER_CENTER_X as i32 - 2 {
-            match world.get_west_map(&self.world_coord) {
+        } else if w_pos.map.x <= PLAYER_CENTER_X as i32 - 2 {
+            match world.get_west_map(&w_pos.world) {
                 Some(e) => {
-                    self.map_coord.x = MAP_WIDTH as i32 - 1;
-                    self.world_coord = e.0;
+                    w_pos.map.x = MAP_WIDTH as i32 - 1;
+                    w_pos.world = e.0;
                 }
                 None => {}
             }
         }
-        self.map_coord.x = self
-            .map_coord
+        w_pos.map.x = w_pos
+            .map
             .x
             .min(MAP_WIDTH as i32)
             .max(PLAYER_CENTER_X as i32);
-        self.map_coord.y = self
-            .map_coord
+        w_pos.map.y = w_pos
+            .map
             .y
             .min(MAP_HEIGHT as i32)
             .max(PLAYER_CENTER_X as i32);
@@ -216,10 +213,17 @@ impl Entity {
         } else {
             self.change_state(Animations::Run);
 
-            let new_pos = self.map_coord + (self.offset * (delta_ts as f64 / 1000.0)).into();
+            let mut new_pos = WorldCoord {
+                map: self.map_coord + (self.offset * (delta_ts as f64 / 1000.0)).into(),
+                world: self.world_coord.clone(),
+            };
+            // Detect map change and update `new_pos` accordingly
+            // (keep wold and map coord or update them on map change)
+            // Therefore we run the collision detection only once
+            self.detect_map_change(world, &mut new_pos);
             if self.detect_map_collisions(world, new_pos.clone()) == false {
-                self.map_coord = new_pos;
-                self.detect_map_change(world);
+                self.map_coord = new_pos.map;
+                self.world_coord = new_pos.world;
             }
         }
 

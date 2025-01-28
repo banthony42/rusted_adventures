@@ -21,6 +21,12 @@ pub struct Coord {
     pub y: i32,
 }
 
+#[derive(Clone, Debug)]
+pub struct WorldCoord {
+    pub map: Coord,
+    pub world: Coord,
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Point {
     pub x: f64,
