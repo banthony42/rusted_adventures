@@ -1,18 +1,10 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use services::chat::RpgChatService;
 use tokio::runtime::{Builder, Runtime};
-use tokio::sync::mpsc::{self, Sender};
-use tokio::sync::Mutex;
 use tonic::transport::Server;
 
 use services::authenticate::RpgAuthenticateService;
 use services::grpc_codegen::rpg_authenticate_server::RpgAuthenticateServer;
 use services::grpc_codegen::rpg_chat_server::RpgChatServer;
-use services::grpc_codegen::server_chat_event::Event;
-use services::grpc_codegen::{ChatEventType, ClientChatEvent, ServerChatEvent};
-use tonic::Status;
 use world::engine::WorldEngine;
 
 pub mod proto {
@@ -49,66 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_v1()
         .unwrap();
 
-    let (chat_event_tx, mut chat_event_rx) = mpsc::channel::<ClientChatEvent>(10);
-
-    let shared_clients_a: Arc<Mutex<HashMap<String, Sender<Result<_, Status>>>>> =
-        Arc::new(Mutex::new(HashMap::<
-            String,
-            Sender<Result<ServerChatEvent, Status>>,
-        >::new()));
-
-    let shared_clients = shared_clients_a.clone();
-    let shared_clients_b = shared_clients_a.clone();
-    // ClientChatEvent receiver
-    tokio::spawn(async move {
-        while let Some(receive) = chat_event_rx.recv().await {
-            match receive.event() {
-                ChatEventType::Broadcast => {
-                    println!("{}: Broadcast: {}", receive.login, receive.text);
-                    // Should find all player on the same map as the sender
-                    // and send them the msg
-
-                    let serv_data = ServerChatEvent {
-                        text: receive.text,
-                        sender: Some(receive.login),
-                        event: Some(Event::ChatEvent(ChatEventType::Broadcast as i32)),
-                    };
-                    let registered_clients = shared_clients.lock().await;
-                    for (name, s) in registered_clients.iter() {
-                        match registered_clients[name].send(Ok(serv_data.clone())).await {
-                            Ok(suc) => println!("===> client transmit success: {:?}", suc),
-                            Err(err) => println!("===> error transmitting to client: {:?}", err),
-                        }
-                    }
-                }
-                ChatEventType::Whisper => {
-                    println!("{}: Whisper: {}", receive.login, receive.text);
-                    // Should find the player in the DB and ensure he is connected
-                    // If it's the case send him the msg
-                    if receive.recipient.is_none() {
-                        return;
-                    }
-
-                    let serv_data = ServerChatEvent {
-                        text: receive.text,
-                        sender: Some(receive.login),
-                        event: Some(Event::ChatEvent(ChatEventType::Whisper as i32)),
-                    };
-
-                    let registered_clients = shared_clients.lock().await;
-                    match registered_clients[&receive.recipient.unwrap()]
-                        .send(Ok(serv_data))
-                        .await
-                    {
-                        Ok(suc) => println!("===> client transmit success: {:?}", suc),
-                        Err(err) => println!("===> error transmitting to client: {:?}", err),
-                    }
-                }
-            };
-        }
-    });
-
-    let rpg_chat = RpgChatService::new(chat_event_tx, shared_clients_b.clone());
+    let rpg_chat = RpgChatService::new();
 
     // For setup simplicity the WorldEngine coexist within the Grpc Server.
     // I insist on the term 'WorldENGINE' because it's not a server since it not handle connections or requests.

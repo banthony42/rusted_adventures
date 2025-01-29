@@ -8,22 +8,78 @@ use tokio_stream::StreamExt;
 use tonic::{Request, Response, Status, Streaming};
 
 use super::grpc_codegen::rpg_chat_server::RpgChat;
-use super::grpc_codegen::{ClientChatEvent, ServerChatEvent};
+use super::grpc_codegen::server_chat_event::Event;
+use super::grpc_codegen::{ChatEventType, ClientChatEvent, ServerChatEvent};
 
 #[derive(Debug)]
 pub struct RpgChatService {
+    clients: Arc<Mutex<HashMap<String, Sender<Result<ServerChatEvent, Status>>>>>,
     client_event_tx: Sender<ClientChatEvent>,
-    shared_clients: Arc<Mutex<HashMap<String, Sender<Result<ServerChatEvent, Status>>>>>,
 }
 
 impl RpgChatService {
-    pub fn new(
-        tx: Sender<ClientChatEvent>,
-        shared_clients: Arc<Mutex<HashMap<String, Sender<Result<ServerChatEvent, Status>>>>>,
-    ) -> Self {
+    pub fn new() -> Self {
+        let (chat_event_tx, mut chat_event_rx) = mpsc::channel::<ClientChatEvent>(10);
+
+        let clients: Arc<Mutex<HashMap<String, Sender<Result<_, Status>>>>> =
+            Arc::new(Mutex::new(HashMap::<
+                String,
+                Sender<Result<ServerChatEvent, Status>>,
+            >::new()));
+
+        let clients_clone = clients.clone();
+
+        tokio::spawn(async move {
+            while let Some(receive) = chat_event_rx.recv().await {
+                match receive.event() {
+                    ChatEventType::Broadcast => {
+                        println!("{}: Broadcast: {}", receive.login, receive.text);
+                        // Should find all player on the same map as the sender
+                        // and send them the msg
+
+                        let serv_data = ServerChatEvent {
+                            text: receive.text,
+                            sender: Some(receive.login),
+                            event: Some(Event::ChatEvent(ChatEventType::Broadcast as i32)),
+                        };
+                        let registered_clients = clients_clone.lock().await;
+                        for (name, s) in registered_clients.iter() {
+                            match registered_clients[name].send(Ok(serv_data.clone())).await {
+                                Ok(_) => {} /* Data transmit to client with success */
+                                Err(err) => println!("Error: chat broadcast: {:?}", err),
+                            }
+                        }
+                    }
+                    ChatEventType::Whisper => {
+                        println!("{}: Whisper: {}", receive.login, receive.text);
+                        // Should find the player in the DB and ensure he is connected
+                        // If it's the case send him the msg
+                        if receive.recipient.is_none() {
+                            return;
+                        }
+
+                        let serv_data = ServerChatEvent {
+                            text: receive.text,
+                            sender: Some(receive.login),
+                            event: Some(Event::ChatEvent(ChatEventType::Whisper as i32)),
+                        };
+
+                        let registered_clients = clients_clone.lock().await;
+                        match registered_clients[&receive.recipient.unwrap()]
+                            .send(Ok(serv_data))
+                            .await
+                        {
+                            Ok(_) => {} /* Data transmit to client with success */
+                            Err(err) => println!("Error: chat whisper: {:?}", err),
+                        }
+                    }
+                };
+            }
+        });
+
         return Self {
-            client_event_tx: tx,
-            shared_clients: shared_clients,
+            clients: clients,
+            client_event_tx: chat_event_tx,
         };
     }
 }
@@ -44,8 +100,8 @@ impl RpgChat for RpgChatService {
         // to get back it's name ...
         // store tx_client_channel in SHARED
         if let Some(msg) = client_stream_event.message().await.unwrap() {
-            println!("==> {:?}", msg);
-            self.shared_clients
+            println!("Client chat connection: {:?}", msg);
+            self.clients
                 .lock()
                 .await
                 .insert(msg.login.clone(), tx_client);
@@ -56,27 +112,26 @@ impl RpgChat for RpgChatService {
         //       on msg send it to SERVER_TX_CHANNEL
         let sender = self.client_event_tx.clone();
         tokio::spawn(async move {
-            println!("===> clien task: run ...");
             // Read client stream and at each data receive we should
             // send it to the master channel of the server
             while let Some(event) = client_stream_event.next().await {
                 match event {
                     Ok(e) => match sender.send(e).await {
-                        Ok(_) => println!("===> clien task: send mpsc: success"),
-                        Err(err) => println!("====> client task: send mpsc: error: {:?}", err),
+                        Ok(_) => {} /* Data transmit to client with success */
+                        Err(err) => println!("====> client task: send mpsc: error: {:?}", err), // Should not append, need to gather info how to handle that (fail on mpsc channel send)
                     },
-                    Err(status) => println!("===> client task: error: {:?}", status),
+                    Err(status) => println!("===> client task: error: {:?}", status), // We should handle client disconnection here
                 }
             }
         });
 
         // return the rx_client_channel as grpc response
-        // (server will send event to tx_client_channel and any data on rx is receive by grpc and transmit to client)
+        // Any data on rx is receive by grpc and transmit to client through gRPC request)
         Ok(Response::new(ReceiverStream::new(rx_client)))
 
-        // Outside of this (main.rs):
-        // task : loop on server_rx_channel
-        //        retrieve all users concerned by the event
-        //        use the shared.tx_client_channel of each user to send them the event
+        // Within main.rs:
+        // A task is waiting after any data from chat_event_rx channel
+        // Any event from chat_event_rx is process
+        // When necessary new data are sent to concerned clients tx_client_channel
     }
 }

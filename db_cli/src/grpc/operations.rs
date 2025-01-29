@@ -3,6 +3,7 @@ use tokio::runtime::Builder;
 use tokio::select;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::StreamExt;
 
 use super::{ChatCmd, GrpcCommand, GrpcSubcommand};
 
@@ -55,6 +56,7 @@ fn run_cli_chat(chat_cmd: ChatCmd) {
                         let cmd : Vec<&str> = input.split(' ').collect();
 
                         let event = match cmd[0] {
+                            "exit" => break,
                             "/w" => if cmd.len() >= 2 { ChatEventType::Whisper } else { ChatEventType::Broadcast },
                             _ => ChatEventType::Broadcast
                         };
@@ -72,7 +74,7 @@ fn run_cli_chat(chat_cmd: ChatCmd) {
                     if let Ok(msg) = data {
                         if let Some(m) = msg {
                             let sender = m.sender.unwrap();
-                            if chat_cmd.login.ne(&sender) {
+                            if chat_cmd.login.ne(&sender) { // This is only to avoid printing broadcast msg to the client that sent the msg (should be handle at server side)
                                 let evt = m.event.unwrap();
                                 let prefix = match evt {
                                     Event::ChatEvent(1) => "mp de ", // TODO: Find a way to use ChatEventType::Broadcast as i32 or something else than raw value
@@ -89,6 +91,7 @@ fn run_cli_chat(chat_cmd: ChatCmd) {
                 }
             }
         }
+        println!("Graceful disconnection.");
     });
 
     loop {
