@@ -3,7 +3,6 @@ use tokio::runtime::Builder;
 use tokio::select;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
-use tokio_stream::StreamExt;
 
 use super::{ChatCmd, GrpcCommand, GrpcSubcommand};
 

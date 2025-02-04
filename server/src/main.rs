@@ -65,3 +65,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+/*
+    Long lived Full duplex streaming (bidirectional streaming RPC) issues:
+    At least one side is reading to avoid deadlock:
+        OK: since both client and server are always reading the streams
+    Load balancing (memory + cpu):
+        KO: need more informations to understand what is needed
+            I assume memory issue are channel with data in it waiting to be received
+            and CPU issue would be massive data to process from channel.
+            Not enough CPU mean channel memory growth
+    Application should have a retry mecanism to reconnect:
+        KO: Should be implemented on the client side since it's the client who initiate the connection
+            On the server we should detect any disconnection and free data related to the disconnected client
+*/
