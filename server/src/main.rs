@@ -1,10 +1,11 @@
 use services::chat::RpgChatService;
 use tokio::runtime::{Builder, Runtime};
-use tonic::transport::Server;
+use tonic::{metadata::MetadataValue, transport::Server};
 
 use services::authenticate::RpgAuthenticateService;
 use services::grpc_codegen::rpg_authenticate_server::RpgAuthenticateServer;
 use services::grpc_codegen::rpg_chat_server::RpgChatServer;
+use tonic::{Request, Status};
 use world::engine::WorldEngine;
 
 pub mod proto {
@@ -29,6 +30,22 @@ fn run_world_engine_on_another_thread() -> Runtime {
     });
 
     return runtime;
+}
+
+fn check_authentication_interceptor(req: Request<()>) -> Result<Request<()>, Status> {
+    // let user_token_from_db = "some-secret-token";
+    // let token: MetadataValue<_> = user_token_from_db.parse().unwrap();
+    // match req.metadata().get("authorization") {
+    //     Some(t) if token == t => Ok(req),
+    //     _ => Err(Status::unauthenticated("No valid auth token")),
+    // }
+
+    // Ensure login / token key are present with values
+    // Ensure login exist in DB
+    // Ensure token auth is valid and not outdated
+
+    dbg!("check_authentication_interceptor: {:?}", &req);
+    Ok(req)
 }
 
 #[tokio::main]
@@ -59,7 +76,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Server::builder()
         .add_service(reflection_service)
         .add_service(RpgAuthenticateServer::new(rpg_authenticate))
-        .add_service(RpgChatServer::new(rpg_chat))
+        .add_service(RpgChatServer::with_interceptor(
+            rpg_chat,
+            check_authentication_interceptor,
+        ))
         .serve(addr)
         .await?;
 

@@ -3,6 +3,9 @@ use tokio::runtime::Builder;
 use tokio::select;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
+use tonic::metadata::MetadataValue;
+use tonic::transport::{Channel, Endpoint};
+use tonic::{Request, Status};
 
 use super::{ChatCmd, GrpcCommand, GrpcSubcommand};
 
@@ -10,12 +13,50 @@ pub mod grpc_codegen {
     include!("../../../common/GRPC_codegen/rpg.package.rs");
 }
 
+use grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
 use grpc_codegen::rpg_chat_client::RpgChatClient;
 use grpc_codegen::server_chat_event::Event;
+use grpc_codegen::{AuthReply, AuthRequest};
 use grpc_codegen::{ChatEventType, ClientChatEvent};
+use std::error::Error;
+
+async fn connect_user(
+    login: String,
+    password: String,
+) -> Result<String, Box<dyn Error + Send + Sync>> {
+    let mut client = RpgAuthenticateClient::connect("http://127.0.0.1:2121").await?;
+
+    let request = tonic::Request::new(AuthRequest {
+        login: login.clone(),
+        password: password.clone(),
+    });
+
+    let response: tonic::Response<AuthReply> = client.authenticate_user(request).await?;
+    let token = response.into_inner().token.clone();
+    Ok(token)
+}
+
+fn create_interceptor(
+    login: String,
+    token: String,
+) -> impl Fn(tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
+    return move |mut req: Request<()>| -> Result<Request<()>, Status> {
+        let login_md: MetadataValue<_> = login.parse().unwrap();
+        let token_md: MetadataValue<_> = token.parse().unwrap();
+
+        req.metadata_mut().insert("login", login_md);
+        req.metadata_mut().insert("token", token_md);
+        Ok(req)
+    };
+}
 
 fn run_cli_chat(chat_cmd: ChatCmd) {
+    let hardcode_password = String::from("1234");
     println!("Welcome to RPG Chat shell client.");
+    println!(
+        "(password not handle yet, all user will use '{:?}'.)",
+        hardcode_password
+    );
 
     let runtime = Builder::new_multi_thread()
         .worker_threads(1)
@@ -24,18 +65,25 @@ fn run_cli_chat(chat_cmd: ChatCmd) {
         .unwrap();
 
     let master_task = runtime.spawn(async move {
-        let mut stdin_buff = BufReader::new(stdin()).lines();
+        let token = match connect_user(chat_cmd.login.clone(), hardcode_password).await {
+            Ok(t) => t,
+            Err(e) => {
+                let tonic_error_msg = tonic::Status::from_error(e);
+                panic!("CLI Chat error: connect_user: {:?}", tonic_error_msg);
+            }
+        };
+
+        let endpoint = match Endpoint::from_static("http://127.0.0.1:2121").connect().await {
+            Ok(connection) => connection,
+            Err(err) => panic!("CLI Chat error: Chat endpoint: {:?}", err),
+        };
+
+        let mut client = RpgChatClient::with_interceptor(endpoint, create_interceptor(chat_cmd.login.clone(), token.clone()));
+
         let (tx, rx) = mpsc::channel::<ClientChatEvent>(10);
-
-        let mut client = RpgChatClient::connect("http://127.0.0.1:2121")
-            .await
-            .unwrap();
-
         // Send a first data here before listenning on the rx to avoid get blocked.
         let _ = tx
             .send(ClientChatEvent {
-                login: chat_cmd.login.clone(),
-                token: String::from("sulfurel-cafebab"),
                 event: ChatEventType::Broadcast as i32,
                 text: format!("{} joined.", chat_cmd.login.clone()),
                 recipient: None,
@@ -47,6 +95,7 @@ fn run_cli_chat(chat_cmd: ChatCmd) {
         let response = client.chat(ReceiverStream::new(rx)).await.unwrap();
         let mut client_stream = response.into_inner();
 
+        let mut stdin_buff = BufReader::new(stdin()).lines();
         loop {
             select! {
                 user_input = stdin_buff.next_line() => match user_input {
@@ -60,8 +109,6 @@ fn run_cli_chat(chat_cmd: ChatCmd) {
                             _ => ChatEventType::Broadcast
                         };
                         let _ = tx.send(ClientChatEvent {
-                            login: chat_cmd.login.clone(),
-                            token: String::from("sulfurel-cafebab"),
                             event: event as i32,
                             text: if event == ChatEventType::Whisper { cmd[2..].join(" ") } else { cmd.join(" ") },
                             recipient: if event == ChatEventType::Whisper { Some(cmd[1].to_string()) } else { None },
@@ -73,16 +120,14 @@ fn run_cli_chat(chat_cmd: ChatCmd) {
                     if let Ok(msg) = data {
                         if let Some(m) = msg {
                             let sender = m.sender.unwrap();
-                            if chat_cmd.login.ne(&sender) { // This is only to avoid printing broadcast msg to the client that sent the msg (should be handle at server side)
                                 let evt = m.event.unwrap();
                                 let prefix = match evt {
-                                    Event::ChatEvent(1) => "mp de ", // TODO: Find a way to use ChatEventType::Broadcast as i32 or something else than raw value
+                                    Event::ChatEvent(1) => "mp de ", // TODO: Find a way to use ChatEventType::Whisper as i32 or something else than raw value
                                     Event::ChatEvent(0)|
                                     Event::ChatEvent(_) => "General: ",
                                     Event::ServerEvent(_) => "SERVER: ",
                                 };
                                 println!("{}{}: {}",prefix, sender, m.text);
-                            }
                         }
                     } else {
                         println!("rpg-chat-cli: receive stream error: {:?}", data);
