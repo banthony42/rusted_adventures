@@ -45,7 +45,7 @@ fn create_interceptor(
         let token_md: MetadataValue<_> = token.parse().unwrap();
 
         req.metadata_mut().insert("login", login_md);
-        req.metadata_mut().insert("token", token_md);
+        req.metadata_mut().insert("authorization", token_md);
         Ok(req)
     };
 }

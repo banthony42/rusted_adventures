@@ -97,7 +97,7 @@ impl Authenticator<'_> {
         }
     }
 
-    fn get_token(&mut self) -> Option<String> {
+    pub fn get_token(&mut self) -> Option<String> {
         self.connect_db();
         match Account::read(self.connection.as_mut().unwrap(), &self.login) {
             Ok(account) => account.session_token,

@@ -1,3 +1,4 @@
+use common::authenticator::Authenticator;
 use services::chat::RpgChatService;
 use tokio::runtime::{Builder, Runtime};
 use tonic::{metadata::MetadataValue, transport::Server};
@@ -32,20 +33,27 @@ fn run_world_engine_on_another_thread() -> Runtime {
     return runtime;
 }
 
-fn check_authentication_interceptor(req: Request<()>) -> Result<Request<()>, Status> {
-    // let user_token_from_db = "some-secret-token";
-    // let token: MetadataValue<_> = user_token_from_db.parse().unwrap();
-    // match req.metadata().get("authorization") {
-    //     Some(t) if token == t => Ok(req),
-    //     _ => Err(Status::unauthenticated("No valid auth token")),
-    // }
+fn authentication_interceptor(req: Request<()>) -> Result<Request<()>, Status> {
+    match req.metadata().get("login") {
+        Some(login_md) => {
+            let login = login_md
+                .to_str()
+                .map_err(|e| Status::unauthenticated(format!("Error getting login: {:?}", e)))?;
 
-    // Ensure login / token key are present with values
-    // Ensure login exist in DB
-    // Ensure token auth is valid and not outdated
+            let mut user = Authenticator::new(login);
+            let token: MetadataValue<_> = user
+                .get_token()
+                .ok_or(Status::unauthenticated("user not authenticated"))?
+                .parse()
+                .map_err(|e| Status::unauthenticated(format!("{:?}", e)))?;
 
-    dbg!("check_authentication_interceptor: {:?}", &req);
-    Ok(req)
+            match req.metadata().get("authorization") {
+                Some(t) if token == t => Ok(req),
+                _ => Err(Status::unauthenticated("No valid auth token")),
+            }
+        }
+        _ => Err(Status::unauthenticated("login not found")),
+    }
 }
 
 #[tokio::main]
@@ -78,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(RpgAuthenticateServer::new(rpg_authenticate))
         .add_service(RpgChatServer::with_interceptor(
             rpg_chat,
-            check_authentication_interceptor,
+            authentication_interceptor,
         ))
         .serve(addr)
         .await?;
