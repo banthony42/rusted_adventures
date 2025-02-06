@@ -16,11 +16,12 @@ impl RpgAuthenticate for RpgAuthenticateService {
         let auth_req: AuthRequest = request.into_inner();
         println!("[Server]: [AuthenticateUser] : with: {:?}", auth_req);
 
-        let mut user = Authenticator::new(auth_req.login.clone());
+        let mut user = Authenticator::new(&auth_req.login);
         if !user.authenticate(&auth_req.password) {
             println!("[Server]: [AuthenticateUser] : Error: Invalid login or password.");
             return Err(tonic::Status::invalid_argument("Invalid login or password"));
         }
+
         // Generate dummy session token TODO: replace by JWST
         let new_token = format!("{}-cafebab", auth_req.login);
 
@@ -47,7 +48,7 @@ impl RpgAuthenticate for RpgAuthenticateService {
         let logout_request: LogoutRequest = request.into_inner();
         println!("[Server]: [LogoutUser] : with: {:?}", logout_request);
 
-        let mut authenticator = Authenticator::new(logout_request.login.clone());
+        let mut authenticator = Authenticator::new(&logout_request.login);
         if !authenticator.logout(Some(logout_request.token.clone())) {
             println!("[Server]: [LogoutUser] : Error: internal error");
             return Err(tonic::Status::internal("Logout failed"));

@@ -43,7 +43,7 @@ impl Default for Authenticator<'_> {
 }
 
 impl Authenticator<'_> {
-    pub fn new(login: String) -> Self {
+    pub fn new(login: &str) -> Self {
         let argon2 = Argon2::new(
             Algorithm::Argon2id,
             Version::default(),
@@ -52,7 +52,7 @@ impl Authenticator<'_> {
 
         Authenticator {
             argon2: argon2,
-            login: login,
+            login: login.to_string(),
             connection: None,
         }
     }
