@@ -45,7 +45,7 @@ fn update_account(update_account: UpdateAccountCmd) {
         .expect("An error occured user prompt for current password.");
 
     // Try to authenticate user
-    let mut auth_user = Authenticator::new(update_account.login.clone());
+    let mut auth_user = Authenticator::new(&update_account.login);
     if !auth_user.authenticate(&current_password) {
         println!("Invalid Login or Password.");
         std::process::exit(1)

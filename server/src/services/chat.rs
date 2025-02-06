@@ -20,6 +20,7 @@ pub struct RpgChatService {
     event_tx: Sender<RpgChatEvent>,
 }
 
+#[derive(Debug)]
 struct RpgChatEvent {
     sender: String,
     event: ClientChatEvent,
@@ -37,9 +38,9 @@ impl RpgChatEvent {
 }
 
 async fn broadcast(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
+    println!("{:?}", chat_event);
     let (sender, event) = chat_event.into_parts();
 
-    println!("{}: Broadcast: {}", sender, event.text);
     let new_event = ServerChatEvent {
         text: event.text,
         sender: Some(sender.clone()),
@@ -58,11 +59,10 @@ async fn broadcast(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
 }
 
 async fn whisper(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
+    println!("{:?}", chat_event);
     let (sender, event) = chat_event.into_parts();
 
     if let Some(recipient) = event.recipient {
-        println!("{}: Whisper {}: {}", sender, recipient, event.text);
-
         // TODO: find the recipient in the DB and ensure he is connected
         // If it's the case send him the msg
 
