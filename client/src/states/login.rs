@@ -1,18 +1,15 @@
-use crate::loading::LoadingNextState;
-use crate::states::StateFactory;
 use crate::tasks::connection::ConnectionTask;
 use crate::tasks::task::GameData;
 use crate::{
     constants::*,
-    loading::Loading,
     ui::{font::Font, input_field::InputField},
 };
 use piston_window::*;
 
-use crate::{
-    constants::{WINDOW_HEIGHT, WINDOW_WIDTH},
-    states::GameState,
-};
+use crate::constants::{WINDOW_HEIGHT, WINDOW_WIDTH};
+
+use super::loading::{Loading, LoadingNextState};
+use super::states::{GameState, StateFactory};
 
 pub struct Login {
     login: bool,

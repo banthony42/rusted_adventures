@@ -2,17 +2,20 @@ use piston_window::*;
 use std::collections::HashMap;
 
 use crate::{
-    assets::{load_assets, load_hard_drown_assets, EntityAssets, GameAsset, HardTexture},
     chat::Chat,
     client::FakeGameData,
     constants::*,
+    import::assets::{load_assets, load_hard_drown_assets, EntityAssets, GameAsset, HardTexture},
     interface::Interface,
-    loading::{Loading, LoadingNextState},
-    states::StateFactory,
     tasks::{logout::LogoutTask, task::GameData},
     ui::font::Font,
     world::World,
     GameState,
+};
+
+use super::{
+    loading::{Loading, LoadingNextState},
+    states::StateFactory,
 };
 
 pub struct Game {

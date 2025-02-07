@@ -1,15 +1,13 @@
 use piston_window::*;
-use std::collections::HashMap;
 use types::Color;
 
 use crate::{
-    assets::HardTexture,
     client::FakeGameData,
     constants::{self, PLAYER_HEIGHT},
     entity::{Entity, EntityType, Name},
-    game::Game,
+    import::assets::HardTexture,
+    states::game::Game,
     ui::font::Font,
-    world::{Coord, MapData},
 };
 
 pub struct Interface {

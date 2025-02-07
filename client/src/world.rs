@@ -5,9 +5,9 @@ use std::fs;
 
 use crate::{
     constants,
-    game::Game,
+    import::tilemap::LoadedMap,
     sprite::{Frame, Sprite},
-    tilemap::LoadedMap,
+    states::game::Game,
 };
 
 pub struct Offset {

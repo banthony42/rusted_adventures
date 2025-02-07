@@ -1,21 +1,20 @@
-use login::Login;
+use constants::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use piston_window::*;
-use states::{GameState, StateFactory};
+use states::{
+    login::Login,
+    states::{GameState, StateFactory},
+};
 use utils::get_timestamp;
 
-mod assets;
 mod chat;
 mod client;
 mod constants;
 mod entity;
-mod game;
+mod import;
 mod interface;
-mod loading;
-mod login;
 mod sprite;
 mod states;
 mod tasks;
-mod tilemap;
 mod ui;
 mod utils;
 mod world;
@@ -24,25 +23,20 @@ fn run_game() {
     let opengl = OpenGL::V3_2;
 
     // Create a Glutin window.
-    let mut window: PistonWindow = match WindowSettings::new(
-        "rpg",
-        [
-            constants::WINDOW_WIDTH as u32,
-            constants::WINDOW_HEIGHT as u32,
-        ],
-    )
-    .graphics_api(opengl)
-    .fullscreen(false)
-    .exit_on_esc(false)
-    .resizable(true)
-    .build()
-    {
-        Ok(window) => window,
-        Err(window_error) => {
-            println!("Fail to create Glutin Window: {}", window_error);
-            std::process::exit(2);
-        }
-    };
+    let mut window: PistonWindow =
+        match WindowSettings::new("rpg", [WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32])
+            .graphics_api(opengl)
+            .fullscreen(false)
+            .exit_on_esc(false)
+            .resizable(true)
+            .build()
+        {
+            Ok(window) => window,
+            Err(window_error) => {
+                println!("Fail to create Glutin Window: {}", window_error);
+                std::process::exit(2);
+            }
+        };
 
     let mut state: Box<dyn GameState> = StateFactory::<Login>::new(&mut window);
     let mut ts: u128 = 0;

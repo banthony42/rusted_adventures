@@ -8,12 +8,14 @@ use tokio::runtime::{Builder, Runtime};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
-use crate::game::Game;
-use crate::login::Login;
-use crate::states::StateFactory;
 use crate::tasks::task::TaskData;
 use crate::tasks::task::TaskInterface;
-use crate::{constants::*, states::GameState, ui::font::Font};
+use crate::{constants::*, ui::font::Font};
+
+use super::game::Game;
+use super::login::Login;
+use super::states::GameState;
+use super::states::StateFactory;
 
 pub enum LoadingNextState {
     Game,
@@ -97,7 +99,7 @@ impl GameState for Loading {
             false => StateFactory::<Login>::new(window),
         };
 
-        new_state.pass_data(fetch_data.data.clone()); // TODO: pass data at instanciation
+        new_state.pass_data(fetch_data.data.clone());
         return new_state;
     }
 

@@ -1,5 +1,5 @@
 use piston_window::*;
-use std::{ops::DerefMut, path::PathBuf};
+use std::path::PathBuf;
 
 pub struct Font {
     font: Option<Glyphs>,

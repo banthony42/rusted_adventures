@@ -40,9 +40,11 @@ impl TaskInterface for ConnectionTask {
                 return Err(tonic_error_msg.into());
             }
         };
+
+        // Simulate additional request to server
         let _ = tokio::join!(
-            self.dummy_api_request_1(&token),
-            self.dummy_api_request_2(&token)
+            self.simulate_player_request(&token),
+            self.simulate_entity_request(&token)
         );
 
         let mut locked_task = self.data.lock().unwrap();
@@ -85,9 +87,9 @@ impl ConnectionTask {
         Ok(token)
     }
 
-    async fn dummy_api_request_1(
+    async fn simulate_player_request(
         &self,
-        token: &String,
+        _token: &String,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
         let mut locked_task = self.data.lock().unwrap();
@@ -96,9 +98,9 @@ impl ConnectionTask {
         Ok(())
     }
 
-    async fn dummy_api_request_2(
+    async fn simulate_entity_request(
         &self,
-        token: &String,
+        _token: &String,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
         let mut locked_task = self.data.lock().unwrap();

@@ -5,13 +5,13 @@ use piston_window::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    assets::{Animations, EntityAssets, GameAsset},
     constants::{
         MAP_HEIGHT, MAP_WIDTH, PLAYER_CENTER_X, PLAYER_HEIGHT, PLAYER_WIDTH, TILEMAP_WIDTH,
         TILE_HEIGHT, TILE_WIDTH,
     },
-    game::Game,
+    import::assets::{Animations, EntityAssets, GameAsset},
     sprite::Sprite,
+    states::game::Game,
     world::{Coord, Point, World, WorldCoord},
 };
 

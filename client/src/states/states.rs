@@ -1,10 +1,11 @@
 use piston_window::*;
 
-use crate::{
+use crate::tasks::task::{GameData, TaskInterface};
+
+use super::{
     game::Game,
     loading::{Loading, LoadingNextState},
     login::Login,
-    tasks::task::{GameData, TaskInterface},
 };
 
 pub trait GameState {
