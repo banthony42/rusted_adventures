@@ -25,7 +25,7 @@ pub mod grpc_codegen {
 }
 
 use grpc_codegen::rpg_chat_client::RpgChatClient;
-use grpc_codegen::server_chat_event::Event as SEvent; //TODO rename this variable through rpc definition, it's too generic collide with piston
+use grpc_codegen::server_chat_event::Event as SEvent;
 use grpc_codegen::ClientChatEvent;
 use grpc_codegen::ServerChatEvent;
 use std::error::Error;
@@ -34,8 +34,6 @@ const CHAT_MAX_MSG: usize = 20;
 const CHAT_FONT_SIZE: u32 = 17;
 const CHAT_TIME_FORMAT: &str = "%H:%M:%S";
 
-// WARNING !!! This enum is duplication of grpc_codegen::ChatEventType
-// TODO: find a way to bind or use only one of them
 #[derive(Clone, Debug)]
 enum MessageType {
     General,
@@ -48,7 +46,7 @@ pub struct Message {
     time: String,
     content: String,
     channel: MessageType,
-    sender: Option<String>,
+    recipient: Option<String>,
 }
 
 impl Message {
@@ -57,12 +55,12 @@ impl Message {
             time: Utc::now().format(CHAT_TIME_FORMAT).to_string(),
             content,
             channel,
-            sender,
+            recipient: sender,
         }
     }
 
     pub fn format(&self) -> String {
-        match &self.sender {
+        match &self.recipient {
             Some(sender) => format!("[{}]: {}: {}", self.time, sender, self.content),
             None => format!("[{}]: {}", self.time, self.content),
         }
@@ -217,9 +215,9 @@ impl ChatController {
                                 .send(ClientChatEvent {
                                     event: recv.channel as i32,
                                     text: recv.content,
-                                    recipient: None,
+                                    recipient: recv.recipient,
                                 })
-                                .await.unwrap();
+                                .await.unwrap(); // Handle error here (server down / disconnection) At least logError in chat to warn player
                         } else {
                             println!("Controller: receive: error");
                         }
@@ -231,18 +229,9 @@ impl ChatController {
         return controller;
     }
 
-    fn get_content(&mut self, delta_ts: u128) -> Vec<Message> {
-        if self.timer > 5000 {
-            dbg!("Cache: {:?}", self.cache_content.clone().last());
-        } else {
-            self.timer += delta_ts
-        }
+    fn get_content(&mut self) -> Vec<Message> {
         if let Ok(content) = self.content.try_lock() {
             self.cache_content = content.clone();
-            if self.timer > 5000 {
-                dbg!("Original: {:?}", content.clone().last());
-                self.timer = 0;
-            }
         } else {
             println!("Controller: get_content: fail to obtained lock ...");
         }
@@ -261,7 +250,6 @@ pub struct Chat {
     input_field: InputField,
     text_field: TextField<Message>,
     margin: Size,
-    client_name: String,
     controller: ChatController,
 }
 
@@ -278,7 +266,6 @@ impl Chat {
                     GUI_CHAT_HEIGHT as u32,
                 ],
             ),
-            client_name: client_name.clone(),
             margin: Size {
                 width: 0.0,
                 height: 0.0,
@@ -305,7 +292,7 @@ impl Chat {
     pub fn update(&mut self, delta_ts: u128) {
         self.input_field.update(delta_ts);
         self.text_field
-            .update(delta_ts, self.controller.get_content(delta_ts));
+            .update(delta_ts, self.controller.get_content());
     }
 
     pub fn text_input(&mut self, args: &String, font: &mut Font) {
@@ -324,6 +311,19 @@ impl Chat {
         self.controller.push_message(msg);
     }
 
+    fn parse_input(&self, line: String) -> Message {
+        let cmd: Vec<&str> = line.split(' ').collect();
+
+        match cmd[0] {
+            "/w" if cmd.len() >= 2 => Message::new(
+                cmd[2..].join(" "),
+                MessageType::Private,
+                Some(cmd[1].to_string()),
+            ),
+            _ => Message::new(cmd.join(" "), MessageType::General, None),
+        }
+    }
+
     pub fn key_press(&mut self, args: &Button, font: &mut Font) {
         self.input_field.key_press(args, font);
 
@@ -331,11 +331,7 @@ impl Chat {
             if self.input_field.is_focus() {
                 let user_input = self.input_field.get_content();
                 if user_input.is_empty() == false {
-                    self.push_message(Message::new(
-                        user_input,
-                        MessageType::General, // TODO: handle whisper here
-                        Some(self.client_name.clone()),
-                    ));
+                    self.push_message(self.parse_input(user_input));
                     self.input_field.clean();
                     self.text_field.set_scroll(0.0);
                 }

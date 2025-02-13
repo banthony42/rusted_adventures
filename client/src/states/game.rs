@@ -25,7 +25,6 @@ pub struct Game {
     pub world: World,
     pub interface: Interface,
     pub fake_gdata: FakeGameData,
-    pub server_data: Vec<GameData>,
     pub font: Font,
     pub chat: Chat,
     pub logout: bool,
@@ -36,7 +35,7 @@ impl Game {
         let fg_data = match FakeGameData::get_data_from_server() {
             Ok(data) => data,
             Err(error) => {
-                // TODO: should not exit
+                // This will be not handled like that in the futur real fetch from server code
                 println!("{error}");
                 std::process::exit(1);
             }
@@ -56,9 +55,8 @@ impl Game {
             world: World::new(window),
             interface: Interface::new(),
             fake_gdata: fg_data,
-            server_data: Vec::new(), // TODO: will replace fg_data
             font: font,
-            chat: Chat::new(String::default(), String::default()), // TODO: this is crappy find a solution to avoid construct chat without value
+            chat: Chat::new(String::default(), String::default()),
         };
     }
 }
@@ -70,9 +68,7 @@ impl GameState for Game {
             GameData::Message(name) => self.fake_gdata.player.name = name.clone(), //TMP use message to get player name
             GameData::Entities(_vec) => {}
         });
-        self.server_data = data;
-        println!("==> (Game) Player connected: {:?}", self.server_data);
-        // TODO: get rid of this, should be handle at Game instanciation
+        println!("==> (Game) Player connected: {:?}", data);
         self.chat = Chat::new(
             self.fake_gdata.player.name.clone(),
             self.fake_gdata.token.clone(),

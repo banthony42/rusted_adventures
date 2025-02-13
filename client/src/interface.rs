@@ -94,7 +94,7 @@ impl Interface {
                 final_color,
                 e_name_coord,
                 Some(margin),
-            ); //TODO: implem resize method to get margin
+            );
         };
 
         render_entity_name(&game_data.player);

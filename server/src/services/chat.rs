@@ -49,7 +49,6 @@ async fn broadcast(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
 
     let clts = clients.lock().await;
 
-    // TODO: filter out clients on different map than the sender
     // Send the event to each client filtering out the sender to avoid send him it's own event.
     for (_, server_event_tx) in clts.iter().filter(|(name, _)| name.as_str().ne(&sender)) {
         if let Err(err) = server_event_tx.send(Ok(new_event.clone())).await {
@@ -63,9 +62,6 @@ async fn whisper(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
     let (sender, event) = chat_event.into_parts();
 
     if let Some(recipient) = event.recipient {
-        // TODO: find the recipient in the DB and ensure he is connected
-        // If it's the case send him the msg
-
         let new_event = ServerChatEvent {
             text: event.text,
             sender: Some(sender.clone()),

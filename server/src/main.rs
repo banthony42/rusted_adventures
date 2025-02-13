@@ -70,11 +70,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // For setup simplicity the WorldEngine coexist within the Grpc Server.
     // I insist on the term 'WorldENGINE' because it's not a server since it not handle connections or requests.
-    // We spawn a new thread where the WorldEngine will run (TODO: maybe we don't need the WorldEngine to be async for now)
-    // Goal is to share a Mutex on the Database access to ensure DB read/write atomicity
-    // Then the WorldEngine should update the world over the time (read/write)
-    // and the Grpc server will just answer to client request reading the DB when needed.
-    // Therefore with this approach it means that the Game States are stored in the postgresql DB.
+    // We spawn a new thread where the WorldEngine will run.
+    // Goal is to share a Mutex on the Database access to ensure DB READ/WRITE atomicity
+    // Then the WorldEngine should update the world over the time (READ/WRITE)
+    // and the Grpc server will just answer to client request READING the DB when needed.
+    // The only case where the Grpc Server will WRITE to the DB is to store the session token.
+    // Therefore with this approach it means that the Game data are stored in the postgresql DB.
     // I know it's not the best solution, maybe a redis should be better for performance
     // But again, the goal of the project is to learn rust, and i want to avoid
     // heavy setup configuration / prerequisite.

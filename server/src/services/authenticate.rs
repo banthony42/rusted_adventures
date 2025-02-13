@@ -22,7 +22,6 @@ impl RpgAuthenticate for RpgAuthenticateService {
             return Err(tonic::Status::invalid_argument("Invalid login or password"));
         }
 
-        // Generate dummy session token TODO: replace by JWST
         let new_token = format!("{}-cafebab", auth_req.login);
 
         // Store session token in DB for this user

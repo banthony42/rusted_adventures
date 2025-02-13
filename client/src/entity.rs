@@ -80,13 +80,10 @@ impl Entity {
 
     fn animation_lookup(&self) -> &EntityAssets {
         match self.race {
-            EntityRaces::Character => {
-                // TODO: find a way to opti using EntityAssets::Character(self.state)
-                match self.state {
-                    Animations::Idle => &EntityAssets::Character(Animations::Idle),
-                    Animations::Run => &EntityAssets::Character(Animations::Run),
-                }
-            }
+            EntityRaces::Character => match self.state {
+                Animations::Idle => &EntityAssets::Character(Animations::Idle),
+                Animations::Run => &EntityAssets::Character(Animations::Run),
+            },
             EntityRaces::Bouftou => match self.state {
                 Animations::Idle => &EntityAssets::Bouftou(Animations::Idle),
                 Animations::Run => &EntityAssets::Bouftou(Animations::Run),
