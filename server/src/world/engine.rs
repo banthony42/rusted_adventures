@@ -20,7 +20,7 @@ impl WorldEngine {
         let mut ts = get_timestamp();
         loop {
             if get_timestamp() - ts > self.ups {
-                println!("[World server]: update ...");
+                // println!("[World server]: update ...");
                 ts = get_timestamp();
             }
         }

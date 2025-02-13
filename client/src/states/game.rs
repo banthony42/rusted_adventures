@@ -58,7 +58,7 @@ impl Game {
             fake_gdata: fg_data,
             server_data: Vec::new(), // TODO: will replace fg_data
             font: font,
-            chat: Chat::new(String::from("unknown")),
+            chat: Chat::new(String::default(), String::default()), // TODO: this is crappy find a solution to avoid construct chat without value
         };
     }
 }
@@ -73,7 +73,10 @@ impl GameState for Game {
         self.server_data = data;
         println!("==> (Game) Player connected: {:?}", self.server_data);
         // TODO: get rid of this, should be handle at Game instanciation
-        self.chat = Chat::new(self.fake_gdata.player.name.clone());
+        self.chat = Chat::new(
+            self.fake_gdata.player.name.clone(),
+            self.fake_gdata.token.clone(),
+        );
         self.chat.resize(&self.margin);
     }
 

@@ -71,7 +71,8 @@ where
             .collect::<Vec<_>>();
     }
 
-    pub fn update(&mut self, _delta_ts: u128, text: Vec<T>) {
+    pub fn update(&mut self, _delta_ts: u128, mut text: Vec<T>) {
+        text.reverse();
         self.content = text;
     }
 
