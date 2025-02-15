@@ -1,14 +1,10 @@
 use super::task::{GameData, TaskData, TaskInterface};
-use grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
-use grpc_codegen::{AuthReply, AuthRequest};
+use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
+use common::grpc_codegen::{AuthReply, AuthRequest};
 use std::error::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tonic::async_trait;
-
-pub mod grpc_codegen {
-    include!("../../../common/GRPC_codegen/rpg.package.rs");
-}
 
 #[derive(Clone)]
 pub struct ConnectionTask {

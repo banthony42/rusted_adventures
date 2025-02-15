@@ -9,9 +9,9 @@ use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 use tonic::{Request, Response, Status, Streaming};
 
-use super::grpc_codegen::rpg_chat_server::RpgChat;
-use super::grpc_codegen::server_chat_event::Event;
-use super::grpc_codegen::{ChatEventType, ClientChatEvent, ServerChatEvent};
+use common::grpc_codegen::rpg_chat_server::RpgChat;
+use common::grpc_codegen::server_chat_event::Event;
+use common::grpc_codegen::{ChatEventType, ClientChatEvent, ServerChatEvent};
 
 type ArcMutexHashMapClient = Arc<Mutex<HashMap<String, Sender<Result<ServerChatEvent, Status>>>>>;
 #[derive(Debug)]

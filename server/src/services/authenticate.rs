@@ -1,7 +1,7 @@
 use common::authenticator::Authenticator;
 
-use super::grpc_codegen::rpg_authenticate_server::RpgAuthenticate;
-use super::grpc_codegen::{AuthReply, AuthRequest, EmptyReply, LogoutRequest};
+use common::grpc_codegen::rpg_authenticate_server::RpgAuthenticate;
+use common::grpc_codegen::{AuthReply, AuthRequest, EmptyReply, LogoutRequest};
 use tonic::Response;
 
 #[derive(Debug, Default)]

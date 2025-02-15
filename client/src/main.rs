@@ -20,7 +20,7 @@ mod utils;
 mod world;
 
 fn run_game() {
-    let opengl = OpenGL::V3_2;
+    let opengl = OpenGL::V4_5;
 
     // Create a Glutin window.
     let mut window: PistonWindow =

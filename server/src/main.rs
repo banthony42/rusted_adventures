@@ -3,9 +3,9 @@ use services::chat::RpgChatService;
 use tokio::runtime::{Builder, Runtime};
 use tonic::{metadata::MetadataValue, transport::Server};
 
+use common::grpc_codegen::rpg_authenticate_server::RpgAuthenticateServer;
+use common::grpc_codegen::rpg_chat_server::RpgChatServer;
 use services::authenticate::RpgAuthenticateService;
-use services::grpc_codegen::rpg_authenticate_server::RpgAuthenticateServer;
-use services::grpc_codegen::rpg_chat_server::RpgChatServer;
 use tonic::{Request, Status};
 use world::engine::WorldEngine;
 

@@ -20,14 +20,10 @@ use tonic::transport::Endpoint;
 use tonic::{Request, Response, Status, Streaming};
 use types::Color;
 
-pub mod grpc_codegen {
-    include!("../../common/GRPC_codegen/rpg.package.rs");
-}
-
-use grpc_codegen::rpg_chat_client::RpgChatClient;
-use grpc_codegen::server_chat_event::Event as SEvent;
-use grpc_codegen::ClientChatEvent;
-use grpc_codegen::ServerChatEvent;
+use common::grpc_codegen::rpg_chat_client::RpgChatClient;
+use common::grpc_codegen::server_chat_event::Event as SEvent;
+use common::grpc_codegen::ClientChatEvent;
+use common::grpc_codegen::ServerChatEvent;
 use std::error::Error;
 
 const CHAT_MAX_MSG: usize = 20;

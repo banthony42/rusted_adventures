@@ -1,15 +1,11 @@
 use super::task::{GameData, TaskData, TaskInterface};
-use grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
-use grpc_codegen::LogoutRequest;
+use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
+use common::grpc_codegen::LogoutRequest;
 use std::{
     error::Error,
     sync::{Arc, Mutex},
 };
 use tonic::async_trait;
-
-pub mod grpc_codegen {
-    include!("../../../common/GRPC_codegen/rpg.package.rs");
-}
 
 pub struct LogoutTask {
     data: Arc<Mutex<TaskData>>,

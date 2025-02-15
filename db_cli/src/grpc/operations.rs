@@ -10,16 +10,12 @@ use tonic::{Request, Response, Status, Streaming};
 
 use super::{ChatCmd, GrpcCommand, GrpcSubcommand};
 
-pub mod grpc_codegen {
-    include!("../../../common/GRPC_codegen/rpg.package.rs");
-}
-
-use grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
-use grpc_codegen::rpg_chat_client::RpgChatClient;
-use grpc_codegen::server_chat_event::Event;
-use grpc_codegen::ServerChatEvent;
-use grpc_codegen::{AuthReply, AuthRequest};
-use grpc_codegen::{ChatEventType, ClientChatEvent};
+use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
+use common::grpc_codegen::rpg_chat_client::RpgChatClient;
+use common::grpc_codegen::server_chat_event::Event;
+use common::grpc_codegen::ServerChatEvent;
+use common::grpc_codegen::{AuthReply, AuthRequest};
+use common::grpc_codegen::{ChatEventType, ClientChatEvent};
 use std::error::Error;
 
 async fn authenticate_user(

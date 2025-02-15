@@ -6,9 +6,9 @@ edition = "2021"
 [dependencies]
 diesel = { version = "2.2.0", features = ["postgres"] }
 tokio = { version = "1.40.0", features = ["full"] }
-tonic = "0.12"
-prost = "0.13"
+tonic = "*"
+prost = "*"
 common = { path = "../common" }
 tokio-stream = "0.1.16"
-tonic-reflection = "0.12.3"
+tonic-reflection = "*"
 h2 = "0.4.7"
