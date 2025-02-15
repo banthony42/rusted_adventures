@@ -6,7 +6,8 @@ use states::{
 };
 use utils::get_timestamp;
 
-mod chat;
+mod chat_client;
+mod chat_controller;
 mod client;
 mod constants;
 mod entity;

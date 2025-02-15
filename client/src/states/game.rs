@@ -2,7 +2,7 @@ use piston_window::*;
 use std::collections::HashMap;
 
 use crate::{
-    chat::Chat,
+    chat_controller::ChatController,
     client::FakeGameData,
     constants::*,
     import::assets::{load_assets, load_hard_drown_assets, EntityAssets, GameAsset, HardTexture},
@@ -26,7 +26,7 @@ pub struct Game {
     pub interface: Interface,
     pub fake_gdata: FakeGameData,
     pub font: Font,
-    pub chat: Chat,
+    pub chat: ChatController,
     pub logout: bool,
 }
 
@@ -56,7 +56,7 @@ impl Game {
             interface: Interface::new(),
             fake_gdata: fg_data,
             font: font,
-            chat: Chat::new(String::default(), String::default()),
+            chat: ChatController::new(String::default(), String::default()),
         };
     }
 }
@@ -69,7 +69,7 @@ impl GameState for Game {
             GameData::Entities(_vec) => {}
         });
         println!("==> (Game) Player connected: {:?}", data);
-        self.chat = Chat::new(
+        self.chat = ChatController::new(
             self.fake_gdata.player.name.clone(),
             self.fake_gdata.token.clone(),
         );
