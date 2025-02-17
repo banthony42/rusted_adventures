@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{chat_client::ChatClient, constants::*, ui::text_field::ColoredFormat};
+use crate::{chat_client::ChatClient, constants::*, ui::text_field::TextFieldFormat};
 use chrono::Utc;
 use common::grpc_codegen::ClientChatEvent;
 use piston_window::*;
@@ -24,43 +24,69 @@ const CHAT_FONT_SIZE: u32 = 17;
 const CHAT_TIME_FORMAT: &str = "%H:%M:%S";
 
 #[derive(Clone)]
-enum Recipient {
+enum Target {
     /// Entrant, en provenance
     Inbound(String),
     /// Sortant, en partance
     Outbound(String),
 }
 
+impl Target {
+    pub fn format_as_prefix(&self, event: ChatEventType) -> String {
+        match &self {
+            Target::Inbound(tgt) =>  match event {
+                ChatEventType::Whisper => format!("de {}:", tgt),
+                _ => format!("{}: ", tgt),
+            },
+            Target::Outbound(tgt) => match event {
+                ChatEventType::Whisper => format!("à {}:", tgt),
+                _ => format!("{}: ", tgt),
+            },
+        }
+    }
+}
+
 #[derive(Clone)]
-struct ChatMessage {
+pub struct ChatMessage {
     time: String,
     text: String,
-    recipient: Option<Recipient>,
+    target: Option<Target>,
     event: SEvent,
 }
 
 impl ChatMessage {
-    fn new(text: String, event: SEvent, recipient: Option<Recipient>) -> Self {
+    fn new(text: String, event: SEvent, target: Option<Target>) -> Self {
         ChatMessage {
             time: Utc::now().format(CHAT_TIME_FORMAT).to_string(),
             text,
             event,
-            recipient,
+            target,
         }
     }
 
     pub fn format(&self) -> String {
-        if let Some(recipient) = &self.recipient {
-            return match recipient {
-                Recipient::Inbound(rcpt) => format!("[{}]: de {}: {}", self.time, rcpt, self.text),
-                Recipient::Outbound(rcpt) => format!("[{}]: à {}: {}", self.time, rcpt, self.text),
+        let mut prefix = String::default();
+
+        if let Some(target) = &self.target {
+            prefix = match self.event {
+                SEvent::ServerEvent(s) => match ServerEventType::try_from(s) {
+                    Ok(_) => String::from("Serveur:"),
+                    Err(_) => String::from("<se::unknown>:"),
+                },
+                SEvent::ChatEvent(c) => match ChatEventType::try_from(c) {
+                    Ok(chat_event) => target.format_as_prefix(chat_event),
+                    Err(_) => String::from("<ce::unknown>:"),
+                },
             };
         }
-        format!("[{}]: {}", self.time, self.text)
+        if !prefix.is_empty() {
+            prefix.push(' ');
+        }
+        format!("[{}]: {}{}", self.time, prefix, self.text)
     }
 }
 
-impl ColoredFormat for ChatMessage {
+impl TextFieldFormat for ChatMessage {
     fn colored_format(&self) -> (types::Color, String) {
         match self.event {
             SEvent::ServerEvent(s) => match ServerEventType::try_from(s) {
@@ -83,11 +109,11 @@ impl TryFrom<ServerChatEvent> for ChatMessage {
 
     fn try_from(value: ServerChatEvent) -> Result<Self, Self::Error> {
         if let Some(event) = value.event {
-            let recipient = match value.sender {
-                Some(sender) => Some(Recipient::Inbound(sender)),
+            let target = match value.sender {
+                Some(sender) => Some(Target::Inbound(sender)),
                 None => None,
             };
-            return Ok(ChatMessage::new(value.text, event, recipient));
+            return Ok(ChatMessage::new(value.text, event, target));
         }
         Err("ChatMessage need an Event to be construct.")
     }
@@ -106,16 +132,18 @@ impl TryInto<ClientChatEvent> for ChatMessage {
         };
 
         if let Some(event) = chat_event_type {
-            let recipient = match self.recipient {
-                Some(Recipient::Inbound(r)) => Some(r),
-                Some(Recipient::Outbound(r)) => Some(r),
+            let target = match self.target {
+                Some(Target::Inbound(target)) if event.eq(&ChatEventType::Whisper) => Some(target),
+                Some(Target::Outbound(target)) if event.eq(&ChatEventType::Whisper) => Some(target),
+                // Only the Whisper event need a recipient.
+                Some(_) => None,
                 None => None,
             };
 
             return Ok(ClientChatEvent {
                 event: event as i32,
                 text: self.text,
-                recipient: recipient,
+                recipient: target,
             });
         }
         Err("ClientChatEvent need a valid Event::ChatEvent to be construct.")
@@ -123,8 +151,8 @@ impl TryInto<ClientChatEvent> for ChatMessage {
 }
 
 trait Trim {
-    fn trim_v1(&mut self, len: usize);
-    fn trim_v2(&mut self, len: usize);
+    fn _trim_v1(&mut self, len: usize);
+    fn _trim_v2(&mut self, len: usize);
 }
 
 impl Trim for Vec<ChatMessage> {
@@ -133,7 +161,7 @@ impl Trim for Vec<ChatMessage> {
     ///
     /// If `len` is greater or equal to the vector's current length, this has
     /// no effect.
-    fn trim_v1(&mut self, len: usize) {
+    fn _trim_v1(&mut self, len: usize) {
         // Compute the n first element to remove
         let first_n_to_remove = self.len().saturating_sub(len);
         // Remove the n first element, keeping the remaining in variable
@@ -150,7 +178,7 @@ impl Trim for Vec<ChatMessage> {
     ///
     /// If `len` is greater or equal to the vector's current length, this has
     /// no effect.
-    fn trim_v2(&mut self, len: usize) {
+    fn _trim_v2(&mut self, len: usize) {
         self.reverse();
         self.truncate(len);
         self.reverse();
@@ -181,10 +209,10 @@ impl ChatModel {
         let mut model = self.model.lock().await;
 
         model.push(msg);
-        model.trim_v1(CHAT_MAX_MSG);
+        model._trim_v2(CHAT_MAX_MSG);
     }
 
-    pub async fn log_info(&mut self, text: &str) {
+    pub async fn local_info(&mut self, text: &str) {
         self.post_message(ChatMessage::new(
             String::from(text),
             SEvent::ServerEvent(ServerEventType::SrvInfo as i32),
@@ -193,7 +221,7 @@ impl ChatModel {
         .await
     }
 
-    pub async fn log_warning(&mut self, text: &str) {
+    pub async fn local_warning(&mut self, text: &str) {
         self.post_message(ChatMessage::new(
             String::from(text),
             SEvent::ServerEvent(ServerEventType::SrvWarn as i32),
@@ -202,7 +230,7 @@ impl ChatModel {
         .await
     }
 
-    pub async fn log_danger(&mut self, text: &str) {
+    pub async fn local_danger(&mut self, text: &str) {
         self.post_message(ChatMessage::new(
             String::from(text),
             SEvent::ServerEvent(ServerEventType::SrvDang as i32),
@@ -220,6 +248,7 @@ impl ChatModel {
 }
 
 pub struct ChatController {
+    me: String,
     model: ChatModel,
     view: ChatGraphicView,
     tx: Sender<ChatMessage>,
@@ -242,14 +271,15 @@ impl ChatController {
             .expect("Fail to invoke async context.");
 
         let mut model = ChatModel::new();
+        let me = login.clone();
         let model_cloned = model.clone();
 
         runtime.spawn(async move {
             loop {
-                model.log_info(CHAT_CONNEXION).await;
+                model.local_info(CHAT_CONNEXION).await;
 
                 if let Ok(connexion) = ChatClient::connect(login.clone(), token.clone()).await {
-                    model.log_info(CHAT_CONNECTED).await;
+                    model.local_info(CHAT_CONNECTED).await;
 
                     let (stream_tx, response) = connexion.into_parts();
                     let mut stream = response.into_inner();
@@ -259,12 +289,12 @@ impl ChatController {
                                 match data {
                                     Ok(Some(server_chat_event)) => model.post_from(server_chat_event).await,
                                     Ok(None) => { 
-                                        model.log_warning(CHAT_CONNEXION_LOST).await;
+                                        model.local_warning(CHAT_CONNEXION_LOST).await;
                                         println!("Chat RPC Stream closed by the server.");
                                         break
                                     },
                                     Err(error) => {
-                                        model.log_warning(CHAT_CONNEXION_LOST).await;
+                                        model.local_warning(CHAT_CONNEXION_LOST).await;
                                         println!("Chat receive gRPC error from server: {:?}", error);
                                     }
                                 }
@@ -274,7 +304,7 @@ impl ChatController {
                                     model.post_message(msg.clone()).await;
                                     if let Ok(cli_event) = msg.try_into() {
                                         if let Err(error) =  stream_tx.send(cli_event).await {
-                                            model.log_warning(CHAT_CONNEXION_LOST).await;
+                                            model.local_warning(CHAT_CONNEXION_LOST).await;
                                             println!("Chat stream tx error, maybe the rx has been dropped (grpc_codegen side): {:?}", error);
                                             break
                                         }
@@ -284,7 +314,7 @@ impl ChatController {
                         }
                     }
                 } else {
-                    model.log_danger(CHAT_CONNEXION_FAILED).await;
+                    model.local_danger(CHAT_CONNEXION_FAILED).await;
                 };
                 // The Chat connexion has failed, or has been shutdown
                 // Wait some time before trying to reconnect
@@ -293,6 +323,7 @@ impl ChatController {
         });
 
         ChatController {
+            me,
             view: ChatGraphicView::new(),
             model: model_cloned,
             tx: controller_tx.clone(),
@@ -327,12 +358,12 @@ impl ChatController {
             "/w" if cmd.len() >= 2 => ChatMessage::new(
                 cmd[2..].join(" "),
                 SEvent::ChatEvent(ChatEventType::Whisper as i32),
-                Some(Recipient::Outbound(cmd[1].to_string())),
+                Some(Target::Outbound(cmd[1].to_string())),
             ),
             _ => ChatMessage::new(
                 cmd.join(" "),
                 SEvent::ChatEvent(ChatEventType::Broadcast as i32),
-                None,
+                Some(Target::Outbound(self.me.clone())),
             ),
         }
     }

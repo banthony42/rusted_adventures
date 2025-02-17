@@ -5,7 +5,7 @@ use super::font::Font;
 
 pub struct TextField<T>
 where
-    T: ColoredFormat,
+    T: TextFieldFormat,
 {
     font_size: u32,
     initial_rect: [u32; 4],
@@ -15,13 +15,13 @@ where
     scroll: f64,
 }
 
-pub trait ColoredFormat {
+pub trait TextFieldFormat {
     fn colored_format(&self) -> (Color, String);
 }
 
 impl<T> TextField<T>
 where
-    T: ColoredFormat,
+    T: TextFieldFormat,
 {
     pub fn new(font_size: u32, size: [u32; 4]) -> Self {
         TextField {
