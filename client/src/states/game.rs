@@ -2,7 +2,7 @@ use piston_window::*;
 use std::collections::HashMap;
 
 use crate::{
-    chat_controller::ChatController,
+    chat::controller::ChatController,
     client::FakeGameData,
     constants::*,
     import::assets::{load_assets, load_hard_drown_assets, EntityAssets, GameAsset, HardTexture},
