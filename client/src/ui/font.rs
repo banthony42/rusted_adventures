@@ -200,22 +200,28 @@ impl Font {
 
         let mut width_cursor = 0.0;
         let mut final_text = text.to_string();
+        let mut text_split: Vec<String> = Vec::new();
 
-        for (ind, char) in text.chars().enumerate() {
+        // Browse the text String char by char, computing final text width in pixel.
+        // Each time the width exceed the `max_text_width` we extract all browsed chars into a string, (with String::drain)
+        // And we store the extraction in a Vector
+        // At the end we land with Vec<String> with each string will not exceed `max_text_width` pixel
+        for (index, char) in text.chars().enumerate() {
             if let Ok(ch) = self.get().character(font_size, char) {
                 width_cursor += ch.advance_width();
                 if width_cursor > max_text_width {
                     width_cursor = 0.0;
-                    let end = ind + 1;
-                    final_text.replace_range(ind..end, "\n");
+                    text_split.push(final_text.drain(..index).collect::<String>());
                 }
             }
         }
-
-        let text_split_by_newline: Vec<&str> = final_text.split("\n").collect();
+        // Don't forget to push the remaining text
+        if !final_text.is_empty() {
+            text_split.push(final_text);
+        }
 
         window.draw_2d(evnt, |ctx, gl, device| {
-            let _: Vec<_> = text_split_by_newline
+            let _: Vec<_> = text_split
                 .iter()
                 .enumerate()
                 .map(|(index, text)| {
