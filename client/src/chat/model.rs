@@ -59,20 +59,22 @@ impl ChatMessage {
     }
 
     pub fn format(&self) -> String {
-        let mut prefix = String::default();
-
-        if let Some(target) = &self.target {
-            prefix = match self.event {
-                SEvent::ServerEvent(s) => match ServerEventType::try_from(s) {
-                    Ok(_) => String::from("Serveur:"),
-                    Err(_) => String::from("<se::unknown>:"),
-                },
-                SEvent::ChatEvent(c) => match ChatEventType::try_from(c) {
-                    Ok(chat_event) => target.format_as_prefix(chat_event),
-                    Err(_) => String::from("<ce::unknown>:"),
-                },
-            };
-        }
+        let mut prefix = match self.event {
+            SEvent::ServerEvent(s) => match ServerEventType::try_from(s) {
+                Ok(_) => "Serveur :".to_owned(),
+                Err(_) => "<se::unknown>:".to_owned(),
+            },
+            SEvent::ChatEvent(c) => match ChatEventType::try_from(c) {
+                Ok(chat_event) => {
+                    if let Some(target) = &self.target {
+                        target.format_as_prefix(chat_event)
+                    } else {
+                        String::default()
+                    }
+                }
+                Err(_) => "<ce::unknown>:".to_owned(),
+            },
+        };
         if !prefix.is_empty() {
             prefix.push(' ');
         }
