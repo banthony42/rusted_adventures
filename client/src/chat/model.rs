@@ -61,7 +61,7 @@ impl ChatMessage {
     pub fn format(&self) -> String {
         let mut prefix = match self.event {
             SEvent::ServerEvent(s) => match ServerEventType::try_from(s) {
-                Ok(_) => "Serveur :".to_owned(),
+                Ok(_) => "Système :".to_owned(),
                 Err(_) => "<se::unknown>:".to_owned(),
             },
             SEvent::ChatEvent(c) => match ChatEventType::try_from(c) {

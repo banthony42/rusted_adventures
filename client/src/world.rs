@@ -106,7 +106,7 @@ impl World {
                 Coord { x: 1, y: 0 },
                 MapImport {
                     path: String::from("../assets/maps/map.1.0/sprite.json"),
-                    info: String::from("Plaines"),
+                    info: String::from("Plage cliquetante"),
                 },
             ),
         ]);

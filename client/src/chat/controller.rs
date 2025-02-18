@@ -1,20 +1,19 @@
 use piston_window::*;
 
-use tokio::select;
 use tokio::runtime::{Builder, Runtime};
+use tokio::select;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
 use tokio::time::{sleep, Duration};
 
+use super::client::ChatClient;
 use super::model::{ChatMessage, ChatModel, Target};
 use super::view::ChatGraphicView;
-use super::client::ChatClient;
 
 use crate::ui::font::Font;
 
-use common::grpc_codegen::ChatEventType;
 use common::grpc_codegen::server_chat_event::Event as SEvent;
-
+use common::grpc_codegen::{ChatEventType, ServerEventType};
 
 pub struct ChatController {
     me: String,
@@ -30,6 +29,8 @@ const CHAT_CONNEXION_FAILED: &str = "La connexion au serveur de chat à échoué
 const CHAT_ERROR_FROM_SERVER: &str = "Le serveur de chat à renvoyé une erreur.";
 const CHAT_CONNEXION_LOST: &str = "La connextion au serveur à été perdue.";
 const CHAT_RECONNECT_TIMER: u64 = 5000;
+
+const CHAT_WHISPER_USAGE: &str = "chuchotement: nécéssite un destinataire et un contenu.";
 
 impl ChatController {
     pub fn new(login: String, token: String) -> Self {
@@ -58,7 +59,7 @@ impl ChatController {
                             data = stream.message() => {
                                 match data {
                                     Ok(Some(server_chat_event)) => model.post_from(server_chat_event).await,
-                                    Ok(None) => { 
+                                    Ok(None) => {
                                         model.local_warning(CHAT_CONNEXION_LOST).await;
                                         println!("Chat RPC Stream closed by the server.");
                                         break
@@ -125,7 +126,12 @@ impl ChatController {
         let cmd: Vec<&str> = line.split(' ').collect();
 
         match cmd[0] {
-            "/w" if cmd.len() >= 2 => ChatMessage::new(
+            "/w" if cmd.len() < 3 => ChatMessage::new(
+                CHAT_WHISPER_USAGE.to_owned(),
+                SEvent::ServerEvent(ServerEventType::SrvDang as i32),
+                None,
+            ),
+            "/w" if cmd.len() >= 3 => ChatMessage::new(
                 cmd[2..].join(" "),
                 SEvent::ChatEvent(ChatEventType::Whisper as i32),
                 Some(Target::Outbound(cmd[1].to_string())),
