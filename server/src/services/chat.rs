@@ -1,3 +1,4 @@
+use common::authenticator::Authenticator;
 use std::collections::HashMap;
 use std::error::Error;
 use std::io::ErrorKind;
@@ -11,7 +12,7 @@ use tonic::{Request, Response, Status, Streaming};
 
 use common::grpc_codegen::rpg_chat_server::RpgChat;
 use common::grpc_codegen::server_chat_event::Event;
-use common::grpc_codegen::{ChatEventType, ClientChatEvent, ServerChatEvent};
+use common::grpc_codegen::{ChatEventType, ClientChatEvent, ServerChatEvent, ServerEventType};
 
 type ArcMutexHashMapClient = Arc<Mutex<HashMap<String, Sender<Result<ServerChatEvent, Status>>>>>;
 #[derive(Debug)]
@@ -68,7 +69,27 @@ async fn whisper(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
             event: Some(Event::ChatEvent(ChatEventType::Whisper as i32)),
         };
 
+        let mut authenticator = Authenticator::new(&recipient);
+        let recipient_disconnected = authenticator.is_connected().is_err();
+
         let clts = clients.lock().await;
+        if recipient_disconnected {
+            if let Some(server_event_tx) = clts.get(&sender) {
+                let srv_event = ServerChatEvent {
+                    text: format!(
+                        "Le joueur [{}] n'existe pas ou n'est pas disponnible.",
+                        recipient
+                    ),
+                    sender: None,
+                    event: Some(Event::ServerEvent(ServerEventType::SrvDang as i32)),
+                };
+                if let Err(err) = server_event_tx.send(Ok(srv_event)).await {
+                    println!("Error: chat whisper: {:?}", err)
+                }
+            }
+            return;
+        }
+
         if let Some(server_event_tx) = clts.get(&recipient) {
             if let Err(err) = server_event_tx.send(Ok(new_event)).await {
                 println!("Error: chat whisper: {:?}", err)

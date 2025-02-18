@@ -8,6 +8,7 @@ use password_hash::rand_core::OsRng;
 use password_hash::SaltString;
 
 use crate::database::db::Database;
+use crate::database::model::account::account::AccountError;
 use crate::database::model::account::Account;
 
 pub struct Authenticator<'a> {
@@ -114,6 +115,12 @@ impl Authenticator<'_> {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn is_connected(&mut self) -> Result<(), AccountError> {
+        self.connect_db();
+        Account::is_connected(self.connection.as_mut().unwrap(), &self.login)?;
+        Ok(())
     }
 
     pub fn logout(&mut self, token: Option<String>) -> bool {

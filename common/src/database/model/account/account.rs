@@ -1,3 +1,6 @@
+use std::error::Error;
+use std::fmt::Display;
+
 use diesel::{
     dsl::insert_into, ExpressionMethods, QueryDsl, QueryResult, RunQueryDsl, SelectableHelper,
 };
@@ -7,6 +10,21 @@ use crate::database::schema::accounts::dsl::*;
 use super::{Account, CreateAccount, UpdateAccount};
 
 type Connection = diesel::pg::PgConnection;
+
+#[derive(Debug)]
+pub enum AccountError {
+    NotConnected,
+}
+
+impl Display for AccountError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            AccountError::NotConnected => write!(f, "NotConnected"),
+        }
+    }
+}
+
+impl Error for AccountError {}
 
 impl Account {
     /// Create an Account in DB with the given CreateAccount item
@@ -57,6 +75,15 @@ impl Account {
                 session_token: Some(Some(token.clone())),
             },
         )
+    }
+
+    pub fn is_connected(db: &mut Connection, user_login: &String) -> Result<(), AccountError> {
+        if let Ok(account) = Self::read(db, user_login) {
+            if let Some(_) = account.session_token {
+                return Ok(());
+            }
+        }
+        Err(AccountError::NotConnected)
     }
 
     // Set the Account as logged out in DB for the given user_login

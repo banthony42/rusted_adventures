@@ -3,7 +3,7 @@ use diesel::{
     Selectable,
 };
 
-mod account;
+pub mod account;
 
 #[derive(Debug, Queryable, Selectable)]
 #[diesel(table_name = crate::database::schema::accounts, primary_key(login))]
