@@ -258,6 +258,7 @@ pub struct ChatController {
 const CHAT_CONNEXION: &str = "Connexion au serveur de chat ...";
 const CHAT_CONNECTED: &str = "Connecté au serveur de chat.";
 const CHAT_CONNEXION_FAILED: &str = "La connexion au serveur de chat à échoué.";
+const CHAT_ERROR_FROM_SERVER: &str = "Le serveur de chat à renvoyé une erreur.";
 const CHAT_CONNEXION_LOST: &str = "La connextion au serveur à été perdue.";
 const CHAT_RECONNECT_TIMER: u64 = 5000;
 
@@ -294,7 +295,7 @@ impl ChatController {
                                         break
                                     },
                                     Err(error) => {
-                                        model.local_warning(CHAT_CONNEXION_LOST).await;
+                                        model.local_warning(CHAT_ERROR_FROM_SERVER).await;
                                         println!("Chat receive gRPC error from server: {:?}", error);
                                     }
                                 }
