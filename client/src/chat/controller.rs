@@ -30,6 +30,7 @@ const CHAT_ERROR_FROM_SERVER: &str = "Le serveur de chat à renvoyé une erreur.
 const CHAT_CONNEXION_LOST: &str = "La connextion au serveur à été perdue.";
 const CHAT_RECONNECT_TIMER: u64 = 5000;
 
+const CHAT_USAGE: &str = "/help Affiche ce message d'aide. /w [destinataire] [text ...] Envoie un message privé au destinataire.";
 const CHAT_WHISPER_USAGE: &str = "chuchotement: nécéssite un destinataire et un contenu.";
 
 impl ChatController {
@@ -126,6 +127,11 @@ impl ChatController {
         let cmd: Vec<&str> = line.split(' ').collect();
 
         match cmd[0] {
+            "/help" | "/h" => ChatMessage::new(
+                CHAT_USAGE.to_owned(),
+                SEvent::ServerEvent(ServerEventType::SrvInfo as i32),
+                None,
+            ),
             "/w" if cmd.len() < 3 => ChatMessage::new(
                 CHAT_WHISPER_USAGE.to_owned(),
                 SEvent::ServerEvent(ServerEventType::SrvDang as i32),
