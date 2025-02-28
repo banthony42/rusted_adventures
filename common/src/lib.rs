@@ -1,5 +1,6 @@
 pub mod authenticator;
 pub mod database;
+pub mod record;
 pub mod utils;
 
 pub mod grpc_codegen {
