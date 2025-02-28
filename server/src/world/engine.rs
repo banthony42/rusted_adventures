@@ -1,11 +1,4 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
-fn get_timestamp() -> u128 {
-    return SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_millis();
-}
+use common::utils::get_timestamp;
 
 pub struct WorldEngine {
     ups: u128,

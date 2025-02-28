@@ -1,10 +1,10 @@
+use common::utils::get_timestamp;
 use constants::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use piston_window::*;
 use states::{
     login::Login,
     states::{GameState, StateFactory},
 };
-use utils::get_timestamp;
 
 mod chat;
 mod client;
@@ -16,7 +16,6 @@ mod sprite;
 mod states;
 mod tasks;
 mod ui;
-mod utils;
 mod world;
 
 fn run_game() {
