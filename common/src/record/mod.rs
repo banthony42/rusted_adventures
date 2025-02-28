@@ -2,15 +2,13 @@ use std::collections::HashMap;
 
 use crate::utils::get_timestamp;
 
-const NO_TTL: u128 = 0;
-
 #[derive(Clone)]
 struct HashData<R>
 where
     R: Clone,
 {
     expire_at: u128,
-    data: Vec<(String, R)>,
+    data: R,
 }
 
 pub struct Record<R>
@@ -27,15 +25,22 @@ where
 {
     /// Return `true` if the inner `hdata` TTL is expired.
     fn is_expired(hdata: &HashData<R>) -> bool {
-        hdata.expire_at != NO_TTL && get_timestamp() > hdata.expire_at
+        hdata.expire_at != 0 && get_timestamp() > hdata.expire_at
     }
 
-    /// Create redis proxy to mimic hash storage.
+    fn ttl_into_expire_time(ttl: u32) -> u128 {
+        if ttl == 0 {
+            return 0;
+        }
+        get_timestamp() + ttl as u128 * 1000
+    }
+
+    /// Create redis proxy to mimic key value storage.
     /// Goal here is just to use few basic redis feature, avoiding redis dependency.
     ///
     /// This code mimic redis interface, therefore if the need grow in the future
-    /// we can easily replace this by a real redis instance and library (server side)
-    /// or it will be totally rework (client side).
+    /// we can easily replace it by a real redis instance and library (server side)
+    /// or it will be totally reworked / enhanced (client side).
     ///
     /// For all the reason mention above i have follow the KISS principle for the implementation.
     pub fn new() -> Self {
@@ -44,30 +49,40 @@ where
         }
     }
 
-    /// Set `field`:`value` pair in the HashMap stored at `key`.
-    /// Mimic `HSET` redis command.
-    pub fn hset(&mut self, key: String, field: String, value: R) {
-        self.hash
-            .entry(key)
-            .and_modify(|hdata| hdata.data.push((field.clone(), value.clone())))
-            .or_insert(HashData {
-                expire_at: NO_TTL,
-                data: vec![(field, value)],
-            });
+    /// Mimic `DEL` redis command.
+    ///
+    /// Remove the given `key`.
+    pub fn del(&mut self, key: &String) {
+        self.hash.remove(key);
     }
 
-    /// Set a timeout on `key` in seconds. After the timeout has expired, the key will be deleted at the next `hget` or `update` call.
     /// Mimic `EXPIRE` redis command.
+    ///
+    /// Set a timeout on `key` in seconds. After the timeout has expired, the key will be deleted at the next `hget` or `update` call.
     pub fn expire(&mut self, key: &String, ttl: u32) {
         if let Some(hdata) = self.hash.get_mut(key) {
-            hdata.expire_at = get_timestamp() + (ttl * 1000) as u128;
+            hdata.expire_at = Self::ttl_into_expire_time(ttl)
         }
     }
 
-    /// Return all `fields` and `values` of the hash stored at `key`.
-    /// Mimic `HGETALL` redis command.
-    /// Limitation: `key` should exist. Wildcard pattern like redis does, such as: `HGETALL MYKEY*` is not implemented.
-    pub fn hgetall(&mut self, key: &String) -> Option<Vec<(String, R)>> {
+    /// Mimic `SET` redis command.
+    /// Set `key`to hold the `value: R`.
+    ///
+    /// If `key` already holds a value, it is overwritten.
+    /// `ttl` : Set the specified expire time, in seconds.
+    ///
+    /// Any previous `TTL` associated with the key is discarded on successful `SET` operation.
+    pub fn set(&mut self, key: String, value: R, ttl: Option<u32>) {
+        self.hash.insert(
+            key,
+            HashData {
+                expire_at: Self::ttl_into_expire_time(ttl.unwrap_or(0)),
+                data: value,
+            },
+        );
+    }
+
+    pub fn get(&mut self, key: &String) -> Option<R> {
         if let Some(hdata) = self.hash.get(key) {
             if Self::is_expired(&hdata) {
                 self.del(key);
@@ -78,39 +93,18 @@ where
         None
     }
 
-    /// Remove the given `key`.
-    /// Mimic `DEL` redis command.
-    pub fn del(&mut self, key: &String) {
-        self.hash.remove(key);
-    }
-
-    /// Return all data that match the `predicate`.
-    /// The returned data are also removed from the hash.
-    /// In redis, this could be impl. with a redis Lua script.
-    pub fn hgetall_match<F>(&mut self, mut predicate: F) -> Vec<Vec<(String, R)>>
-    where
-        F: FnMut(&Vec<(String, R)>) -> bool,
-    {
-        let found: Vec<Vec<(String, R)>> = self
-            .hash
-            .iter_mut()
-            .filter(|entry| predicate(&entry.1.data))
-            .map(|(_, v)| {
-                // Tricks to consume data avoiding additional hash browse:
-                // Mark each data expired, to take advantage of the next
-                // the next `update` call.
-                v.expire_at = get_timestamp() + 1;
-                v.data.clone()
-            })
-            .collect();
-        found
-    }
-
-    /// Browse all the data, and delete them if their respective `TTL` has expired.
     /// Mimic the automatic `key` removal of redis according to their `TTL`.
+    ///
+    /// Browse all the data, and delete them if their respective `TTL` has expired.
     pub fn update(&mut self) {
         self.hash
             .retain(|_, hdata| Self::is_expired(hdata) == false);
+    }
+
+    // For test
+
+    pub fn db_len(&self) -> usize {
+        self.hash.len()
     }
 }
 
@@ -125,132 +119,127 @@ mod tests {
     }
 
     #[test]
-    fn hset_hgetall_one_data() {
-        let mut myrec = Record::<CMsg>::new();
-
+    fn store_persistent_key_value() {
         let key = "mykey1".to_owned();
-        let field = "request".to_owned();
-        myrec.hset(key.clone(), field.clone(), CMsg { seq_number: 42 });
-        let result = myrec.hgetall(&key);
-        assert_eq!(
-            result,
-            Some(vec![("request".to_owned(), CMsg { seq_number: 42 })])
-        );
-    }
+        let data = CMsg { seq_number: 42 };
 
-    #[test]
-    fn hset_hgetall_with_several_data() {
         let mut myrec = Record::<CMsg>::new();
+        myrec.set(key.clone(), data.clone(), None);
 
-        let key1 = "mykey1".to_owned();
-        let key2 = "mykey2".to_owned();
-        let req_field = "request".to_owned();
-        let res_field = "response".to_owned();
+        assert_eq!(myrec.db_len(), 1);
 
-        myrec.hset(key1.clone(), req_field.clone(), CMsg { seq_number: 42 });
-        myrec.hset(key2.clone(), req_field.clone(), CMsg { seq_number: 21 });
-        myrec.hset(key1.clone(), res_field.clone(), CMsg { seq_number: 42 });
+        myrec.set("mykey2".to_owned(), data.clone(), None);
+        assert_eq!(myrec.db_len(), 2);
+        sleep(Duration::from_millis(200));
+        assert_eq!(myrec.get(&key), Some(data));
 
-        let result1 = myrec.hgetall(&key1);
-        assert_eq!(
-            result1,
-            Some(vec![
-                ("request".to_owned(), CMsg { seq_number: 42 }),
-                ("response".to_owned(), CMsg { seq_number: 42 })
-            ])
-        );
-
-        let result2 = myrec.hgetall(&key2);
-        assert_eq!(
-            result2,
-            Some(vec![("request".to_owned(), CMsg { seq_number: 21 })])
-        );
+        // `get` should only return the value it's not a `pop` operation.
+        assert_eq!(myrec.db_len(), 2);
     }
 
     #[test]
     fn delete_key() {
-        let mut myrec = Record::<CMsg>::new();
-
         let key = "mykey1".to_owned();
-        let field = "request".to_owned();
-        myrec.hset(key.clone(), field.clone(), CMsg { seq_number: 42 });
+        let data = CMsg { seq_number: 42 };
+
+        let mut myrec = Record::<CMsg>::new();
+        myrec.set(key.clone(), data.clone(), None);
+        assert_eq!(myrec.db_len(), 1);
 
         myrec.del(&key);
-        let result = myrec.hgetall(&key);
-        assert_eq!(result, None);
+        assert_eq!(myrec.db_len(), 0);
+        assert_eq!(myrec.get(&key), None);
     }
 
     #[test]
-    fn expired_key() {
+    fn expired_key_with_get() {
+        let key1 = "mykey1".to_owned();
+        let key2 = "mykey2".to_owned();
+        let data1 = CMsg { seq_number: 42 };
+        let data2 = CMsg { seq_number: 21 };
+
         let mut myrec = Record::<CMsg>::new();
+        myrec.set(key1.clone(), data1.clone(), Some(3));
+        myrec.set(key2.clone(), data2.clone(), None);
 
-        let key = "mykey1".to_owned();
-        let field = "request".to_owned();
+        // Test key1 still exist after 1 second
+        sleep(Duration::from_millis(1000));
+        assert_eq!(myrec.get(&key1), Some(data1));
 
-        myrec.hset(key.clone(), field.clone(), CMsg { seq_number: 42 });
+        // Test key1 is expired but key2 still exist
+        sleep(Duration::from_millis(2200));
 
-        let ttl: u32 = 2;
-        myrec.expire(&key, ttl);
+        // db_len still equal to 2 because expired key removal are performed at `get` or `update` call
+        assert_eq!(myrec.db_len(), 2);
 
-        sleep(Duration::from_secs((ttl + 1) as u64));
-        let result = myrec.hgetall(&key);
-        assert_eq!(result, None);
+        assert_eq!(myrec.get(&key1), None);
+        assert_eq!(myrec.get(&key2), Some(data2));
+        assert_eq!(myrec.db_len(), 1);
+
+        // Set ttl to key2 and ensure it's deleted when timeout
+        myrec.expire(&key2, 1);
+        sleep(Duration::from_millis(1200));
+        assert_eq!(myrec.get(&key2), None);
+        assert_eq!(myrec.db_len(), 0);
     }
 
     #[test]
-    fn key_still_exist() {
-        let mut myrec = Record::<CMsg>::new();
-
-        let key = "mykey1".to_owned();
-        let field = "request".to_owned();
-
-        myrec.hset(key.clone(), field.clone(), CMsg { seq_number: 42 });
-        myrec.expire(&key, 5);
-
-        sleep(Duration::from_secs(1));
-
-        let result = myrec.hgetall(&key);
-        assert_eq!(
-            result,
-            Some(vec![("request".to_owned(), CMsg { seq_number: 42 })])
-        );
-    }
-
-    #[test]
-    fn update_data() {
-        let mut myrec = Record::<CMsg>::new();
-
+    fn expired_key_with_update() {
         let key1 = "mykey1".to_owned();
         let key2 = "mykey2".to_owned();
         let key3 = "mykey3".to_owned();
-        let req_field = "request".to_owned();
+        let data = CMsg { seq_number: 42 };
 
-        myrec.hset(key1.clone(), req_field.clone(), CMsg { seq_number: 84 });
-        myrec.hset(key2.clone(), req_field.clone(), CMsg { seq_number: 42 });
-        myrec.hset(key3.clone(), req_field.clone(), CMsg { seq_number: 21 });
+        let mut myrec = Record::<CMsg>::new();
+        myrec.set(key1, data.clone(), Some(1));
+        myrec.set(key2, data.clone(), Some(3));
+        myrec.set(key3, data, None);
 
-        myrec.expire(&key1, 5);
-        myrec.expire(&key2, 3);
-        myrec.expire(&key3, 1);
-
-        sleep(Duration::from_millis(1500));
+        sleep(Duration::from_millis(100));
         myrec.update();
+        assert_eq!(myrec.db_len(), 3);
 
-        assert_eq!(
-            myrec.hgetall(&key1),
-            Some(vec![("request".to_owned(), CMsg { seq_number: 84 })])
-        );
-        assert_eq!(
-            myrec.hgetall(&key2),
-            Some(vec![("request".to_owned(), CMsg { seq_number: 42 })])
-        );
-        assert_eq!(myrec.hgetall(&key3), None);
-
-        sleep(Duration::from_secs(4));
+        sleep(Duration::from_millis(1000));
         myrec.update();
+        assert_eq!(myrec.db_len(), 2);
 
-        assert_eq!(myrec.hgetall(&key1), None);
-        assert_eq!(myrec.hgetall(&key2), None);
-        assert_eq!(myrec.hgetall(&key3), None);
+        sleep(Duration::from_millis(2000));
+        myrec.update();
+        assert_eq!(myrec.db_len(), 1);
+    }
+
+    #[test]
+    fn key_overwrite() {
+        let key = "mykey1".to_owned();
+        let data = CMsg { seq_number: 42 };
+        let data2 = CMsg { seq_number: 21 };
+
+        let mut myrec = Record::<CMsg>::new();
+        myrec.set(key.clone(), data, None);
+        myrec.set(key.clone(), data2.clone(), None);
+
+        assert_eq!(myrec.get(&key), Some(data2));
+    }
+
+    #[test]
+    fn several_recorder() {
+        let key1 = "mykey1".to_owned();
+        let key2 = "mykey2".to_owned();
+        let key3 = "mykey3".to_owned();
+        let data1 = CMsg { seq_number: 42 };
+
+        let mut struct_recorder = Record::<CMsg>::new();
+        let mut int_recorder = Record::<i32>::new();
+        let mut bool_recorder = Record::new();
+
+        struct_recorder.set(key1.clone(), data1.clone(), None);
+        int_recorder.set(key2.clone(), 42, None);
+        bool_recorder.set(key3.clone(), false, None);
+
+        sleep(Duration::from_millis(100));
+
+        assert_eq!(struct_recorder.get(&key1), Some(data1));
+        assert_eq!(int_recorder.get(&key2), Some(42));
+        assert_eq!(bool_recorder.get(&key3), Some(false));
     }
 }
