@@ -24,15 +24,15 @@ where
     R: Clone,
 {
     /// Return `true` if the inner `hdata` TTL is expired.
-    fn is_expired(hdata: &HashData<R>) -> bool {
-        hdata.expire_at != 0 && get_timestamp() > hdata.expire_at
+    fn ttl_still_valid(hdata: &HashData<R>) -> bool {
+        hdata.expire_at == 0 || get_timestamp() < hdata.expire_at
     }
 
     fn ttl_into_expire_time(ttl: u32) -> u128 {
         if ttl == 0 {
             return 0;
         }
-        get_timestamp() + ttl as u128 * 1000
+        get_timestamp() + ttl as u128
     }
 
     /// Create redis proxy to mimic key value storage.
@@ -52,13 +52,17 @@ where
     /// Mimic `DEL` redis command.
     ///
     /// Remove the given `key`.
-    pub fn del(&mut self, key: &String) {
-        self.hash.remove(key);
+    /// Return `true` if the key has been removed, `false` otherwise. (Nothing to remove)
+    pub fn del(&mut self, key: &String) -> bool {
+        match self.hash.remove(key) {
+            Some(_) => true,
+            None => false,
+        }
     }
 
     /// Mimic `EXPIRE` redis command.
     ///
-    /// Set a timeout on `key` in seconds. After the timeout has expired, the key will be deleted at the next `hget` or `update` call.
+    /// Set a timeout on `key` in milliseconds. After the timeout has expired, the key will be deleted at the next `hget` or `update` call.
     pub fn expire(&mut self, key: &String, ttl: u32) {
         if let Some(hdata) = self.hash.get_mut(key) {
             hdata.expire_at = Self::ttl_into_expire_time(ttl)
@@ -69,7 +73,7 @@ where
     /// Set `key`to hold the `value: R`.
     ///
     /// If `key` already holds a value, it is overwritten.
-    /// `ttl` : Set the specified expire time, in seconds.
+    /// `ttl` : Set the specified expire time, in milliseconds.
     ///
     /// Any previous `TTL` associated with the key is discarded on successful `SET` operation.
     pub fn set(&mut self, key: String, value: R, ttl: Option<u32>) {
@@ -82,9 +86,13 @@ where
         );
     }
 
+    /// Mimic `GET` redis command.
+    /// Get the `value` of `key`.
+    ///
+    /// If the `key` does not exist, `None` is returned.
     pub fn get(&mut self, key: &String) -> Option<R> {
         if let Some(hdata) = self.hash.get(key) {
-            if Self::is_expired(&hdata) {
+            if Self::ttl_still_valid(&hdata) == false {
                 self.del(key);
                 return None;
             }
@@ -93,17 +101,38 @@ where
         None
     }
 
+    /// Mimic `GETDEL` redis command.
+    /// Get the `value` of `key` and delete the `key`.
+    ///
+    /// Similar to `get` but it delete the `key` on success.
+    pub fn getdel(&mut self, key: &String) -> Option<R> {
+        if let Some(hdata) = self.hash.remove(key) {
+            if Self::ttl_still_valid(&hdata) {
+                return Some(hdata.data.clone());
+            }
+        }
+        None
+    }
+
     /// Mimic the automatic `key` removal of redis according to their `TTL`.
     ///
     /// Browse all the data, and delete them if their respective `TTL` has expired.
-    pub fn update(&mut self) {
-        self.hash
-            .retain(|_, hdata| Self::is_expired(hdata) == false);
+    /// If any data has been deleted, return `true`.
+    pub fn update(&mut self) -> bool {
+        let mut data_removed = false;
+        self.hash.retain(|_, hdata| {
+            let still_valid = Self::ttl_still_valid(hdata);
+            if !data_removed {
+                data_removed = still_valid;
+            }
+            still_valid
+        });
+        data_removed
     }
 
-    // For test
-
-    pub fn db_len(&self) -> usize {
+    /// For test purpose only
+    #[allow(dead_code)]
+    fn db_len(&self) -> usize {
         self.hash.len()
     }
 }
@@ -146,9 +175,22 @@ mod tests {
         myrec.set(key.clone(), data.clone(), None);
         assert_eq!(myrec.db_len(), 1);
 
-        myrec.del(&key);
+        assert_eq!(myrec.del(&key), true);
         assert_eq!(myrec.db_len(), 0);
         assert_eq!(myrec.get(&key), None);
+    }
+
+    #[test]
+    fn getdel_key() {
+        let key = "mykey1".to_owned();
+        let data = CMsg { seq_number: 42 };
+
+        let mut myrec = Record::<CMsg>::new();
+        myrec.set(key.clone(), data.clone(), None);
+        assert_eq!(myrec.db_len(), 1);
+
+        assert_eq!(myrec.getdel(&key), Some(data));
+        assert_eq!(myrec.db_len(), 0);
     }
 
     #[test]
@@ -159,7 +201,7 @@ mod tests {
         let data2 = CMsg { seq_number: 21 };
 
         let mut myrec = Record::<CMsg>::new();
-        myrec.set(key1.clone(), data1.clone(), Some(3));
+        myrec.set(key1.clone(), data1.clone(), Some(3000));
         myrec.set(key2.clone(), data2.clone(), None);
 
         // Test key1 still exist after 1 second
@@ -177,7 +219,7 @@ mod tests {
         assert_eq!(myrec.db_len(), 1);
 
         // Set ttl to key2 and ensure it's deleted when timeout
-        myrec.expire(&key2, 1);
+        myrec.expire(&key2, 1000);
         sleep(Duration::from_millis(1200));
         assert_eq!(myrec.get(&key2), None);
         assert_eq!(myrec.db_len(), 0);
@@ -191,8 +233,8 @@ mod tests {
         let data = CMsg { seq_number: 42 };
 
         let mut myrec = Record::<CMsg>::new();
-        myrec.set(key1, data.clone(), Some(1));
-        myrec.set(key2, data.clone(), Some(3));
+        myrec.set(key1, data.clone(), Some(1000));
+        myrec.set(key2, data.clone(), Some(3000));
         myrec.set(key3, data, None);
 
         sleep(Duration::from_millis(100));

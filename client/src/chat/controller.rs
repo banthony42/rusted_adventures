@@ -1,3 +1,5 @@
+use common::record::Record;
+use common::utils::SequenceNumber;
 use piston_window::*;
 
 use tokio::runtime::{Builder, Runtime};
@@ -13,7 +15,7 @@ use super::view::ChatGraphicView;
 use crate::ui::font::Font;
 
 use common::grpc_codegen::server_chat_event::Event as SEvent;
-use common::grpc_codegen::{ChatEventType, ServerEventType};
+use common::grpc_codegen::{ChatEventType, ClientChatEvent, ServerEventType};
 
 pub struct ChatController {
     me: String,
@@ -23,13 +25,14 @@ pub struct ChatController {
     _runtime: Runtime,
 }
 
+const CHAT_RECONNECT_TIMER: u64 = 5000;
+const CHAT_REQUEST_TTL: u32 = 5000;
 const CHAT_CONNEXION: &str = "Connexion au serveur de chat ...";
 const CHAT_CONNECTED: &str = "Connecté au serveur de chat.";
 const CHAT_CONNEXION_FAILED: &str = "La connexion au serveur de chat à échoué.";
 const CHAT_ERROR_FROM_SERVER: &str = "Le serveur de chat à renvoyé une erreur.";
-const CHAT_CONNEXION_LOST: &str = "La connextion au serveur à été perdue.";
-const CHAT_RECONNECT_TIMER: u64 = 5000;
-
+const CHAT_CONNEXION_LOST: &str = "La connexion au serveur à été perdue.";
+const CHAT_SERVER_RESPONSE_TIMEOUT: &str = "Le serveur a mis trop de temps à répondre.";
 const CHAT_USAGE: &str = "/help Affiche ce message d'aide. /w [destinataire] [text ...] Envoie un message privé au destinataire.";
 const CHAT_WHISPER_USAGE: &str = "chuchotement: nécéssite un destinataire et un contenu.";
 
@@ -53,13 +56,47 @@ impl ChatController {
                 if let Ok(connexion) = ChatClient::connect(login.clone(), token.clone()).await {
                     model.local_info(CHAT_CONNECTED).await;
 
+                    let mut recorder: Record<ChatMessage> = Record::new(); // TEST: what append to previous instance ?
+                    let mut seq_number = SequenceNumber::new();
                     let (stream_tx, response) = connexion.into_parts();
                     let mut stream = response.into_inner();
                     loop {
                         select! {
                             data = stream.message() => {
                                 match data {
-                                    Ok(Some(server_chat_event)) => model.post_from(server_chat_event).await,
+                                    Ok(Some(server_chat_event)) => {
+
+                                        if let Some(SEvent::ServerEvent(se)) = server_chat_event.event {
+                                            match ServerEventType::try_from(se) {
+                                                Ok(ServerEventType::SrvAck) => {
+                                                    // A request has been ACK, we should retrieve the request in the cache
+                                                    // and post it to the local chat model
+                                                    // If the corresponding request is not found, it has expired
+                                                    // Therefore do nothing since we already post a message in that case
+                                                    // (See the second `select!` case)
+                                                    if let Some(request) = recorder.getdel(&server_chat_event.seq_number.to_string()) {
+                                                        model.post_message(request).await;
+                                                    }
+                                                },
+                                                Ok(ServerEventType::SrvUnack) => {
+                                                    // A request has been UNACK, we should delete the request from the cache
+                                                    // Therefore if for any reason we received an ACK/UNACK with the same sequence number
+                                                    // It will not conflict with the previous one
+                                                    // If the request is successfully deleted post the UNACK message in the chat model.
+                                                    // Otherwise do nothing (request has expired) we already post a message in that case
+                                                    // (See the second `select!` case)
+                                                    if recorder.del(&server_chat_event.seq_number.to_string()) {
+                                                        model.post_from(server_chat_event).await;
+                                                    }
+                                                },
+                                                Ok(_) => model.post_from(server_chat_event).await,
+                                                Err(_) => todo!(),
+                                            }
+                                        }
+                                        else {
+                                            model.post_from(server_chat_event).await;
+                                        }
+                                    },
                                     Ok(None) => {
                                         model.local_warning(CHAT_CONNEXION_LOST).await;
                                         println!("Chat RPC Stream closed by the server.");
@@ -71,11 +108,30 @@ impl ChatController {
                                     }
                                 }
                             },
+                            _ = async {
+                                sleep(Duration::from_millis(1000)).await;
+                                if recorder.update() {
+                                    model.local_danger(CHAT_SERVER_RESPONSE_TIMEOUT).await;
+                                }
+                            } => {},
                             input = controller_rx.recv() => {
                                 if let Some(msg) = input {
-                                    model.post_message(msg.clone()).await;
-                                    if let Ok(cli_event) = msg.try_into() {
-                                        if let Err(error) =  stream_tx.send(cli_event).await {
+                                    let cli_event: Result<ClientChatEvent, _> = msg.clone().try_into();
+                                    if let Ok(mut ce) = cli_event {
+                                        match ChatEventType::try_from(ce.event) {
+                                            Ok(ChatEventType::Whisper) => {
+                                                // Server ACK needed: recipient could be unavailable or nonexistent
+                                                // Set a sequence_number to follow the response
+                                                // Store in the local cache the ChatMessage with the sequence number as key
+                                                // Therefore it can be retrieve with the ACK/UNACK response which will have the same sequence_number
+                                                ce.seq_number = seq_number.increment();
+                                                recorder.set(ce.seq_number.to_string(), msg, Some(CHAT_REQUEST_TTL));
+                                            },
+                                            // For any kind of broadcast messages we don't need ACK
+                                            Ok(_) => model.post_message(msg).await,
+                                            Err(_) => println!("`try_from` error unexpected since previous `try_into` has succeed."),
+                                        };
+                                        if let Err(error) =  stream_tx.send(ce).await {
                                             model.local_warning(CHAT_CONNEXION_LOST).await;
                                             println!("Chat stream tx error, maybe the rx has been dropped (grpc_codegen side): {:?}", error);
                                             break
@@ -129,7 +185,7 @@ impl ChatController {
         match cmd[0] {
             "/help" | "/h" => ChatMessage::new(
                 CHAT_USAGE.to_owned(),
-                SEvent::ServerEvent(ServerEventType::SrvInfo as i32),
+                SEvent::ServerEvent(ServerEventType::SrvInfo as i32), // TODO: Create LocalInfo instead of using SrvInfo
                 None,
             ),
             "/w" if cmd.len() < 3 => ChatMessage::new(

@@ -13,9 +13,9 @@ use super::{ChatCmd, GrpcCommand, GrpcSubcommand};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
 use common::grpc_codegen::rpg_chat_client::RpgChatClient;
 use common::grpc_codegen::server_chat_event::Event;
-use common::grpc_codegen::ServerChatEvent;
 use common::grpc_codegen::{AuthReply, AuthRequest};
 use common::grpc_codegen::{ChatEventType, ClientChatEvent};
+use common::grpc_codegen::{ServerChatEvent, ServerEventType};
 use std::error::Error;
 
 async fn authenticate_user(
@@ -84,6 +84,7 @@ fn parse_input(line: Option<String>) -> UserInputCommand {
             "exit" => return UserInputCommand::Exit,
             "/w" if cmd.len() >= 2 => {
                 return UserInputCommand::Message(ClientChatEvent {
+                    seq_number: 0,
                     event: ChatEventType::Whisper as i32,
                     text: cmd[2..].join(" "),
                     recipient: Some(cmd[1].to_string()),
@@ -91,6 +92,7 @@ fn parse_input(line: Option<String>) -> UserInputCommand {
             }
             _ => {
                 return UserInputCommand::Message(ClientChatEvent {
+                    seq_number: 0,
                     event: ChatEventType::Broadcast as i32,
                     text: cmd.join(" "),
                     recipient: None,
@@ -113,6 +115,8 @@ fn handle_receive_message(chat_event: Option<ServerChatEvent>) {
         let prefix = match event.event {
             Some(Event::ChatEvent(1)) => "mp de ",
             Some(Event::ChatEvent(0)) | Some(Event::ChatEvent(_)) => "General: ",
+            Some(Event::ServerEvent(3)) => "SERVER: ACKNOWLEDGEMENT",
+            Some(Event::ServerEvent(4)) => "SERVER: UNACKNOWLEDGEMENT",
             Some(Event::ServerEvent(_)) => "SERVER: ",
             None => return,
         };

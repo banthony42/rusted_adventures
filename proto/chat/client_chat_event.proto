@@ -7,4 +7,5 @@ message ClientChatEvent {
     ChatEventType event = 1;
     string text = 2;
     optional string recipient = 3;
+    uint32 seq_number = 4;
 }

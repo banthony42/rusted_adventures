@@ -14,6 +14,9 @@ pub struct Interface {
     img: Image,
     player_color: Color,
     mob_color: Color,
+    delta_ts: u128,
+    fps: i16,
+    timer: u128,
 }
 
 const UI_OVERLAY_FONT_SIZE: u32 = 17;
@@ -21,6 +24,9 @@ const UI_OVERLAY_FONT_SIZE: u32 = 17;
 impl Interface {
     pub fn new() -> Self {
         return Interface {
+            timer: 0,
+            fps: 0,
+            delta_ts: 0,
             img: Image::new().rect([
                 constants::GUI_WIDTH_CENTER as f64,
                 constants::MAP_HEIGHT as f64,
@@ -32,6 +38,10 @@ impl Interface {
             player_color: color::hex("0017ad"),
             mob_color: color::hex("c5c9e8"),
         };
+    }
+
+    pub fn update(&mut self, _args: &UpdateArgs, delta_ts: u128) {
+        self.delta_ts = delta_ts;
     }
 
     pub fn render(&self, evnt: &Event, window: &mut PistonWindow, game: &Game) {
@@ -74,6 +84,26 @@ impl Interface {
             window,
             color::WHITE,
             [5.0, 17.0],
+            Some(margin),
+        );
+
+        if self.timer > 500 {
+            self.timer = 0;
+            self.fps = -1;
+            if self.delta_ts > 0 {
+                self.fps = (1000 / self.delta_ts) as i16;
+            }
+        } else {
+            self.timer += self.delta_ts;
+        }
+
+        font.render_text(
+            format!("delta_time: {:?} ms\nFPS: {:?}", self.delta_ts, self.fps).as_str(),
+            UI_OVERLAY_FONT_SIZE,
+            evnt,
+            window,
+            color::WHITE,
+            [5.0, 64.0],
             Some(margin),
         );
 

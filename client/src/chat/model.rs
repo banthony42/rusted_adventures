@@ -13,7 +13,7 @@ use common::grpc_codegen::ServerEventType;
 const CHAT_MAX_MSG: usize = 20;
 const CHAT_TIME_FORMAT: &str = "%H:%M:%S";
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Target {
     /// Entrant, en provenance
     Inbound(String),
@@ -36,7 +36,7 @@ impl Target {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ChatMessage {
     time: String,
     text: String,
@@ -119,6 +119,7 @@ impl TryInto<ClientChatEvent> for ChatMessage {
             };
 
             return Ok(ClientChatEvent {
+                seq_number: 0,
                 event: event as i32,
                 text: self.text,
                 recipient: target,
@@ -220,6 +221,9 @@ impl ChatModel {
     pub fn get(&mut self) -> Vec<ChatMessage> {
         if let Ok(model) = self.model.try_lock() {
             self.cache = model.clone();
+        } else {
+            // Interesting to see how often this append
+            dbg!("ChatModel::get : fail to obtain model lock ...");
         }
         self.cache.clone()
     }

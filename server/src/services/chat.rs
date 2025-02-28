@@ -43,6 +43,7 @@ async fn broadcast(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
     let (sender, event) = chat_event.into_parts();
 
     let new_event = ServerChatEvent {
+        seq_number: 0,
         text: event.text,
         sender: Some(sender.clone()),
         event: Some(Event::ChatEvent(ChatEventType::Broadcast as i32)),
@@ -64,6 +65,7 @@ async fn whisper(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
 
     if let Some(recipient) = event.recipient {
         let new_event = ServerChatEvent {
+            seq_number: 0,
             text: event.text,
             sender: Some(sender.clone()),
             event: Some(Event::ChatEvent(ChatEventType::Whisper as i32)),
@@ -73,25 +75,36 @@ async fn whisper(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
         let recipient_disconnected = authenticator.is_connected().is_err();
 
         let clts = clients.lock().await;
-        if recipient_disconnected {
-            if let Some(server_event_tx) = clts.get(&sender) {
-                let srv_event = ServerChatEvent {
+        if let Some(sender_event_tx) = clts.get(&sender) {
+            if recipient_disconnected {
+                let sender_unacknowledgement = ServerChatEvent {
+                    seq_number: event.seq_number, // Answer using same SequenceNumber
                     text: format!(
                         "Le joueur [{}] n'existe pas ou n'est pas disponnible.",
                         recipient
                     ),
                     sender: None,
-                    event: Some(Event::ServerEvent(ServerEventType::SrvDang as i32)),
+                    event: Some(Event::ServerEvent(ServerEventType::SrvUnack as i32)),
                 };
-                if let Err(err) = server_event_tx.send(Ok(srv_event)).await {
+                if let Err(err) = sender_event_tx.send(Ok(sender_unacknowledgement)).await {
                     println!("Error: chat whisper: {:?}", err)
                 }
+                return;
             }
-            return;
+
+            let sender_acknowledgement = ServerChatEvent {
+                seq_number: event.seq_number, // Answer using same SequenceNumber
+                text: String::default(),
+                sender: None,
+                event: Some(Event::ServerEvent(ServerEventType::SrvAck as i32)),
+            };
+            if let Err(err) = sender_event_tx.send(Ok(sender_acknowledgement)).await {
+                println!("Error: chat whisper: {:?}", err)
+            }
         }
 
-        if let Some(server_event_tx) = clts.get(&recipient) {
-            if let Err(err) = server_event_tx.send(Ok(new_event)).await {
+        if let Some(recipient_event_tx) = clts.get(&recipient) {
+            if let Err(err) = recipient_event_tx.send(Ok(new_event)).await {
                 println!("Error: chat whisper: {:?}", err)
             }
         }

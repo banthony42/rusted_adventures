@@ -22,6 +22,9 @@ impl TextFieldFormat for ChatMessage {
                 Ok(ServerEventType::SrvInfo) => (color::hex("06cc2a"), self.format()),
                 Ok(ServerEventType::SrvWarn) => (color::YELLOW, self.format()),
                 Ok(ServerEventType::SrvDang) => (color::RED, self.format()),
+                Ok(ServerEventType::SrvAck) | Ok(ServerEventType::SrvUnack) => {
+                    (color::hex("f5b01a"), self.format())
+                }
                 Err(_) => (color::RED, String::from("Unexpected Event !!")),
             },
             SEvent::ChatEvent(c) => match ChatEventType::try_from(*c) {

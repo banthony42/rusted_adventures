@@ -130,7 +130,7 @@ impl GameState for Game {
         for entity in self.fake_gdata.entities.iter_mut() {
             entity.update(delta_ts, &self.assets, &self.world);
         }
-
+        self.interface.update(_args, delta_ts);
         self.chat.update(delta_ts);
     }
 

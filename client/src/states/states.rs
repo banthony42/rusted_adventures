@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use piston_window::*;
 
 use crate::tasks::task::{GameData, TaskInterface};
@@ -46,7 +48,7 @@ pub struct StateFactory<T>
 where
     T: GameState,
 {
-    __unused: T,
+    __unused: PhantomData<T>,
 }
 
 // Factory state Code common to all states
