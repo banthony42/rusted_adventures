@@ -1,3 +1,5 @@
+use crate::constants::SERVER_ENDPOINT;
+
 use super::task::{GameData, TaskData, TaskInterface};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
 use common::grpc_codegen::LogoutRequest;
@@ -57,7 +59,7 @@ impl LogoutTask {
     }
 
     async fn logout(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
-        let mut client = RpgAuthenticateClient::connect("http://127.0.0.1:2121").await?;
+        let mut client = RpgAuthenticateClient::connect(SERVER_ENDPOINT).await?;
         let request = LogoutRequest {
             login: self.login.clone(),
             token: self.token.clone(),

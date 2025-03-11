@@ -58,7 +58,7 @@ fn authentication_interceptor(req: Request<()>) -> Result<Request<()>, Status> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "127.0.0.1:2121".parse()?;
+    let addr = "0.0.0.0:21210".parse()?;
     let rpg_authenticate = RpgAuthenticateService::default();
 
     let reflection_service = tonic_reflection::server::Builder::configure()

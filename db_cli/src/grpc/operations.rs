@@ -18,11 +18,13 @@ use common::grpc_codegen::{ChatEventType, ClientChatEvent};
 use common::grpc_codegen::{ServerChatEvent, ServerEventType};
 use std::error::Error;
 
+const SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
+
 async fn authenticate_user(
     login: String,
     password: String,
 ) -> Result<String, Box<dyn Error + Send + Sync>> {
-    let mut client = RpgAuthenticateClient::connect("http://127.0.0.1:2121").await?;
+    let mut client = RpgAuthenticateClient::connect(SERVER_ENDPOINT).await?;
 
     let request = tonic::Request::new(AuthRequest {
         login: login.clone(),
@@ -57,9 +59,7 @@ async fn connect_to_chat(
     login: String,
     token: String,
 ) -> Result<SenderResponse, Box<dyn Error + Send + Sync>> {
-    let endpoint = Endpoint::from_static("http://127.0.0.1:2121")
-        .connect()
-        .await?;
+    let endpoint = Endpoint::from_static(SERVER_ENDPOINT).connect().await?;
 
     let mut client = RpgChatClient::with_interceptor(endpoint, create_interceptor(login, token));
 

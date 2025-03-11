@@ -29,3 +29,6 @@ pub const WINDOW_WIDTH_CENTER: usize = WINDOW_WIDTH / 2;
 pub const PLAYER_WIDTH: usize = 64;
 pub const PLAYER_HEIGHT: usize = 128;
 pub const PLAYER_CENTER_X: usize = PLAYER_WIDTH / 2;
+
+pub const SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
+pub const CHAT_SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";

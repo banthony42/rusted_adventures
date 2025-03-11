@@ -9,7 +9,7 @@ use common::grpc_codegen::ClientChatEvent;
 use common::grpc_codegen::ServerChatEvent;
 use std::error::Error;
 
-const CHAT_SERVER_ENDPOINT: &str = "http://127.0.0.1:2121";
+use crate::constants::CHAT_SERVER_ENDPOINT;
 
 type ResponseStreamingServerChatEvent = Response<Streaming<ServerChatEvent>>;
 pub struct ChatClient {
