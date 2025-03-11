@@ -21,6 +21,14 @@ fn create_account(create_account: CreateAccountCmd) {
     let connection = &mut Database::new().establish_connection();
 
     let mut new_account: CreateAccount = create_account.into();
+
+    // Ask user to confirm new password
+    let new_password = rpassword::prompt_password("Confirm new password: ").unwrap();
+    if new_account.password.ne(&new_password) {
+        println!("Passwords didn't match please retry.");
+        std::process::exit(1)
+    }
+
     new_account.password = Authenticator::default().hash_password(new_account.password);
 
     match Account::create(connection, &new_account) {

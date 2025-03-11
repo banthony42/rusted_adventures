@@ -13,9 +13,9 @@ use super::{ChatCmd, GrpcCommand, GrpcSubcommand};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
 use common::grpc_codegen::rpg_chat_client::RpgChatClient;
 use common::grpc_codegen::server_chat_event::Event;
+use common::grpc_codegen::ServerChatEvent;
 use common::grpc_codegen::{AuthReply, AuthRequest};
 use common::grpc_codegen::{ChatEventType, ClientChatEvent};
-use common::grpc_codegen::{ServerChatEvent, ServerEventType};
 use std::error::Error;
 
 const SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
