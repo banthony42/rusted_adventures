@@ -5,11 +5,12 @@ edition = "2021"
 
 [dependencies]
 argon2 = { version = "0.5.3", features = ["std"] }
-diesel = { version = "2.2.0", features = ["postgres"] }
+diesel = { version = "2.2.8", features = ["postgres", "uuid"] }
 dotenvy = "0.15"
 rand = "*"
 tonic = "*"
 prost = "*"
+uuid = "1.15.1"
 
 [build-dependencies]
 tonic-build = "*"

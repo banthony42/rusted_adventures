@@ -1,7 +1,8 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    accounts (login) {
+    accounts (id) {
+        id -> Uuid,
         #[max_length = 12]
         login -> Varchar,
         #[max_length = 255]

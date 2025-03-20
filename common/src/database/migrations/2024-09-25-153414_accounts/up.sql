@@ -1,6 +1,7 @@
 -- Your SQL goes here
 CREATE TABLE accounts (
-    login VARCHAR(12) NOT NULL PRIMARY KEY,
+    id uuid NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    login VARCHAR(12) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     session_token VARCHAR(255)
 );
