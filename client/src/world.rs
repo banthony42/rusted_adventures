@@ -16,15 +16,15 @@ pub struct Offset {
 }
 
 #[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub struct Coord {
+pub struct Coord_tmp {
     pub x: i32,
     pub y: i32,
 }
 
 #[derive(Clone, Debug)]
 pub struct WorldCoord {
-    pub map: Coord,
-    pub world: Coord,
+    pub map: Coord_tmp,
+    pub world: Coord_tmp,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -39,9 +39,9 @@ impl Point {
     }
 }
 
-impl Into<Coord> for Point {
-    fn into(self) -> Coord {
-        Coord {
+impl Into<Coord_tmp> for Point {
+    fn into(self) -> Coord_tmp {
+        Coord_tmp {
             x: self.x as i32,
             y: self.y as i32,
         }
@@ -59,7 +59,7 @@ impl std::ops::Mul<f64> for Point {
     }
 }
 
-impl std::ops::Add for Coord {
+impl std::ops::Add for Coord_tmp {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -70,7 +70,7 @@ impl std::ops::Add for Coord {
     }
 }
 
-impl std::ops::AddAssign for Coord {
+impl std::ops::AddAssign for Coord_tmp {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
@@ -89,21 +89,21 @@ struct MapImport {
 }
 
 pub struct World {
-    pub world: HashMap<Coord, MapData>,
+    pub world: HashMap<Coord_tmp, MapData>,
 }
 
 impl World {
     pub fn new(window: &mut PistonWindow) -> Self {
         let __world = HashMap::from([
             (
-                Coord { x: 0, y: 0 },
+                Coord_tmp { x: 0, y: 0 },
                 MapImport {
                     path: String::from("../assets/maps/map.0.0/sprite.json"),
                     info: String::from("Plaines"),
                 },
             ),
             (
-                Coord { x: 1, y: 0 },
+                Coord_tmp { x: 1, y: 0 },
                 MapImport {
                     path: String::from("../assets/maps/map.1.0/sprite.json"),
                     info: String::from("Plage cliquetante"),
@@ -206,7 +206,7 @@ impl World {
         });
     }
 
-    pub fn update(&mut self, delta_ts: u128, world_coord: &Coord) {
+    pub fn update(&mut self, delta_ts: u128, world_coord: &Coord_tmp) {
         let map_data = self
             .world
             .get_mut(world_coord)
@@ -225,7 +225,7 @@ impl World {
         }
     }
 
-    fn get_map(&self, coord: &Coord) -> Option<(Coord, &MapData)> {
+    fn get_map(&self, coord: &Coord_tmp) -> Option<(Coord_tmp, &MapData)> {
         let map = match self.world.get(coord) {
             Some(map_data) => map_data,
             None => return None,
@@ -233,13 +233,13 @@ impl World {
         return Some((coord.clone(), map));
     }
 
-    pub fn get_east_map(&self, coord: &Coord) -> Option<(Coord, &MapData)> {
-        let coord_tentative = coord.clone() + Coord { x: 1, y: 0 };
+    pub fn get_east_map(&self, coord: &Coord_tmp) -> Option<(Coord_tmp, &MapData)> {
+        let coord_tentative = coord.clone() + Coord_tmp { x: 1, y: 0 };
         self.get_map(&coord_tentative)
     }
 
-    pub fn get_west_map(&self, coord: &Coord) -> Option<(Coord, &MapData)> {
-        let coord_tentative = coord.clone() + Coord { x: -1, y: 0 };
+    pub fn get_west_map(&self, coord: &Coord_tmp) -> Option<(Coord_tmp, &MapData)> {
+        let coord_tentative = coord.clone() + Coord_tmp { x: -1, y: 0 };
         self.get_map(&coord_tentative)
     }
 }

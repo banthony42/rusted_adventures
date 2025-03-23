@@ -1,4 +1,4 @@
-use crate::{entity::Entity, world::Coord};
+use crate::{entity::Entity, world::Coord_tmp};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -9,7 +9,7 @@ pub struct FakeGameData {
 }
 
 impl FakeGameData {
-    fn fetch_entities_data(_world_coord: &Coord) -> &'static str {
+    fn fetch_entities_data(_world_coord: &Coord_tmp) -> &'static str {
         // Simulate server game data response
         return r#"[
                 {

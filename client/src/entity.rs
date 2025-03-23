@@ -12,7 +12,7 @@ use crate::{
     import::assets::{Animations, EntityAssets, GameAsset},
     sprite::Sprite,
     states::game::Game,
-    world::{Coord, Point, World, WorldCoord},
+    world::{Coord_tmp, Point, World, WorldCoord},
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -50,8 +50,8 @@ pub struct Entity {
     orientation: Orientation,
     #[serde(skip)]
     pub offset: Point,
-    pub map_coord: Coord,
-    pub world_coord: Coord,
+    pub map_coord: Coord_tmp,
+    pub world_coord: Coord_tmp,
 }
 
 pub trait Name {
