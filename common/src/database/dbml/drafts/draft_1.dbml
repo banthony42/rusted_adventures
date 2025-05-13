@@ -1,0 +1,44 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table accounts {
+  id uuid [not null, primary key]
+  login varchar(12) [not null, unique]
+  password varchar(255) [not null]
+  session_token varchar(255)
+}
+
+
+Enum CLASS {
+  Warrior
+  Witcher
+}
+
+Table players {
+  account_id uuid [not null]
+  name varchar(12) [unique, primary key]
+  class CLASS
+}
+
+Table locations {
+  player_name varchar(12) [not null, unique]
+  world point [not null]
+  map point [not null]
+}
+
+Enum ENTITIES {
+  Warrior
+  Witcher
+  Bouftou
+  Krabby
+}
+
+
+
+Ref {
+  locations.player_name > players.name [delete: cascade, update: no action, color: #79AD51]
+}
+
+Ref {
+    players.account_id > accounts.id [delete: cascade, update: no action, color: #79AD51]
+}

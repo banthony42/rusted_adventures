@@ -1,0 +1,79 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table accounts {
+  id uuid [not null, primary key]
+  login varchar(12) [not null, unique]
+  password varchar(255) [not null]
+  session_token varchar(255)
+}
+
+Enum CLASS {
+  Warrior
+  Witcher
+}
+
+Table characters {
+  id integer [not null, primary key]
+  account_id uuid [not null]
+  entity_id integer [not null]
+  class CLASS [not null]
+}
+
+Table entities {
+  id integer [primary key]
+  name varchar(12) [not null]
+}
+
+Table locations {
+  entity_id varchar(12) [not null, unique]
+  world point [not null]
+  map point [not null]
+}
+
+// Enum MONSTER {
+//   Bouftou
+//   Krabby
+// }
+
+// Table monsters {
+//   id integer [primary key]
+//   entity_id integer [not null]
+//   type MONSTER
+// }
+
+// Enum ITEM {
+//   Sword
+//   Potion
+// }
+
+// Table items {
+//   id integer [primary key]
+//   entity_id integer [not null]
+//   type ITEM
+// }
+
+/// Account
+Ref {
+    accounts.id > characters.account_id [delete: cascade, update: no action, color: #79AD51]
+}
+
+/// Characters
+Ref {
+    entities.id > characters.entity_id [delete: cascade, update: no action, color: #79AD51]
+}
+
+/// Items
+// Ref {
+//     entities.id > items.entity_id [delete: cascade, update: no action, color: #79AD51]
+// }
+
+/// Monster
+// Ref {
+//     entities.id > monsters.entity_id [delete: cascade, update: no action, color: #79AD51]
+// }
+
+/// Entities
+Ref {
+   entities.id > locations.entity_id [delete: cascade, update: no action, color: #79AD51]
+}

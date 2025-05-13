@@ -1,3 +1,5 @@
+use crate::character::CharacterCommand;
+
 use super::account::AccountCommand;
 use super::grpc::GrpcCommand;
 use clap::{Parser, Subcommand};
@@ -13,5 +15,10 @@ pub struct DBCliArgs {
 pub enum Commands {
     /// Create, update, delete or show accounts
     Account(AccountCommand),
+
+    /// Test GRPc services
     Grpc(GrpcCommand),
+
+    /// Create, delete or show characters
+    Character(CharacterCommand),
 }
