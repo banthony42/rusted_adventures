@@ -9,9 +9,10 @@ path = "src/main.rs"
 
 [dependencies]
 chrono = "*"
-piston = "*"
-piston2d-graphics = "*"
-piston_window = "*"
+piston = "0.53.0"
+piston2d-graphics = "0.40.0"
+piston_window = "0.119.0"
+
 tokio = { version = "1.40.0", features = ["full"] }
 tonic = "*"
 prost = "*"
