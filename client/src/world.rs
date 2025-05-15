@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::fs;
 
 use crate::{
-    constants,
+    constants::*,
     import::tilemap::LoadedMap,
     sprite::{Frame, Sprite},
     states::game::Game,
@@ -81,6 +81,7 @@ pub struct MapData {
     pub frames: Vec<Frame>,
     pub timer: u128,
     pub f_ptr: usize,
+    pub colliders: Vec<Vec<bool>>,
 }
 
 struct MapImport {
@@ -140,6 +141,9 @@ impl World {
                 })
                 .collect();
 
+            let mut collider_map =
+                vec![vec![false; TILEMAP_WIDTH as usize]; TILEMAP_HEIGHT as usize];
+
             let frames: Vec<Frame> = loaded_map
                 .frames
                 .iter()
@@ -150,6 +154,11 @@ impl World {
                         .iter()
                         .filter(|lsprt| lsprt.frame == index)
                         .map(|sprt| {
+                            if sprt.collider {
+                                let x = (sprt.tile_index % TILEMAP_WIDTH) as usize;
+                                let y = (sprt.tile_index / TILEMAP_WIDTH) as usize;
+                                collider_map[y][x] = sprt.collider;
+                            }
                             Sprite::new(
                                 tilesets[sprt.tileset_id].clone(),
                                 sprt.tileset_index,
@@ -174,6 +183,7 @@ impl World {
                     frames: frames,
                     timer: 0,
                     f_ptr: 0,
+                    colliders: collider_map,
                 },
             );
         }
@@ -193,10 +203,10 @@ impl World {
                         &DrawState::default(),
                         ctx.transform.trans(
                             game.margin.width
-                                + pos[0] as f64 * constants::TILE_WIDTH as f64
+                                + pos[0] as f64 * TILE_WIDTH as f64
                                 + sprt.offset.x as f64,
                             game.margin.height
-                                + pos[1] as f64 * constants::TILE_HEIGHT as f64
+                                + pos[1] as f64 * TILE_HEIGHT as f64
                                 + sprt.offset.y as f64,
                         ),
                         gl,

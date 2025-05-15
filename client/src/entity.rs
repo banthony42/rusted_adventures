@@ -5,12 +5,8 @@ use piston_window::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    constants::{
-        MAP_HEIGHT, MAP_WIDTH, PLAYER_CENTER_X, PLAYER_HEIGHT, PLAYER_WIDTH, TILEMAP_WIDTH,
-        TILE_HEIGHT, TILE_WIDTH,
-    },
+    constants::*,
     import::assets::{Animations, EntityAssets, GameAsset},
-    sprite::Sprite,
     states::game::Game,
     world::{Coord_tmp, Point, World, WorldCoord},
 };
@@ -147,26 +143,23 @@ impl Entity {
     }
 
     fn detect_map_collisions(&self, world: &World, mut w_pos: WorldCoord) -> bool {
-        // Compute the sprite cell x,y coordinate
-        w_pos.map.x = (w_pos.map.x - (w_pos.map.x % TILE_WIDTH as i32)) / 64;
-        w_pos.map.y = (w_pos.map.y - (w_pos.map.y % TILE_HEIGHT as i32)) / 64;
-
-        // Compute the sprite cell number
-        let tile_index = w_pos.map.x as u32 + (w_pos.map.y as u32 * TILEMAP_WIDTH);
-
         let map_data = world
             .world
             .get(&w_pos.world)
             .expect(format!("==> Trying to get map_data from : {:?}", self.world_coord).as_str());
 
-        let cur_frame = &map_data.frames[map_data.f_ptr];
-        return cur_frame
-            .sprites
-            .iter()
-            .filter(|sprt| sprt.collider == false) // For all sprites collider for this map
-            .filter(|sprt| sprt.position == tile_index) // Does the entity is on the collider cell
-            .collect::<Vec<&Sprite>>()
-            .is_empty();
+        // Compute the sprite cell x,y coordinate
+        println!("MAP : y:{:?} x: {:?}", w_pos.map.y, w_pos.map.x);
+        w_pos.map.x = ((w_pos.map.x - (w_pos.map.x % TILE_WIDTH as i32)) / 64)
+            .min((TILEMAP_WIDTH - 1) as i32);
+        w_pos.map.y = ((w_pos.map.y - (w_pos.map.y % TILE_HEIGHT as i32)) / 64)
+            .min((TILEMAP_HEIGHT - 1) as i32);
+        println!(
+            "CELL: y:{:?} x: {:?}",
+            w_pos.map.y.min((TILEMAP_HEIGHT - 1) as i32),
+            w_pos.map.x
+        );
+        return map_data.colliders[w_pos.map.y as usize][w_pos.map.x as usize];
     }
 
     fn detect_map_change(&mut self, world: &World, w_pos: &mut WorldCoord) {
