@@ -1,4 +1,4 @@
-use crate::{constants, world::Offset};
+use crate::{constants::*, world::Offset};
 use piston_window::*;
 
 pub struct Sprite {
@@ -45,20 +45,21 @@ impl Sprite {
     }
 
     pub fn get_src_rect(&self) -> [f64; 4] {
+        let f64width = TILE_WIDTH as f64;
+        let f64height = TILE_HEIGHT as f64;
         [
-            (self.tile as u32 % (self.tileset.get_width() / constants::TILE_WIDTH)
-                * constants::TILE_WIDTH) as f64,
-            (self.tile as u32 / (self.tileset.get_width() / constants::TILE_WIDTH)
-                * constants::TILE_HEIGHT) as f64,
-            constants::TILE_WIDTH as f64,
-            constants::TILE_HEIGHT as f64,
+            self.tile as f64 % (self.tileset.get_width() as f64 / f64width) * f64width,
+            self.tile as f64 / (self.tileset.get_width() as f64 / f64width) * f64height,
+            f64width,
+            f64height,
         ]
     }
 
     pub fn get_tile_position(&self) -> [f64; 2] {
+        let u32width = TILEMAP_WIDTH as u32;
         [
-            (self.position % constants::TILEMAP_WIDTH) as f64,
-            (self.position / constants::TILEMAP_WIDTH) as f64,
+            (self.position % u32width) as f64,
+            (self.position / u32width) as f64,
         ]
     }
 }

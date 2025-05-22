@@ -1,9 +1,10 @@
 // Map and Interface size
 // Add check after loading map and gui, if size differ from const stop the program
-pub const TILEMAP_WIDTH: u32 = 16;
-pub const TILEMAP_HEIGHT: u32 = 12;
-pub const TILE_WIDTH: u32 = 64;
-pub const TILE_HEIGHT: u32 = 64;
+pub const TILEMAP_WIDTH: usize = 16;
+pub const TILEMAP_HEIGHT: usize = 12;
+pub const TILEMAP_LINEAR_SIZE: usize = TILEMAP_WIDTH * TILEMAP_HEIGHT;
+pub const TILE_WIDTH: usize = 64;
+pub const TILE_HEIGHT: usize = 64;
 
 pub const MAP_WIDTH: usize = (TILE_WIDTH * TILEMAP_WIDTH) as usize;
 pub const MAP_HEIGHT: usize = (TILE_HEIGHT * TILEMAP_HEIGHT) as usize;

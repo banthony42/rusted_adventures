@@ -1,21 +1,18 @@
-use crate::{
-    constants::{TILEMAP_HEIGHT, TILEMAP_WIDTH},
-    world::Coord_tmp,
-};
+use crate::{constants::TILEMAP_LINEAR_SIZE, world::MapCoord};
 
 pub struct PathFinder {
-    start: Coord_tmp,
-    destination: Coord_tmp,
+    start: MapCoord,
+    destination: MapCoord,
     map: Vec<Vec<bool>>,
 }
 
 struct Cell {
-    cell: Coord_tmp,
+    cell: MapCoord,
     priority: u32,
 }
 
 impl PathFinder {
-    pub fn new(start: Coord_tmp, destination: Coord_tmp, map: Vec<Vec<bool>>) -> Self {
+    pub fn new(start: MapCoord, destination: MapCoord, map: Vec<Vec<bool>>) -> Self {
         PathFinder {
             start,
             destination,
@@ -23,17 +20,16 @@ impl PathFinder {
         }
     }
 
-    fn manhattan_distance_from(&self, cell: &Coord_tmp) -> u32 {
+    fn manhattan_distance_from(&self, cell: &MapCoord) -> u32 {
         ((cell.x - self.destination.x).abs() + (cell.y - self.destination.y).abs()).max(0) as u32
     }
 
-    pub fn compute(&self) -> Option<Vec<Coord_tmp>> {
-        let map_size = (TILEMAP_HEIGHT * TILEMAP_WIDTH) as usize;
+    pub fn compute(&self) -> Option<Vec<MapCoord>> {
         let mut queue: Vec<Cell> = Vec::new();
-        let mut cost: Vec<Option<u32>> = vec![None; map_size];
-        let mut predecessors: Vec<Option<Coord_tmp>> = vec![None; map_size];
+        let mut cost: Vec<Option<u32>> = vec![None; TILEMAP_LINEAR_SIZE];
+        let mut predecessors: Vec<Option<MapCoord>> = vec![None; TILEMAP_LINEAR_SIZE];
 
-        cost[self.start.flat_position()] = Some(0);
+        cost[self.start.linear_index()] = Some(0);
         queue.push(Cell {
             cell: self.start,
             priority: 0,
@@ -46,40 +42,34 @@ impl PathFinder {
                     break;
                 }
 
-                let current_cost = cost[current.cell.flat_position()].unwrap();
+                let current_cost = cost[current.cell.linear_index()].unwrap();
 
                 let neighbours = vec![
-                    (current.cell + Coord_tmp { x: 1, y: 0 })
-                        .bounds_x_with(TILEMAP_WIDTH as i32 - 1, 0)
-                        .bounds_y_with(TILEMAP_HEIGHT as i32 - 1, 0), // Right neighb'
-                    (current.cell + Coord_tmp { x: 0, y: 1 })
-                        .bounds_x_with(TILEMAP_WIDTH as i32 - 1, 0)
-                        .bounds_y_with(TILEMAP_HEIGHT as i32 - 1, 0), // Below neighb'
-                    (current.cell + Coord_tmp { x: -1, y: 0 })
-                        .bounds_x_with(TILEMAP_WIDTH as i32 - 1, 0)
-                        .bounds_y_with(TILEMAP_HEIGHT as i32 - 1, 0), // Above neighb'
-                    (current.cell + Coord_tmp { x: 0, y: -1 })
-                        .bounds_x_with(TILEMAP_WIDTH as i32 - 1, 0)
-                        .bounds_y_with(TILEMAP_HEIGHT as i32 - 1, 0), // Left neighb'
+                    (current.cell + MapCoord { x: 1, y: 0 }).limit(), // Right neighb'
+                    (current.cell + MapCoord { x: 0, y: 1 }).limit(), // Below neighb'
+                    (current.cell + MapCoord { x: -1, y: 0 }).limit(), // Above neighb'
+                    (current.cell + MapCoord { x: 0, y: -1 }).limit(), // Left neighb'
                 ];
 
                 let _: Vec<_> = neighbours
                     .iter()
                     .filter(|nb| self.map[nb.y as usize][nb.x as usize] == false) // Filter out collider cell
                     .map(|nb| {
-                        let nb_cost = current_cost + 1;
+                        let neighbour_index = nb.linear_index();
+                        let current_neighbour_cost = current_cost + 1;
+
                         // If we already encounter this cell
-                        if let Some(last_nb_cost) = cost[nb.flat_position()] {
+                        if let Some(last_cost) = cost[neighbour_index] {
                             // Skip this new cost if the last one is better
-                            if nb_cost >= last_nb_cost {
+                            if current_neighbour_cost >= last_cost {
                                 return;
                             }
                         }
 
-                        cost[nb.flat_position()] = Some(nb_cost);
-                        predecessors[nb.flat_position()] = Some(current.cell);
+                        cost[neighbour_index] = Some(current_neighbour_cost);
+                        predecessors[neighbour_index] = Some(current.cell);
                         queue.push(Cell {
-                            priority: nb_cost + self.manhattan_distance_from(&nb),
+                            priority: current_neighbour_cost + self.manhattan_distance_from(&nb),
                             cell: *nb,
                         });
                         queue.sort_by(|a, b| b.priority.cmp(&a.priority));
@@ -97,7 +87,7 @@ impl PathFinder {
         path.push(self.destination);
 
         loop {
-            if let Some(parent) = predecessors[cursor.flat_position()] {
+            if let Some(parent) = predecessors[cursor.linear_index()] {
                 path.push(parent.clone());
                 cursor = parent;
             } else {

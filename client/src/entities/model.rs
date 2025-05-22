@@ -1,26 +1,26 @@
 use crate::{
     import::assets::{Animations, EntityAssets},
-    world::Coord_tmp,
+    world::{MapCoord, WorldCoord},
 };
 
 pub struct EntityModel {
     name: String,
     race: Bestiary,
-    map: Coord_tmp,
-    world: Coord_tmp,
+    map: MapCoord,
+    world: WorldCoord,
     state: Animations,
-    path: Option<Vec<Coord_tmp>>,
+    path: Option<Vec<MapCoord>>,
     frame: u8,
     timer: u128,
 }
 
 // Needed to manipulate EntityModel attributes using IEntity abstraction
 pub trait IEntity {
-    fn get_world(&self) -> Coord_tmp;
-    fn set_world(&mut self, world: Coord_tmp);
+    fn get_world(&self) -> WorldCoord;
+    fn set_world(&mut self, world: WorldCoord);
 
-    fn get_map(&self) -> Coord_tmp;
-    fn set_map(&mut self, map: Coord_tmp);
+    fn get_map(&self) -> MapCoord;
+    fn set_map(&mut self, map: MapCoord);
 
     fn get_timer(&self) -> u128;
     fn set_timer(&mut self, timer: u128);
@@ -30,8 +30,8 @@ pub trait IEntity {
 
     fn get_assets(&self) -> &EntityAssets;
 
-    fn set_path(&mut self, path: Option<Vec<Coord_tmp>>);
-    fn get_path(&self) -> Option<Vec<Coord_tmp>>;
+    fn set_path(&mut self, path: Option<Vec<MapCoord>>);
+    fn get_path(&self) -> Option<Vec<MapCoord>>;
 }
 
 impl EntityModel {
@@ -39,8 +39,8 @@ impl EntityModel {
         EntityModel {
             name,
             race,
-            world: Coord_tmp::default(),
-            map: Coord_tmp::default(),
+            world: WorldCoord::default(),
+            map: MapCoord::default(),
             state: Animations::default(),
             path: None,
             timer: 0,
@@ -68,19 +68,19 @@ pub enum Bestiary {
 }
 
 impl IEntity for EntityModel {
-    fn set_world(&mut self, world: Coord_tmp) {
+    fn set_world(&mut self, world: WorldCoord) {
         self.world = world;
     }
 
-    fn set_map(&mut self, map: Coord_tmp) {
-        self.map = map;
-    }
-
-    fn get_world(&self) -> Coord_tmp {
+    fn get_world(&self) -> WorldCoord {
         self.world
     }
 
-    fn get_map(&self) -> Coord_tmp {
+    fn set_map(&mut self, map: MapCoord) {
+        self.map = map.limit();
+    }
+
+    fn get_map(&self) -> MapCoord {
         self.map
     }
 
@@ -104,11 +104,11 @@ impl IEntity for EntityModel {
         self.get_assets()
     }
 
-    fn get_path(&self) -> Option<Vec<Coord_tmp>> {
+    fn get_path(&self) -> Option<Vec<MapCoord>> {
         self.path.clone()
     }
 
-    fn set_path(&mut self, path: Option<Vec<Coord_tmp>>) {
+    fn set_path(&mut self, path: Option<Vec<MapCoord>>) {
         self.path = path;
     }
 }

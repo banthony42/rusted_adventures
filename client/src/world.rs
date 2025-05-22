@@ -13,62 +13,68 @@ pub struct Offset {
     pub y: u64,
 }
 
-#[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq)]
-pub struct Coord_tmp {
-    pub x: i32,
-    pub y: i32,
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct MapCoord {
+    pub x: i16,
+    pub y: i16,
 }
 
-impl Coord_tmp {
-    pub fn flat_position(&self) -> usize {
-        ((self.y.max(0).min(TILEMAP_HEIGHT as i32 - 1) as u32 * TILEMAP_WIDTH)
-            + self.x.max(0).min(TILEMAP_WIDTH as i32 - 1) as u32) as usize
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct WorldCoord {
+    pub x: i8,
+    pub y: i8,
+}
+
+impl MapCoord {
+    /// Get linear index of this Map coordinate.
+    /// Then it can be use to retrieve the same pixel in an 1D array,
+    /// where its size is TILEMAP_LINEAR_SIZE (TILEMAP_WIDTH * TILEMAP_HEIGHT)
+    pub fn linear_index(&self) -> usize {
+        self.limit();
+        self.y as usize * TILEMAP_WIDTH + self.x as usize
     }
 
-    pub fn bounds_x_with(mut self, min: i32, max: i32) -> Self {
-        self.x = self.x.max(max).min(min);
+    /// Limit this Map Coordinate to TILEMAP limits.
+    pub fn limit(mut self) -> Self {
+        self.x = self.x.max(0).min(TILEMAP_WIDTH as i16 - 1);
+        self.y = self.y.max(0).min(TILEMAP_HEIGHT as i16 - 1);
         self
     }
-
-    pub fn bounds_y_with(mut self, min: i32, max: i32) -> Self {
-        self.y = self.y.max(max).min(min);
-        self
-    }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
-struct Point {
-    pub x: f64,
-    pub y: f64,
-}
+// #[derive(Debug, Clone, Copy, Default)]
+// struct Point {
+//     pub x: f64,
+//     pub y: f64,
+// }
 
-impl Point {
-    pub fn is_null(&self) -> bool {
-        return self.x == 0.0 && self.y == 0.0;
-    }
-}
+// impl Point {
+//     pub fn is_null(&self) -> bool {
+//         return self.x == 0.0 && self.y == 0.0;
+//     }
+// }
 
-impl Into<Coord_tmp> for Point {
-    fn into(self) -> Coord_tmp {
-        Coord_tmp {
-            x: self.x as i32,
-            y: self.y as i32,
-        }
-    }
-}
+// impl Into<MapCoord> for Point {
+//     fn into(self) -> MapCoord {
+//         MapCoord {
+//             x: self.x as i16,
+//             y: self.y as i16,
+//         }
+//     }
+// }
 
-impl std::ops::Mul<f64> for Point {
-    type Output = Self;
+// impl std::ops::Mul<f64> for Point {
+//     type Output = Self;
 
-    fn mul(self, rhs: f64) -> Self::Output {
-        Self {
-            x: self.x * rhs,
-            y: self.y * rhs,
-        }
-    }
-}
+//     fn mul(self, rhs: f64) -> Self::Output {
+//         Self {
+//             x: self.x * rhs,
+//             y: self.y * rhs,
+//         }
+//     }
+// }
 
-impl std::ops::Add for Coord_tmp {
+impl std::ops::Add for MapCoord {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -79,7 +85,24 @@ impl std::ops::Add for Coord_tmp {
     }
 }
 
-impl std::ops::AddAssign for Coord_tmp {
+impl std::ops::AddAssign for MapCoord {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl std::ops::Add for WorldCoord {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl std::ops::AddAssign for WorldCoord {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
@@ -99,7 +122,7 @@ struct MapImport {
 }
 
 pub struct World {
-    pub world: HashMap<Coord_tmp, MapData>,
+    pub world: HashMap<WorldCoord, MapData>,
     margin: Size,
 }
 
@@ -107,14 +130,14 @@ impl World {
     pub fn new(window: &mut PistonWindow) -> Self {
         let __world = HashMap::from([
             (
-                Coord_tmp { x: 0, y: 0 },
+                WorldCoord { x: 0, y: 0 },
                 MapImport {
                     path: String::from("../assets/maps/map.0.0/sprite.json"),
                     info: String::from("Plaines"),
                 },
             ),
             (
-                Coord_tmp { x: 1, y: 0 },
+                WorldCoord { x: 1, y: 0 },
                 MapImport {
                     path: String::from("../assets/maps/map.1.0/sprite.json"),
                     info: String::from("Plage cliquetante"),
@@ -169,8 +192,8 @@ impl World {
                         .filter(|lsprt| lsprt.frame == index)
                         .map(|sprt| {
                             if sprt.collider {
-                                let x = (sprt.tile_index % TILEMAP_WIDTH) as usize;
-                                let y = (sprt.tile_index / TILEMAP_WIDTH) as usize;
+                                let x = sprt.tile_index as usize % TILEMAP_WIDTH;
+                                let y = sprt.tile_index as usize / TILEMAP_WIDTH;
                                 collider_map[y][x] = sprt.collider;
                             }
                             Sprite::new(
@@ -204,7 +227,7 @@ impl World {
         return world;
     }
 
-    pub fn render(&self, evnt: &Event, window: &mut PistonWindow, player_world_map: &Coord_tmp) {
+    pub fn render(&self, evnt: &Event, window: &mut PistonWindow, player_world_map: &WorldCoord) {
         let map_data = self.world.get(player_world_map).unwrap();
         window.draw_2d(evnt, |ctx, gl, _device| {
             let _ = map_data.frames[map_data.f_ptr]
@@ -216,12 +239,8 @@ impl World {
                         sprt.get_texture(),
                         &DrawState::default(),
                         ctx.transform.trans(
-                            self.margin.width
-                                + pos[0] as f64 * TILE_WIDTH as f64
-                                + sprt.offset.x as f64,
-                            self.margin.height
-                                + pos[1] as f64 * TILE_HEIGHT as f64
-                                + sprt.offset.y as f64,
+                            self.margin.width + pos[0] * TILE_WIDTH as f64 + sprt.offset.x as f64,
+                            self.margin.height + pos[1] * TILE_HEIGHT as f64 + sprt.offset.y as f64,
                         ),
                         gl,
                     );
@@ -230,7 +249,7 @@ impl World {
         });
     }
 
-    pub fn update(&mut self, delta_ts: u128, world_coord: &Coord_tmp) {
+    pub fn update(&mut self, delta_ts: u128, world_coord: &WorldCoord) {
         let map_data = self
             .world
             .get_mut(world_coord)
@@ -253,7 +272,7 @@ impl World {
         self.margin = margin.clone();
     }
 
-    fn get_map(&self, coord: &Coord_tmp) -> Option<(Coord_tmp, &MapData)> {
+    fn get_map(&self, coord: &WorldCoord) -> Option<(WorldCoord, &MapData)> {
         let map = match self.world.get(coord) {
             Some(map_data) => map_data,
             None => return None,
@@ -261,13 +280,13 @@ impl World {
         return Some((coord.clone(), map));
     }
 
-    pub fn get_east_map(&self, coord: &Coord_tmp) -> Option<(Coord_tmp, &MapData)> {
-        let coord_tentative = coord.clone() + Coord_tmp { x: 1, y: 0 };
+    pub fn get_east_map(&self, coord: &WorldCoord) -> Option<(WorldCoord, &MapData)> {
+        let coord_tentative = coord.clone() + WorldCoord { x: 1, y: 0 };
         self.get_map(&coord_tentative)
     }
 
-    pub fn get_west_map(&self, coord: &Coord_tmp) -> Option<(Coord_tmp, &MapData)> {
-        let coord_tentative = coord.clone() + Coord_tmp { x: -1, y: 0 };
+    pub fn get_west_map(&self, coord: &WorldCoord) -> Option<(WorldCoord, &MapData)> {
+        let coord_tentative = coord.clone() + WorldCoord { x: -1, y: 0 };
         self.get_map(&coord_tentative)
     }
 }

@@ -59,8 +59,8 @@ impl EntityView {
                             let cell_color = [0.0, (1.0 - (1.0 / index as f32)), 1.0, 0.4];
                             Rectangle::new(cell_color).draw(
                                 [
-                                    self.margin.width + (cell.x * 64 as i32) as f64,
-                                    self.margin.height + (cell.y * 64 as i32) as f64,
+                                    self.margin.width + (cell.x as f64 * 64.0),
+                                    self.margin.height + (cell.y as f64 * 64.0),
                                     64.0,
                                     64.0,
                                 ],

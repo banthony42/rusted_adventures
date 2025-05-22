@@ -87,15 +87,14 @@ impl GameState for Game {
         });
 
         self.world
-            .render(evnt, window, &self.entities.player_world_pos());
+            .render(evnt, window, &self.entities.player_world());
         self.entities.render(evnt, window);
         self.interface.render(evnt, window, &self);
         self.chat.render(evnt, window, &mut self.font);
     }
 
     fn update(&mut self, _args: &UpdateArgs, delta_ts: u128) {
-        self.world
-            .update(delta_ts, &self.entities.player_world_pos());
+        self.world.update(delta_ts, &self.entities.player_world());
         self.entities.update(delta_ts);
         self.interface.update(_args, delta_ts);
         self.chat.update(delta_ts);

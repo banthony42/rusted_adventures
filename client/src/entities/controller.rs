@@ -3,10 +3,9 @@ use std::collections::HashMap;
 use piston::{Button, MouseButton, Size};
 
 use crate::{
-    constants::{TILEMAP_HEIGHT, TILEMAP_WIDTH},
     entities::path_finding::PathFinder,
     import::assets::{EntityAssets, GameAsset},
-    world::{Coord_tmp, MapData},
+    world::{MapCoord, MapData, WorldCoord},
 };
 
 use super::{client::EntityClient, model::IEntity, view::EntityView};
@@ -37,7 +36,7 @@ impl EntityController {
         }
     }
 
-    pub fn player_world_pos(&self) -> Coord_tmp {
+    pub fn player_world(&self) -> WorldCoord {
         self.player.get_world().clone()
     }
 
@@ -64,15 +63,16 @@ impl EntityController {
         self.mouse_pos = args.clone();
     }
 
-    pub fn key_press(&mut self, args: &Button, world_map: &HashMap<Coord_tmp, MapData>) {
+    pub fn key_press(&mut self, args: &Button, world_map: &HashMap<WorldCoord, MapData>) {
         if let Button::Mouse(MouseButton::Left) = args {
-            let x = self.mouse_pos[0] - self.margin.width;
-            let y = self.mouse_pos[1] - self.margin.height;
+            let x = (self.mouse_pos[0] - self.margin.width) as i16;
+            let y = (self.mouse_pos[1] - self.margin.height) as i16;
             // TODO: maybe just compute the start point of the cell is enough
-            let destination = Coord_tmp {
-                x: (x as u32 / 64).min(TILEMAP_WIDTH - 1) as i32,
-                y: (y as u32 / 64).min(TILEMAP_HEIGHT - 1) as i32,
-            };
+            let destination = MapCoord {
+                x: x / 64,
+                y: y / 64,
+            }
+            .limit();
             let pf = PathFinder::new(
                 self.player.get_map(),
                 destination,
@@ -91,16 +91,16 @@ impl EntityController {
             match key {
                 piston::Key::Up => self
                     .player
-                    .set_map(self.player.get_map() + Coord_tmp { x: 0, y: -1 }),
+                    .set_map(self.player.get_map() + MapCoord { x: 0, y: -1 }),
                 piston::Key::Down => self
                     .player
-                    .set_map(self.player.get_map() + Coord_tmp { x: 0, y: 1 }),
+                    .set_map(self.player.get_map() + MapCoord { x: 0, y: 1 }),
                 piston::Key::Left => self
                     .player
-                    .set_map(self.player.get_map() + Coord_tmp { x: -1, y: 0 }),
+                    .set_map(self.player.get_map() + MapCoord { x: -1, y: 0 }),
                 piston::Key::Right => self
                     .player
-                    .set_map(self.player.get_map() + Coord_tmp { x: 1, y: 0 }),
+                    .set_map(self.player.get_map() + MapCoord { x: 1, y: 0 }),
                 _ => {}
             }
         }
