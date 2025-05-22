@@ -93,8 +93,9 @@ impl GameAsset {
     }
 }
 
-#[derive(Debug, Eq, Hash, PartialEq, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Eq, Hash, PartialEq, Clone, Copy, Serialize, Deserialize, Default)]
 pub enum Animations {
+    #[default]
     Idle,
     Run,
 }
@@ -103,6 +104,12 @@ pub enum Animations {
 pub enum EntityAssets {
     Character(Animations),
     Bouftou(Animations),
+}
+
+impl Default for EntityAssets {
+    fn default() -> Self {
+        Self::Character(Animations::default())
+    }
 }
 
 pub fn load_assets(window: &mut PistonWindow) -> HashMap<EntityAssets, GameAsset> {

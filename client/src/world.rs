@@ -1,5 +1,4 @@
 use piston_window::*;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 
@@ -7,7 +6,6 @@ use crate::{
     constants::*,
     import::tilemap::LoadedMap,
     sprite::{Frame, Sprite},
-    states::game::Game,
 };
 
 pub struct Offset {
@@ -15,20 +13,31 @@ pub struct Offset {
     pub y: u64,
 }
 
-#[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Eq, Hash, PartialEq)]
 pub struct Coord_tmp {
     pub x: i32,
     pub y: i32,
 }
 
-#[derive(Clone, Debug)]
-pub struct WorldCoord {
-    pub map: Coord_tmp,
-    pub world: Coord_tmp,
+impl Coord_tmp {
+    pub fn flat_position(&self) -> usize {
+        ((self.y.max(0).min(TILEMAP_HEIGHT as i32 - 1) as u32 * TILEMAP_WIDTH)
+            + self.x.max(0).min(TILEMAP_WIDTH as i32 - 1) as u32) as usize
+    }
+
+    pub fn bounds_x_with(mut self, min: i32, max: i32) -> Self {
+        self.x = self.x.max(max).min(min);
+        self
+    }
+
+    pub fn bounds_y_with(mut self, min: i32, max: i32) -> Self {
+        self.y = self.y.max(max).min(min);
+        self
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct Point {
+struct Point {
     pub x: f64,
     pub y: f64,
 }
@@ -91,6 +100,7 @@ struct MapImport {
 
 pub struct World {
     pub world: HashMap<Coord_tmp, MapData>,
+    margin: Size,
 }
 
 impl World {
@@ -114,6 +124,10 @@ impl World {
 
         let mut world = World {
             world: HashMap::new(),
+            margin: Size {
+                width: 0.0,
+                height: 0.0,
+            },
         };
 
         for (coord, map_import) in __world {
@@ -190,8 +204,8 @@ impl World {
         return world;
     }
 
-    pub fn render(&self, evnt: &Event, window: &mut PistonWindow, game: &Game) {
-        let map_data = self.world.get(&game.fake_gdata.player.world_coord).unwrap();
+    pub fn render(&self, evnt: &Event, window: &mut PistonWindow, player_world_map: &Coord_tmp) {
+        let map_data = self.world.get(player_world_map).unwrap();
         window.draw_2d(evnt, |ctx, gl, _device| {
             let _ = map_data.frames[map_data.f_ptr]
                 .sprites
@@ -202,10 +216,10 @@ impl World {
                         sprt.get_texture(),
                         &DrawState::default(),
                         ctx.transform.trans(
-                            game.margin.width
+                            self.margin.width
                                 + pos[0] as f64 * TILE_WIDTH as f64
                                 + sprt.offset.x as f64,
-                            game.margin.height
+                            self.margin.height
                                 + pos[1] as f64 * TILE_HEIGHT as f64
                                 + sprt.offset.y as f64,
                         ),
@@ -233,6 +247,10 @@ impl World {
         } else {
             map_data.timer += delta_ts;
         }
+    }
+
+    pub fn resize(&mut self, margin: &Size) {
+        self.margin = margin.clone();
     }
 
     fn get_map(&self, coord: &Coord_tmp) -> Option<(Coord_tmp, &MapData)> {

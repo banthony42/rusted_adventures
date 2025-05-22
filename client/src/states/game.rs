@@ -3,9 +3,9 @@ use std::collections::HashMap;
 
 use crate::{
     chat::controller::ChatController,
-    client::FakeGameData,
     constants::*,
-    import::assets::{load_assets, load_hard_drown_assets, EntityAssets, GameAsset, HardTexture},
+    entities::controller::EntityController,
+    import::assets::{load_assets, load_hard_drown_assets, HardTexture},
     interface::Interface,
     tasks::{logout::LogoutTask, task::GameData},
     ui::font::Font,
@@ -20,43 +20,40 @@ use super::{
 
 pub struct Game {
     pub hard_textures: HashMap<HardTexture, G2dTexture>,
-    pub assets: HashMap<EntityAssets, GameAsset>,
     pub margin: Size,
     pub world: World,
     pub interface: Interface,
-    pub fake_gdata: FakeGameData,
     pub font: Font,
     pub chat: ChatController,
+    pub entities: EntityController,
     pub logout: bool,
+    pub login: String,
+    pub token: String,
 }
 
 impl Game {
     pub fn new(window: &mut PistonWindow) -> Self {
-        let fg_data = match FakeGameData::get_data_from_server() {
-            Ok(data) => data,
-            Err(error) => {
-                // This will be not handled like that in the futur real fetch from server code
-                println!("{error}");
-                std::process::exit(1);
-            }
-        };
-
         let mut font = Font::new();
         font.load(window);
 
         return Game {
+            login: String::default(),
+            token: String::default(),
             logout: false,
+            font: font,
+            hard_textures: load_hard_drown_assets(window),
             margin: Size {
                 width: MAP_WIDTH_CENTER as f64,
                 height: MAP_HEIGHT_CENTER as f64,
             },
-            hard_textures: load_hard_drown_assets(window),
-            assets: load_assets(window),
             world: World::new(window),
             interface: Interface::new(),
-            fake_gdata: fg_data,
-            font: font,
             chat: ChatController::new(String::default(), String::default()),
+            entities: EntityController::new(
+                String::default(),
+                String::default(),
+                load_assets(window),
+            ),
         };
     }
 }
@@ -64,15 +61,12 @@ impl Game {
 impl GameState for Game {
     fn pass_data(&mut self, data: Vec<GameData>) {
         data.iter().for_each(|gd| match gd {
-            GameData::Token(token) => self.fake_gdata.token = token.clone(),
-            GameData::Message(name) => self.fake_gdata.player.name = name.clone(), //TMP use message to get player name
+            GameData::Token(token) => self.token = token.clone(),
+            GameData::Message(name) => self.login = name.clone(), //TMP use message to get player name
             GameData::Entities(_vec) => {}
         });
         println!("==> (Game) Player connected: {:?}", data);
-        self.chat = ChatController::new(
-            self.fake_gdata.player.name.clone(),
-            self.fake_gdata.token.clone(),
-        );
+        self.chat = ChatController::new(self.login.clone(), self.token.clone());
         self.chat.resize(&self.margin);
     }
 
@@ -81,10 +75,7 @@ impl GameState for Game {
             return StateFactory::<Loading>::new(
                 window,
                 LoadingNextState::Login,
-                Box::new(LogoutTask::new(
-                    self.fake_gdata.player.name,
-                    self.fake_gdata.token,
-                )),
+                Box::new(LogoutTask::new(self.login, self.token)),
             );
         }
         self
@@ -95,48 +86,24 @@ impl GameState for Game {
             clear(color::BLACK, gl);
         });
 
-        self.world.render(evnt, window, &self);
+        self.world
+            .render(evnt, window, &self.entities.player_world_pos());
+        self.entities.render(evnt, window);
         self.interface.render(evnt, window, &self);
-
-        self.fake_gdata.player.render(evnt, window, &self);
-        for entity in self.fake_gdata.entities.iter() {
-            entity.render(evnt, window, &self);
-        }
-
         self.chat.render(evnt, window, &mut self.font);
-        let map_data = self
-            .world
-            .world
-            .get(&self.fake_gdata.player.world_coord)
-            .unwrap();
-
-        self.interface.render_text_overlay(
-            evnt,
-            window,
-            &mut self.font,
-            &self.margin,
-            &map_data.info,
-            &self.fake_gdata,
-        );
     }
 
     fn update(&mut self, _args: &UpdateArgs, delta_ts: u128) {
         self.world
-            .update(delta_ts, &self.fake_gdata.player.world_coord);
-
-        self.fake_gdata
-            .player
-            .update(delta_ts, &self.assets, &self.world);
-        for entity in self.fake_gdata.entities.iter_mut() {
-            entity.update(delta_ts, &self.assets, &self.world);
-        }
+            .update(delta_ts, &self.entities.player_world_pos());
+        self.entities.update(delta_ts);
         self.interface.update(_args, delta_ts);
         self.chat.update(delta_ts);
     }
 
     fn key_press(&mut self, args: &Button) {
+        self.entities.key_press(args, &self.world.world);
         self.chat.key_press(&args, &mut self.font);
-        self.fake_gdata.player.key_press(args);
 
         if let &Button::Keyboard(key) = args {
             match key {
@@ -146,15 +113,14 @@ impl GameState for Game {
         }
     }
 
-    fn key_release(&mut self, args: &Button) {
-        self.fake_gdata.player.key_release(args);
-    }
+    fn key_release(&mut self, _args: &Button) {}
 
     fn text_input(&mut self, args: &String) {
         self.chat.text_input(args, &mut self.font);
     }
 
     fn mouse_cursor_args(&mut self, args: &[f64; 2]) {
+        self.entities.mouse_cursor_args(args);
         self.chat.mouse_cursor_args(args);
     }
 
@@ -163,18 +129,14 @@ impl GameState for Game {
     }
 
     fn resize_window(&mut self, args: &ResizeArgs) {
-        let window_width = args.window_size[0];
-        let window_height = args.window_size[1];
-        println!("==> (Game) Resized: {window_width}x{window_height}");
-
-        self.margin = self.handle_resize(
-            Size {
-                width: window_width,
-                height: window_height,
-            },
-            MAP_WIDTH,
-            GAME_HEIGHT,
-        );
+        let window_size = Size {
+            width: args.window_size[0],
+            height: args.window_size[1],
+        };
+        println!("==> (Game) Resized: {:?}", window_size);
+        self.margin = self.handle_resize(window_size, MAP_WIDTH, GAME_HEIGHT);
+        self.world.resize(&self.margin);
+        self.entities.resize(&self.margin);
         self.interface.resize(&self.margin);
         self.chat.resize(&self.margin);
     }

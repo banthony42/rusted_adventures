@@ -24,7 +24,7 @@ pub enum EntityRaces {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
-enum Orientation {
+pub enum Orientation {
     #[default]
     Est,
     West,
@@ -149,16 +149,16 @@ impl Entity {
             .expect(format!("==> Trying to get map_data from : {:?}", self.world_coord).as_str());
 
         // Compute the sprite cell x,y coordinate
-        println!("MAP : y:{:?} x: {:?}", w_pos.map.y, w_pos.map.x);
+        // println!("MAP : y:{:?} x: {:?}", w_pos.map.y, w_pos.map.x);
         w_pos.map.x = ((w_pos.map.x - (w_pos.map.x % TILE_WIDTH as i32)) / 64)
             .min((TILEMAP_WIDTH - 1) as i32);
         w_pos.map.y = ((w_pos.map.y - (w_pos.map.y % TILE_HEIGHT as i32)) / 64)
             .min((TILEMAP_HEIGHT - 1) as i32);
-        println!(
-            "CELL: y:{:?} x: {:?}",
-            w_pos.map.y.min((TILEMAP_HEIGHT - 1) as i32),
-            w_pos.map.x
-        );
+        // println!(
+        //     "CELL: y:{:?} x: {:?}",
+        //     w_pos.map.y.min((TILEMAP_HEIGHT - 1) as i32),
+        //     w_pos.map.x
+        // );
         return map_data.colliders[w_pos.map.y as usize][w_pos.map.x as usize];
     }
 

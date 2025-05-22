@@ -46,8 +46,8 @@ impl FakeGameData {
                     "race": "Bouftou",
                     "state": "Idle",
                     "map_coord": {
-                        "x": 750,
-                        "y": 550
+                        "x": 450,
+                        "y": 450
                     },
                     "world_coord": {
                         "x": 0,
@@ -66,8 +66,8 @@ impl FakeGameData {
                 "race": "Character",
                 "state": "Idle",
                 "map_coord": {
-                    "x": 500,
-                    "y": 500,
+                    "x": 544,
+                    "y": 544,
                     "label": "Mountain"
                 },
                 "world_coord": {

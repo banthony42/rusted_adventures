@@ -7,9 +7,8 @@ use states::{
 };
 
 mod chat;
-mod client;
 mod constants;
-mod entity;
+mod entities;
 mod import;
 mod interface;
 mod sprite;
