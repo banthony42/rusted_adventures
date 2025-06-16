@@ -54,38 +54,6 @@ impl MapCoord {
     }
 }
 
-// #[derive(Debug, Clone, Copy, Default)]
-// struct Point {
-//     pub x: f64,
-//     pub y: f64,
-// }
-
-// impl Point {
-//     pub fn is_null(&self) -> bool {
-//         return self.x == 0.0 && self.y == 0.0;
-//     }
-// }
-
-// impl Into<MapCoord> for Point {
-//     fn into(self) -> MapCoord {
-//         MapCoord {
-//             x: self.x as i16,
-//             y: self.y as i16,
-//         }
-//     }
-// }
-
-// impl std::ops::Mul<f64> for Point {
-//     type Output = Self;
-
-//     fn mul(self, rhs: f64) -> Self::Output {
-//         Self {
-//             x: self.x * rhs,
-//             y: self.y * rhs,
-//         }
-//     }
-// }
-
 impl std::ops::Mul<f64> for MapCoord {
     type Output = Self;
 

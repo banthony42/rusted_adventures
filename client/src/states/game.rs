@@ -95,7 +95,7 @@ impl GameState for Game {
 
     fn update(&mut self, _args: &UpdateArgs, delta_ts: u128) {
         self.world.update(delta_ts, &self.entities.player_world());
-        self.entities.update(delta_ts);
+        self.entities.update(delta_ts, &self.world);
         self.interface.update(_args, delta_ts);
         self.chat.update(delta_ts);
     }

@@ -39,7 +39,7 @@ impl EntityView {
                 // Flip the sprite according to Est/Wes direction
                 trans = match entity.get_orientation() {
                     Orientation::West => trans.flip_h().trans(PLAYER_WIDTH as f64 * -1.0, 0.0),
-                    _ => trans,
+                    _ => trans, // Orientation::Est default (define by the sprite) will be fixed when all orientation sprites available
                 };
 
                 let map_scissor = [

@@ -59,8 +59,6 @@ impl AStar {
             cursor = parent;
         }
         self.path_found.pop();
-        println!("{:?}", self.path_found);
-        // self.path_found.reverse();
     }
 
     fn valid_neighbors(&self, map_coord: MapCoord, map: &Vec<Vec<bool>>) -> Vec<MapCoord> {
@@ -97,7 +95,6 @@ impl PathFindingStrategy for AStar {
 
         while let Some(current) = self.cells.priority_pop() {
             if current.cell.eq(&destination) {
-                println!("PathFinding: path found!");
                 self.build_path(destination);
                 return true;
             }

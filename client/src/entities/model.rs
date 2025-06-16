@@ -1,10 +1,12 @@
 use crate::{
+    constants::*,
     import::assets::{Animations, EntityAssets},
-    world::{MapCoord, WorldCoord},
+    world::{MapCoord, World, WorldCoord},
 };
 
 const ENTITY_RUN_SPEED: f64 = 350.0;
 
+#[derive(Debug)]
 pub enum Orientation {
     Est,
     West,
@@ -21,6 +23,8 @@ pub struct EntityModel {
     world: WorldCoord,
     state: Animations,
     path: Vec<MapCoord>,
+    orientation: Orientation,
+    next_map: Option<Orientation>,
     frame: u8,
     timer: u128,
 }
@@ -41,12 +45,12 @@ pub trait IEntity {
 
     fn get_assets(&self) -> &EntityAssets;
 
-    fn set_path(&mut self, path: Vec<MapCoord>);
+    fn set_path(&mut self, path: Vec<MapCoord>, next_map: Option<Orientation>);
 
-    fn update(&mut self, delta_ts: u128);
+    fn update(&mut self, delta_ts: u128, world: &World);
     fn get_real_pos(&self) -> MapCoord;
 
-    fn get_orientation(&self) -> Orientation;
+    fn get_orientation(&self) -> &Orientation;
 }
 
 impl EntityModel {
@@ -59,6 +63,8 @@ impl EntityModel {
             map: MapCoord::default(),
             state: Animations::default(),
             path: Vec::new(),
+            orientation: Orientation::Est,
+            next_map: None,
             timer: 0,
             frame: 0,
             step: 0.0,
@@ -129,13 +135,33 @@ impl IEntity for EntityModel {
         self.get_assets()
     }
 
-    fn set_path(&mut self, path: Vec<MapCoord>) {
+    fn set_path(&mut self, path: Vec<MapCoord>, next_map: Option<Orientation>) {
         self.path = path;
+        self.next_map = next_map;
     }
 
-    fn update(&mut self, delta_ts: u128) {
+    fn update(&mut self, delta_ts: u128, world: &World) {
         if self.path.is_empty() {
             self.set_state(Animations::Idle);
+            self.world = match self.next_map.take() {
+                Some(Orientation::Est) => {
+                    if let Some(new_map) = world.get_east_map(&self.world) {
+                        self.map.x = 0;
+                        new_map.0
+                    } else {
+                        self.world
+                    }
+                }
+                Some(Orientation::West) => {
+                    if let Some(new_map) = world.get_west_map(&self.world) {
+                        self.map.x = TILEMAP_WIDTH as i64 - 1;
+                        new_map.0
+                    } else {
+                        self.world
+                    }
+                }
+                _ => self.world,
+            }
         } else {
             self.set_state(Animations::Run);
             let step_duration = 1.0 / 150.0; // TODO: constant or self.var
@@ -156,6 +182,16 @@ impl IEntity for EntityModel {
                 };
                 self.step += delta_ts as f64 * step_duration;
             }
+
+            if let Some(new_orientation) = match direction {
+                dir if dir.x > 0 => Some(Orientation::Est),
+                dir if dir.x < 0 => Some(Orientation::West),
+                dir if dir.y > 0 => Some(Orientation::South),
+                dir if dir.y < 0 => Some(Orientation::North),
+                _ => None,
+            } {
+                self.orientation = new_orientation;
+            }
         }
     }
 
@@ -166,13 +202,8 @@ impl IEntity for EntityModel {
         }
     }
 
-    fn get_orientation(&self) -> Orientation {
-        // TODO: The orientation seems to switch between Est / West
-        // On horizontal path
-        if self.offset.x.is_negative() {
-            return Orientation::West;
-        }
-        Orientation::Est
+    fn get_orientation(&self) -> &Orientation {
+        &self.orientation
     }
 }
 
