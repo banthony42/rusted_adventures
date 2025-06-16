@@ -5,7 +5,7 @@ use piston_window::*;
 use crate::constants::*;
 use crate::import::assets::{EntityAssets, GameAsset};
 
-use super::model::IEntity;
+use super::model::{IEntity, Orientation};
 
 pub struct EntityView {
     pub assets: HashMap<EntityAssets, GameAsset>,
@@ -26,14 +26,21 @@ impl EntityView {
     pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, entity: &Box<dyn IEntity>) {
         if let Some(asset) = self.assets.get(entity.get_assets()) {
             window.draw_2d(evnt, |ctx, gl, _device| {
-                let trans = ctx
+                let entity_pos = entity.get_real_pos();
+                let mut trans = ctx
                     .transform
                     .trans(
-                        self.margin.width as f64 + (entity.get_map().x * 64) as f64 + 32.0,
-                        self.margin.height as f64 + (entity.get_map().y * 64) as f64 + 32.0,
+                        self.margin.width as f64 + entity_pos.x as f64 + 32.0,
+                        self.margin.height as f64 + entity_pos.y as f64 + 32.0,
                     )
                     // Offset the point controlled by the user's keyboard, to bottom center of the sprite character.
                     .trans(PLAYER_CENTER_X as f64 * -1.0, PLAYER_HEIGHT as f64 * -1.0);
+
+                // Flip the sprite according to Est/Wes direction
+                trans = match entity.get_orientation() {
+                    Orientation::West => trans.flip_h().trans(PLAYER_WIDTH as f64 * -1.0, 0.0),
+                    _ => trans,
+                };
 
                 let map_scissor = [
                     self.margin.width as u32,
@@ -50,27 +57,6 @@ impl EntityView {
                         trans,
                         gl,
                     );
-
-                if let Some(path) = entity.get_path() {
-                    let _: Vec<_> = path
-                        .iter()
-                        .enumerate()
-                        .map(|(index, cell)| {
-                            let cell_color = [0.0, (1.0 - (1.0 / index as f32)), 1.0, 0.4];
-                            Rectangle::new(cell_color).draw(
-                                [
-                                    self.margin.width + (cell.x as f64 * 64.0),
-                                    self.margin.height + (cell.y as f64 * 64.0),
-                                    64.0,
-                                    64.0,
-                                ],
-                                &ctx.draw_state,
-                                ctx.transform,
-                                gl,
-                            );
-                        })
-                        .collect();
-                }
             });
         }
     }
@@ -80,8 +66,8 @@ impl EntityView {
             let timer = entity.get_timer();
             let frame = entity.get_frame();
 
-            if timer >= asset.frames[entity.get_frame()].duration {
-                if entity.get_frame() >= (asset.frames.len() - 1) {
+            if timer >= asset.frames[frame].duration {
+                if frame >= (asset.frames.len() - 1) {
                     entity.set_frame(0);
                 } else {
                     entity.set_frame(frame as u8 + 1);

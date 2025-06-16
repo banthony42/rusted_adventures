@@ -4,16 +4,22 @@ use piston::{Button, MouseButton, Size};
 
 use crate::{
     entities::path_finding::PathFinder,
-    import::assets::{EntityAssets, GameAsset},
+    import::assets::{Animations, EntityAssets, GameAsset},
     world::{MapCoord, MapData, WorldCoord},
 };
 
-use super::{client::EntityClient, model::IEntity, view::EntityView};
+use super::{
+    client::EntityClient,
+    model::IEntity,
+    path_finding::{astar::AStar, PathFindingStrategy},
+    view::EntityView,
+};
 
 pub struct EntityController {
     player: Box<dyn IEntity>,
     mouse_pos: [f64; 2],
     entities: Vec<Box<dyn IEntity>>,
+    path_finder: PathFinder<AStar>,
     client: EntityClient,
     view: EntityView,
     pub margin: Size,
@@ -23,11 +29,13 @@ impl EntityController {
     pub fn new(login: String, token: String, assets: HashMap<EntityAssets, GameAsset>) -> Self {
         let client = EntityClient::new(login, token);
         let player = client.fetch_player();
+
         EntityController {
             entities: client.fetch_entities(player.get_world()),
+            path_finder: PathFinder::new(AStar::new()),
             player,
-            mouse_pos: [0.0, 0.0],
             client,
+            mouse_pos: [0.0, 0.0],
             margin: Size {
                 width: 0.0,
                 height: 0.0,
@@ -48,8 +56,10 @@ impl EntityController {
     }
 
     pub fn update(&mut self, delta_ts: u128) {
+        self.player.update(delta_ts);
         self.view.update(delta_ts, &mut self.player);
         for entity in &mut self.entities {
+            // entity.update(delta_ts);
             self.view.update(delta_ts, entity);
         }
     }
@@ -65,44 +75,37 @@ impl EntityController {
 
     pub fn key_press(&mut self, args: &Button, world_map: &HashMap<WorldCoord, MapData>) {
         if let Button::Mouse(MouseButton::Left) = args {
-            let x = (self.mouse_pos[0] - self.margin.width) as i16;
-            let y = (self.mouse_pos[1] - self.margin.height) as i16;
-            // TODO: maybe just compute the start point of the cell is enough
             let destination = MapCoord {
-                x: x / 64,
-                y: y / 64,
+                x: (self.mouse_pos[0] - self.margin.width) as i64 / 64,
+                y: (self.mouse_pos[1] - self.margin.height) as i64 / 64,
             }
             .limit();
-            let pf = PathFinder::new(
+
+            self.path_finder.compute(
                 self.player.get_map(),
                 destination,
-                world_map
-                    .get(&self.player.get_world())
-                    .unwrap()
-                    .colliders
-                    .clone(),
+                &world_map.get(&self.player.get_world()).unwrap().colliders,
             );
-            let path = pf.compute();
-            self.player.set_path(path);
+            self.player.set_path(self.path_finder.get_path());
         }
 
         // TEMPORARY MOVEMENT
-        if let &Button::Keyboard(key) = args {
-            match key {
-                piston::Key::Up => self
-                    .player
-                    .set_map(self.player.get_map() + MapCoord { x: 0, y: -1 }),
-                piston::Key::Down => self
-                    .player
-                    .set_map(self.player.get_map() + MapCoord { x: 0, y: 1 }),
-                piston::Key::Left => self
-                    .player
-                    .set_map(self.player.get_map() + MapCoord { x: -1, y: 0 }),
-                piston::Key::Right => self
-                    .player
-                    .set_map(self.player.get_map() + MapCoord { x: 1, y: 0 }),
-                _ => {}
-            }
-        }
+        // if let &Button::Keyboard(key) = args {
+        //     match key {
+        //         piston::Key::Up => self
+        //             .player
+        //             .set_map(self.player.get_map() + MapCoord { x: 0, y: -1 }),
+        //         piston::Key::Down => self
+        //             .player
+        //             .set_map(self.player.get_map() + MapCoord { x: 0, y: 1 }),
+        //         piston::Key::Left => self
+        //             .player
+        //             .set_map(self.player.get_map() + MapCoord { x: -1, y: 0 }),
+        //         piston::Key::Right => self
+        //             .player
+        //             .set_map(self.player.get_map() + MapCoord { x: 1, y: 0 }),
+        //         _ => {}
+        //     }
+        // }
     }
 }

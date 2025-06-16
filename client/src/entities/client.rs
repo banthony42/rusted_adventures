@@ -13,7 +13,7 @@ impl EntityClient {
         // Call gRPC to get player data ...
         let mut player = Box::new(EntityModel::new("New-Sulfurel".into(), Bestiary::Human));
         player.set_world(WorldCoord { x: 1, y: 0 });
-        player.set_map(MapCoord { x: 8, y: 8 });
+        player.set_map(MapCoord { x: 2, y: 3 });
 
         player
     }

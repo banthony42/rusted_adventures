@@ -1,6 +1,7 @@
 use piston_window::*;
-use std::collections::HashMap;
 use std::fs;
+use std::ops::MulAssign;
+use std::{collections::HashMap, ops::SubAssign};
 
 use crate::{
     constants::*,
@@ -8,6 +9,7 @@ use crate::{
     sprite::{Frame, Sprite},
 };
 
+#[derive(Default)]
 pub struct Offset {
     pub x: u64,
     pub y: u64,
@@ -15,8 +17,8 @@ pub struct Offset {
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct MapCoord {
-    pub x: i16,
-    pub y: i16,
+    pub x: i64,
+    pub y: i64,
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -36,9 +38,19 @@ impl MapCoord {
 
     /// Limit this Map Coordinate to TILEMAP limits.
     pub fn limit(mut self) -> Self {
-        self.x = self.x.max(0).min(TILEMAP_WIDTH as i16 - 1);
-        self.y = self.y.max(0).min(TILEMAP_HEIGHT as i16 - 1);
+        self.x = self.x.max(0).min(TILEMAP_WIDTH as i64 - 1);
+        self.y = self.y.max(0).min(TILEMAP_HEIGHT as i64 - 1);
         self
+    }
+
+    pub fn min(mut self, rhs: Self) -> Self {
+        self.x = self.x.min(rhs.x);
+        self.y = self.y.min(rhs.y);
+        self
+    }
+
+    pub fn is_null(&self) -> bool {
+        self.x == 0 && self.y == 0
     }
 }
 
@@ -73,6 +85,40 @@ impl MapCoord {
 //         }
 //     }
 // }
+
+impl std::ops::Mul<f64> for MapCoord {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Self {
+            x: (self.x as f64 * rhs) as i64,
+            y: (self.y as f64 * rhs) as i64,
+        }
+    }
+}
+
+impl MulAssign<f64> for MapCoord {
+    fn mul_assign(&mut self, rhs: f64) {
+        *self = *self * rhs;
+    }
+}
+
+impl std::ops::Sub for MapCoord {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
+impl SubAssign for MapCoord {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
 
 impl std::ops::Add for MapCoord {
     type Output = Self;
