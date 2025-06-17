@@ -11,6 +11,10 @@ pub const MAP_HEIGHT: usize = (TILE_HEIGHT * TILEMAP_HEIGHT) as usize;
 pub const MAP_WIDTH_CENTER: usize = (WINDOW_WIDTH - MAP_WIDTH) / 2;
 pub const MAP_HEIGHT_CENTER: usize = (WINDOW_HEIGHT - GAME_HEIGHT) / 2;
 
+pub const MAP_CHANGE_LIMIT: usize = 32;
+pub const MAP_EAST_LIMIT: usize = MAP_WIDTH - MAP_CHANGE_LIMIT;
+pub const MAP_SOUTH_LIMIT: usize = MAP_HEIGHT - MAP_CHANGE_LIMIT;
+
 pub const GUI_WIDTH: usize = MAP_WIDTH;
 pub const GUI_HEIGHT: usize = 192;
 pub const GUI_WIDTH_CENTER: usize = (WINDOW_WIDTH - GUI_WIDTH) / 2;
@@ -25,11 +29,6 @@ pub const GUI_CHAT_HEIGHT: usize = 140;
 pub const WINDOW_WIDTH: usize = MAP_WIDTH;
 pub const WINDOW_HEIGHT: usize = MAP_HEIGHT + GUI_HEIGHT;
 pub const WINDOW_WIDTH_CENTER: usize = WINDOW_WIDTH / 2;
-
-// Player Assets
-pub const PLAYER_WIDTH: usize = 64;
-pub const PLAYER_HEIGHT: usize = 128;
-pub const PLAYER_CENTER_X: usize = PLAYER_WIDTH / 2;
 
 pub const SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
 pub const CHAT_SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";

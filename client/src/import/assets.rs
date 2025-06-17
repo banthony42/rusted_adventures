@@ -41,7 +41,7 @@ pub struct GameAsset {
 }
 
 impl GameAsset {
-    fn load_from_json_game_asset(
+    fn load_game_asset_from_json(
         json_game_asset: JSONGameAsset,
         window: &mut PistonWindow,
     ) -> GameAsset {
@@ -89,7 +89,7 @@ impl GameAsset {
         let json_game_asset = serde_json::from_str::<JSONGameAsset>(&raw_data)
             .expect(&format!("Fail to load JSON asset: {}", path));
 
-        return Self::load_from_json_game_asset(json_game_asset, window);
+        return Self::load_game_asset_from_json(json_game_asset, window);
     }
 }
 

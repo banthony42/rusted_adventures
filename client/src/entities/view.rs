@@ -26,6 +26,10 @@ impl EntityView {
     pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, entity: &Box<dyn IEntity>) {
         if let Some(asset) = self.assets.get(entity.get_assets()) {
             window.draw_2d(evnt, |ctx, gl, _device| {
+                let asset_src_rect = asset.frames[entity.get_frame()].src_rect;
+                let asset_width = asset_src_rect[2];
+                let asset_height = asset_src_rect[3];
+
                 let entity_pos = entity.get_real_pos();
                 let mut trans = ctx
                     .transform
@@ -34,11 +38,11 @@ impl EntityView {
                         self.margin.height as f64 + entity_pos.y as f64 + 32.0,
                     )
                     // Offset the point controlled by the user's keyboard, to bottom center of the sprite character.
-                    .trans(PLAYER_CENTER_X as f64 * -1.0, PLAYER_HEIGHT as f64 * -1.0);
+                    .trans((asset_width / 2.0) * -1.0, asset_height * -1.0);
 
                 // Flip the sprite according to Est/Wes direction
                 trans = match entity.get_orientation() {
-                    Orientation::West => trans.flip_h().trans(PLAYER_WIDTH as f64 * -1.0, 0.0),
+                    Orientation::West => trans.flip_h().trans(asset_width * -1.0, 0.0),
                     _ => trans, // Orientation::Est default (define by the sprite) will be fixed when all orientation sprites available
                 };
 
@@ -49,14 +53,12 @@ impl EntityView {
                     MAP_HEIGHT as u32,
                 ];
 
-                Image::new()
-                    .src_rect(asset.frames[entity.get_frame()].src_rect)
-                    .draw(
-                        &asset.texture,
-                        &DrawState::default().scissor(map_scissor),
-                        trans,
-                        gl,
-                    );
+                Image::new().src_rect(asset_src_rect).draw(
+                    &asset.texture,
+                    &DrawState::default().scissor(map_scissor),
+                    trans,
+                    gl,
+                );
             });
         }
     }

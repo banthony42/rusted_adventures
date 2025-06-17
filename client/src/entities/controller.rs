@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use piston::{Button, MouseButton, Size};
 
 use crate::{
-    constants::{MAP_HEIGHT, MAP_WIDTH, PLAYER_CENTER_X},
+    constants::{MAP_CHANGE_LIMIT, MAP_EAST_LIMIT, MAP_HEIGHT, MAP_SOUTH_LIMIT, MAP_WIDTH},
     entities::{model::Orientation, path_finding::PathFinder},
     import::assets::{EntityAssets, GameAsset},
     world::{MapCoord, MapData, World, WorldCoord},
@@ -86,13 +86,13 @@ impl EntityController {
             .limit();
 
             let next_map_x: Option<Orientation> = match mouse_x {
-                x if x > (MAP_WIDTH - PLAYER_CENTER_X) as i64 => Some(Orientation::Est),
-                x if x < PLAYER_CENTER_X as i64 => Some(Orientation::West),
+                x if x > MAP_EAST_LIMIT as i64 => Some(Orientation::Est),
+                x if x < MAP_CHANGE_LIMIT as i64 => Some(Orientation::West),
                 _ => None,
             };
             let next_map_y: Option<Orientation> = match mouse_y {
-                y if y > (MAP_HEIGHT - PLAYER_CENTER_X) as i64 => Some(Orientation::South),
-                y if y < PLAYER_CENTER_X as i64 => Some(Orientation::North),
+                y if y > MAP_SOUTH_LIMIT as i64 => Some(Orientation::South),
+                y if y < MAP_CHANGE_LIMIT as i64 => Some(Orientation::North),
                 _ => None,
             };
 
@@ -101,6 +101,27 @@ impl EntityController {
                     .compute(self.player.get_map(), destination, &map_data.colliders);
                 self.player
                     .set_path(self.path_finder.get_path(), next_map_x.or(next_map_y));
+            }
+        }
+
+        if let Button::Mouse(MouseButton::Right) = args {
+            println!("Simulate entities serveur new position received.");
+
+            let mouse_x = (self.mouse_pos[0] - self.margin.width) as i64;
+            let mouse_y = (self.mouse_pos[1] - self.margin.height) as i64;
+
+            let destination = MapCoord {
+                x: mouse_x / 64,
+                y: mouse_y / 64,
+            }
+            .limit();
+
+            if let Some(map_data) = world_map.get(&self.player.get_world()) {
+                for entity in &mut self.entities {
+                    self.path_finder
+                        .compute(entity.get_map(), destination, &map_data.colliders);
+                    entity.set_path(self.path_finder.get_path(), None);
+                }
             }
         }
     }

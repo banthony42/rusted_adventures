@@ -79,7 +79,7 @@ impl EntityModel {
             },
             Bestiary::Bouftou => match self.state {
                 Animations::Idle => &EntityAssets::Bouftou(Animations::Idle),
-                Animations::Run => &EntityAssets::Bouftou(Animations::Run),
+                Animations::Run => &EntityAssets::Bouftou(Animations::Idle), // TODO: Animation:Run for boufou is not ready yet (only 2 frames)
             },
         }
     }
