@@ -1,5 +1,7 @@
 use common::authenticator::Authenticator;
 
+use common::character::CharacterAccountHandler;
+use common::database::model::character::Classes;
 use common::grpc_codegen::rpg_authenticate_server::RpgAuthenticate;
 use common::grpc_codegen::{AuthReply, AuthRequest, EmptyReply, LogoutRequest};
 use tonic::Response;
@@ -48,20 +50,42 @@ impl RpgAuthenticate for RpgAuthenticateService {
         // _ : password / token bruteforce detection with single IP address
         let new_token = format!("{}-cafebab", auth_req.login);
 
-        // Store session token in DB for this user
-        match user.set_token(&new_token) {
-            Ok(_) => {
+        return user
+            .set_token(&new_token)
+            .map_err(|e| {
+                println!("[Server]: [AuthenticateUser] : Error: {}", e.to_string());
+                tonic::Status::internal(e.to_string())
+            })
+            .and_then(|()| {
                 println!(
                     "[Server]: [AuthenticateUser] : Success: token: {}",
                     new_token
                 );
-                Ok(Response::new(AuthReply { token: new_token }))
-            }
-            Err(e) => {
-                println!("[Server]: [AuthenticateUser] : Error: {}", e.to_string());
-                Err(tonic::Status::internal(e.to_string()))
-            }
-        }
+                // Automate characters creation :
+                // for now only one character is allowed per account
+                let mut account_characters = CharacterAccountHandler::new(auth_req.login.clone());
+                account_characters
+                    .get_all()
+                    .map_err(|e| tonic::Status::internal(e.to_string()))
+                    .and_then(|characters| {
+                        let prefix = "[Server]: [AuthenticateUser] : [CreateCharacter]:";
+
+                        if characters.is_empty() {
+                            let res = account_characters.create(&auth_req.login, Classes::Warrior);
+                            if let Err(e) = res {
+                                println!("{} failed with: {:?}", prefix, e);
+                                return Err(tonic::Status::internal(e.to_string()));
+                            }
+                            println!("{} succeed", prefix);
+                        } else {
+                            println!(
+                                "{} A character already exist for {}",
+                                prefix, auth_req.login
+                            )
+                        }
+                        Ok(Response::new(AuthReply { token: new_token }))
+                    })
+            });
     }
 
     async fn logout(

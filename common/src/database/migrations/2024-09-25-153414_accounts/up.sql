@@ -1,8 +1,9 @@
 -- Your SQL goes here
-CREATE TABLE accounts (
-    id uuid NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-    login VARCHAR(12) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    session_token VARCHAR(255)
+create table accounts(
+    id uuid not null primary key default gen_random_uuid(),
+    login VARCHAR(12) not null unique,
+    password VARCHAR(255) not null,
+    session_token varchar(255)
 );
+
 -- Your SQL goes here

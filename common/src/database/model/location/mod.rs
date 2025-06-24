@@ -43,7 +43,7 @@ impl FromSql<Point, Pg> for Coord {
 pub struct Location {
     pub entity_id: i32,
     pub world: Coord,
-    pub map: Option<Coord>,
+    pub map: Coord,
 }
 
 #[derive(Insertable)]
@@ -51,10 +51,12 @@ pub struct Location {
 pub struct CreateLocation {
     pub entity_id: i32,
     pub world: Coord,
+    pub map: Coord,
 }
 
 #[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = crate::database::schema::locations)]
 pub struct UpdateLocation {
     pub world: Coord,
+    pub map: Coord,
 }

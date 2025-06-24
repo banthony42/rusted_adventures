@@ -1,35 +1,36 @@
 -- Your SQL goes here
-
-CREATE TYPE PG_CLASSES AS ENUM('Warrior', 'Witcher');
-
-CREATE TABLE entities (
-    id SERIAL NOT NULL PRIMARY KEY,
-    name VARCHAR(12) NOT NULL UNIQUE
+create type PGClass as ENUM(
+    'Warrior',
+    'Witcher'
 );
 
-CREATE TABLE characters (
-    id SERIAL NOT NULL PRIMARY KEY ,
-    account_id uuid NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
-    entity_id integer NOT NULL REFERENCES entities (id) ON DELETE CASCADE,
-    class PG_CLASSES NOT NULL
+create type PGBestiary as ENUM(
+    'Bouftou',
+    'Human'
 );
 
-CREATE TABLE locations (
-    entity_id integer NOT NULL PRIMARY KEY REFERENCES entities (id) ON DELETE CASCADE,
-    world point NOT NULL,
-    map point
+create table entities(
+    id serial primary key,
+    uuid uuid not null unique default gen_random_uuid(),
+    name varchar(16) not null unique
 );
 
-CREATE OR REPLACE FUNCTION compute_map_according_to_world() RETURNS TRIGGER AS $$
-BEGIN
-    UPDATE "locations"
-    SET map = point(floor(NEW.world[0] / 1024), floor(NEW.world[1] / 768))
-    WHERE entity_id = NEW.entity_id;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+create table characters(
+    id serial primary key,
+    account_id uuid not null references accounts(id) on delete cascade,
+    entity_id integer not null unique references entities(id) on delete cascade,
+    class PGClass not null
+);
 
-CREATE OR REPLACE TRIGGER compute_map_coord_according_to_world_trigger
-AFTER INSERT ON "locations"
-FOR EACH ROW
-EXECUTE FUNCTION compute_map_according_to_world();
+create table monsters(
+    id serial primary key,
+    entity_id integer not null unique references entities(id) on delete cascade,
+    race PGBestiary not null
+);
+
+create table locations(
+    entity_id integer primary key references entities(id) on delete cascade,
+    world point not null,
+    map point not null
+);
+

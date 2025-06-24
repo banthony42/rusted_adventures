@@ -1,8 +1,10 @@
 use diesel::{
-    dsl::insert_into, ExpressionMethods, QueryDsl, QueryResult, RunQueryDsl, SelectableHelper,
+    associations::HasTable, dsl::insert_into, ExpressionMethods, QueryDsl, QueryResult,
+    RunQueryDsl, SelectableHelper,
 };
+use uuid::Uuid;
 
-use crate::database::schema::characters::dsl::*;
+use crate::database::schema::{accounts, characters::dsl::*};
 
 use super::{Character, CreateCharacter, UpdateCharacter};
 
@@ -17,6 +19,25 @@ impl Character {
     /// Return the Character in DB for the given character id
     pub fn read(db: &mut Connection, char_id: &i32) -> QueryResult<Self> {
         characters.filter(id.eq(char_id)).first::<Character>(db)
+    }
+
+    pub fn read_all_by_account_login(
+        db: &mut Connection,
+        account_login: &String,
+    ) -> QueryResult<Vec<Self>> {
+        let _account_id: Uuid = accounts::table
+            .filter(accounts::login.eq(account_login))
+            .select(accounts::id)
+            .get_result(db)?;
+
+        // get all of _account_id's characters
+        let chars = characters::table()
+            .filter(accounts::id.eq(_account_id))
+            .inner_join(accounts::table)
+            .select(Character::as_select())
+            .load(db)?;
+
+        Ok(chars)
     }
 
     /// Update an Character in DB for the given character id according to the given UpdateCharacter item.

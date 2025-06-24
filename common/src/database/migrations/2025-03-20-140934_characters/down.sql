@@ -1,9 +1,6 @@
+-- Active: 1750172390549@@127.0.0.1@4242@postgres
 -- This file should undo anything in `up.sql`
+drop table if exists characters, monsters, entities, locations;
 
-DROP TRIGGER IF EXISTS compute_map_coord_according_to_world_trigger ON locations;
-DROP FUNCTION IF EXISTS compute_map_according_to_world;
-
-DROP TABLE IF EXISTS characters, entities, locations;
-
-DROP TYPE IF EXISTS PG_CLASSES;
+drop type if exists PGClass, PGBestiary;
 

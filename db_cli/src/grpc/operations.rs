@@ -125,9 +125,8 @@ fn handle_receive_message(chat_event: Option<ServerChatEvent>) {
 }
 
 fn run_cli_chat(chat_cmd: ChatCmd) {
-    let pass = String::from("1234");
     println!("Welcome to RPG Chat shell client.");
-    println!("(password not handle yet, all user will use '{:?}'.)", pass);
+    let password = rpassword::prompt_password("Enter your password: ").unwrap();
 
     let runtime = Builder::new_multi_thread()
         .worker_threads(1)
@@ -136,7 +135,7 @@ fn run_cli_chat(chat_cmd: ChatCmd) {
         .expect("Fail to invoke async context.");
 
     let master_task = runtime.spawn(async move {
-        let token = authenticate_user(chat_cmd.login.clone(), pass)
+        let token = authenticate_user(chat_cmd.login.clone(), password)
             .await
             .expect("User authentication failed.");
 

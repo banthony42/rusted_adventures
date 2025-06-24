@@ -48,6 +48,7 @@ impl Game {
             },
             world: World::new(window),
             interface: Interface::new(),
+            // TODO: this cause tentative gRPC connection with empty login/token
             chat: ChatController::new(String::default(), String::default()),
             entities: EntityController::new(
                 String::default(),

@@ -1,4 +1,5 @@
 pub mod authenticator;
+pub mod character;
 pub mod database;
 pub mod record;
 pub mod utils;

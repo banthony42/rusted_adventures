@@ -9,18 +9,18 @@ use diesel::{
     Selectable,
 };
 
-use crate::database::schema::sql_types::PgClasses;
+use crate::database::schema::sql_types::Pgclass;
 
 pub mod character;
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq)]
-#[diesel(sql_type = PgClasses)]
+#[diesel(sql_type = Pgclass)]
 pub enum Classes {
     Warrior,
     Witcher,
 }
 
-impl ToSql<PgClasses, Pg> for Classes {
+impl ToSql<Pgclass, Pg> for Classes {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
         match *self {
             Classes::Warrior => out.write_all(b"Warrior")?,
@@ -30,7 +30,7 @@ impl ToSql<PgClasses, Pg> for Classes {
     }
 }
 
-impl FromSql<PgClasses, Pg> for Classes {
+impl FromSql<Pgclass, Pg> for Classes {
     fn from_sql(bytes: PgValue<'_>) -> deserialize::Result<Self> {
         match bytes.as_bytes() {
             b"Warrior" => Ok(Classes::Warrior),
