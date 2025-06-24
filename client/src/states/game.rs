@@ -61,9 +61,11 @@ impl Game {
 impl GameState for Game {
     fn pass_data(&mut self, data: Vec<GameData>) {
         data.iter().for_each(|gd| match gd {
+            GameData::Login(login) => self.login = login.clone(),
             GameData::Token(token) => self.token = token.clone(),
-            GameData::Message(name) => self.login = name.clone(), //TMP use message to get player name
-            GameData::Entities(_vec) => {}
+            GameData::Message(_) => {}
+            GameData::Player(_) => {}   // pass to EntityController
+            GameData::Entities(_) => {} // pass to EntityController
         });
         println!("==> (Game) Player connected: {:?}", data);
         self.chat = ChatController::new(self.login.clone(), self.token.clone());

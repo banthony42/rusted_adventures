@@ -4,7 +4,8 @@ use crate::{
     world::{MapCoord, World, WorldCoord},
 };
 
-const ENTITY_RUN_SPEED: f64 = 350.0;
+const ENTITY_RUN_SPEED: f64 = 150.0;
+const ENTITY_RUN_STEP_DURATION: f64 = 1.0 / ENTITY_RUN_SPEED;
 
 #[derive(Debug)]
 pub enum Orientation {
@@ -164,7 +165,6 @@ impl IEntity for EntityModel {
             }
         } else {
             self.set_state(Animations::Run);
-            let step_duration = 1.0 / 150.0; // TODO: constant or self.var
             let target = *self.path.last().unwrap(); //TODO: remove unwrap
 
             // Compute unit vector (x and y could be 1, -1 or 0)
@@ -180,7 +180,7 @@ impl IEntity for EntityModel {
                     x: lerp(0.0, direction.x as f64, self.step) as i64,
                     y: lerp(0.0, direction.y as f64, self.step) as i64,
                 };
-                self.step += delta_ts as f64 * step_duration;
+                self.step += delta_ts as f64 * ENTITY_RUN_STEP_DURATION;
             }
 
             if let Some(new_orientation) = match direction {

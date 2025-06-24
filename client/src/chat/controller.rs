@@ -62,6 +62,7 @@ impl ChatController {
                     let mut stream = response.into_inner();
                     loop {
                         select! {
+                            // Handle stream reception
                             data = stream.message() => {
                                 match data {
                                     Ok(Some(server_chat_event)) => {
@@ -108,12 +109,14 @@ impl ChatController {
                                     }
                                 }
                             },
+                            // Update request records according to their TTL
                             _ = async {
                                 sleep(Duration::from_millis(1000)).await;
                                 if recorder.update() {
                                     model.local_danger(CHAT_SERVER_RESPONSE_TIMEOUT).await;
                                 }
                             } => {},
+                            // Handle player inputs, create ClientChatEvent from inputs, and send them to the stream
                             input = controller_rx.recv() => {
                                 if let Some(msg) = input {
                                     let cli_event: Result<ClientChatEvent, _> = msg.clone().try_into();

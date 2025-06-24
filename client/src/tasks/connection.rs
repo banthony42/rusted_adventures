@@ -82,6 +82,7 @@ impl ConnectionTask {
         let mut locked_task = self.data.lock().unwrap();
         locked_task.step += 1;
         locked_task.data.push(GameData::Token(token.clone()));
+        locked_task.data.push(GameData::Login(self.login.clone()));
         Ok(token)
     }
 

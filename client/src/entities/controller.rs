@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use piston::{Button, MouseButton, Size};
 
 use crate::{
-    constants::{MAP_CHANGE_LIMIT, MAP_EAST_LIMIT, MAP_HEIGHT, MAP_SOUTH_LIMIT, MAP_WIDTH},
+    constants::{MAP_CHANGE_LIMIT, MAP_EAST_LIMIT, MAP_SOUTH_LIMIT},
     entities::{model::Orientation, path_finding::PathFinder},
     import::assets::{EntityAssets, GameAsset},
     world::{MapCoord, MapData, World, WorldCoord},

@@ -4,8 +4,10 @@ use tonic::async_trait;
 
 #[derive(Debug, Clone)]
 pub enum GameData {
+    Login(String),
     Token(String),
     Message(String),
+    Player(bool),
     Entities(Vec<bool>),
 }
 
