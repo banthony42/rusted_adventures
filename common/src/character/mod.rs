@@ -16,9 +16,9 @@ pub struct CharacterAccountHandler {
 }
 
 impl CharacterAccountHandler {
-    pub fn new(login: String) -> Self {
+    pub fn new(login: &String) -> Self {
         Self {
-            login,
+            login: login.clone(),
             connection: Database::new().establish_connection(),
         }
     }

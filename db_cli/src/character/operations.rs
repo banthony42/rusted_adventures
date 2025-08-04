@@ -19,14 +19,14 @@ pub fn handle_character(character: CharacterCommand) {
 }
 
 fn create_character(character: CreateCharacterCmd) {
-    let mut character_handler = CharacterAccountHandler::new();
+    let mut character_handler = CharacterAccountHandler::new(&character.login);
 
     let pg_class = match character.class {
         CharacterClass::Warrior => Classes::Warrior,
         CharacterClass::Witcher => Classes::Witcher,
     };
 
-    if let Err(e) = character_handler.create(character.login, character.name, pg_class) {
+    if let Err(e) = character_handler.create(&character.login, pg_class) {
         println!("Error while creating character: {:?}", e);
     }
 }
