@@ -4,7 +4,7 @@ use crate::{
     world::{MapCoord, World, WorldCoord},
 };
 
-const ENTITY_RUN_SPEED: f64 = 150.0;
+const ENTITY_RUN_SPEED: f64 = 225.0;
 const ENTITY_RUN_STEP_DURATION: f64 = 1.0 / ENTITY_RUN_SPEED;
 
 #[derive(Debug)]
@@ -80,7 +80,7 @@ impl EntityModel {
             },
             Bestiary::Bouftou => match self.state {
                 Animations::Idle => &EntityAssets::Bouftou(Animations::Idle),
-                Animations::Run => &EntityAssets::Bouftou(Animations::Idle), // TODO: Animation:Run for boufou is not ready yet (only 2 frames)
+                Animations::Run => &EntityAssets::Bouftou(Animations::Run),
             },
         }
     }

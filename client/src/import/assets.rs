@@ -126,6 +126,10 @@ pub fn load_assets(window: &mut PistonWindow) -> HashMap<EntityAssets, GameAsset
             EntityAssets::Bouftou(Animations::Idle),
             "../assets/tests/bouftou_animation-Idle.json",
         ),
+        (
+            EntityAssets::Bouftou(Animations::Run),
+            "../assets/tests/bouftou_animation-Run.json",
+        ),
     ];
 
     return assets_list
