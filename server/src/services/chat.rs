@@ -1,6 +1,5 @@
 use common::authenticator::Authenticator;
 use std::collections::HashMap;
-use std::error::Error;
 use std::io::ErrorKind;
 use std::result::Result;
 use std::sync::Arc;
@@ -13,6 +12,8 @@ use tonic::{Request, Response, Status, Streaming};
 use common::grpc_codegen::rpg_chat_server::RpgChat;
 use common::grpc_codegen::server_chat_event::Event;
 use common::grpc_codegen::{ChatEventType, ClientChatEvent, ServerChatEvent, ServerEventType};
+
+use crate::generics::match_for_io_error;
 
 type ArcMutexHashMapClient = Arc<Mutex<HashMap<String, Sender<Result<ServerChatEvent, Status>>>>>;
 #[derive(Debug)]
@@ -29,7 +30,7 @@ struct RpgChatEvent {
 
 impl RpgChatEvent {
     fn new(sender: String, event: ClientChatEvent) -> Self {
-        RpgChatEvent { sender, event }
+        Self { sender, event }
     }
 
     /// Consumes `self` returning the parts of the event.
@@ -189,29 +190,5 @@ impl RpgChat for RpgChatService {
         // any data send through tx will be received by the gRPC codegen
         // and transmit to the client through gRPC request
         Ok(Response::new(ReceiverStream::new(server_event_rx)))
-    }
-}
-
-/*
-** Tonic report the client disconnection within Error.source
-** because it's a broken pipe raised by the h2 crate
-** Thereis a pending issue on github to have better integrated way to detect
-** client disconnection / broken pipe.
-** For now i have just redo the tricks from the tonic/examples/src/streaming/server.rs
-*/
-fn match_for_io_error(err_status: &Status) -> Option<&std::io::Error> {
-    let mut err: &(dyn Error + 'static) = err_status;
-    loop {
-        if let Some(io_err) = err.downcast_ref::<std::io::Error>() {
-            return Some(io_err);
-        }
-        // h2::Error do not expose std::io::Error with `source()`
-        // https://github.com/hyperium/h2/pull/462
-        if let Some(h2_err) = err.downcast_ref::<h2::Error>() {
-            if let Some(io_err) = h2_err.get_io() {
-                return Some(io_err);
-            }
-        }
-        err = err.source()?;
     }
 }

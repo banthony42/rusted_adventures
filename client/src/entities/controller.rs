@@ -4,7 +4,10 @@ use piston::{Button, MouseButton, Size};
 
 use crate::{
     constants::{MAP_CHANGE_LIMIT, MAP_EAST_LIMIT, MAP_SOUTH_LIMIT},
-    entities::{model::Orientation, path_finding::PathFinder},
+    entities::{
+        model::{EntityModel, Orientation},
+        path_finding::PathFinder,
+    },
     import::assets::{EntityAssets, GameAsset},
     world::{MapCoord, MapData, World, WorldCoord},
 };
@@ -16,33 +19,109 @@ use super::{
     view::EntityView,
 };
 
+use common::grpc_codegen::{
+    client_entity_event::Event::PlayerMoveEvent,
+    server_entity_event::Event::{EntityDespawnEvent, EntityMoveEvent, EntitySpawnEvent},
+};
+use common::grpc_codegen::{ClientEntityEvent, ServerEntityEvent};
+use std::error::Error;
+use tokio::runtime::{Builder, Runtime};
+use tokio::select;
+use tokio::sync::mpsc::{self, Sender};
+use tokio::time::{sleep, Duration};
+
 pub struct EntityController {
     player: Box<dyn IEntity>,
-    mouse_pos: [f64; 2],
     entities: Vec<Box<dyn IEntity>>,
     path_finder: PathFinder<AStar>,
-    client: EntityClient,
     view: EntityView,
+    mouse_pos: [f64; 2],
     pub margin: Size,
+    tx: Sender<ClientEntityEvent>,
+    _runtime: Runtime,
 }
 
 impl EntityController {
     pub fn new(login: String, token: String, assets: HashMap<EntityAssets, GameAsset>) -> Self {
-        let client = EntityClient::new(login, token);
-        let player = client.fetch_player();
+        let (controller_tx, mut controller_rx) = mpsc::channel::<ClientEntityEvent>(10);
+        let runtime = Builder::new_multi_thread()
+            .worker_threads(1)
+            .enable_all()
+            .build()
+            .expect("Fail to invoke async context.");
 
+        runtime.spawn(async move {
+            loop {
+                println!("===> EntityEventBus: try to connect ...");
+
+                if let Ok(connexion) = EntityClient::connect(login.clone(), token.clone()).await {
+                    println!("===> EntityEventBus: connection succeed.");
+                    let (stream_tx, response) = connexion.into_parts();
+                    let mut stream = response.into_inner();
+                    loop {
+                        select! {
+                            data = stream.message() => {
+                                match data {
+                                    Ok(Some(server_entity_event)) => {
+                                        if let Some(se) = server_entity_event.event {
+                                            match se {
+                                                EntityMoveEvent(entity_move) => todo!(),
+                                                EntitySpawnEvent(entity_spawn) => todo!(),
+                                                EntityDespawnEvent(entity_despawn) => todo!(),
+                                            }
+                                        }
+                                    },
+                                    Ok(None) => {
+                                        println!("EntityEventBus RPC Stream closed by the server.");
+                                        break
+                                    },
+                                    Err(error) => println!("EntityEventBus receive gRPC error from server: {:?}", error)
+                                }
+                            },
+                            // Handle ClientEntityEvent, and send them to the stream
+                            client_entity_event = controller_rx.recv() => {
+                                if let Some(cee) = client_entity_event {
+                                    if let Err(error) =  stream_tx.send(cee).await {
+                                        println!("Chat stream tx error, maybe the rx has been dropped (grpc_codegen side): {:?}", error);
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    println!("===> EntityEventBus: connection failed.");
+                }
+                // The EntityEventBus connexion has failed, or has been shutdown
+                // Wait some time before trying to reconnect
+                sleep(Duration::from_millis(5000)).await;
+            }
+        });
+
+        let player = EntityClient::fetch_player();
         EntityController {
-            entities: client.fetch_entities(player.get_world()),
+            _runtime: runtime,
+            tx: controller_tx.clone(),
             path_finder: PathFinder::new(AStar::new()),
-            player,
-            client,
             mouse_pos: [0.0, 0.0],
+            view: EntityView::new(assets),
+            entities: EntityClient::fetch_entities(player.get_world()),
+            player,
             margin: Size {
                 width: 0.0,
                 height: 0.0,
             },
-            view: EntityView::new(assets),
         }
+    }
+
+    pub fn set_player(&mut self, player_data: &EntityModel) {
+        self.player = Box::new(player_data.clone());
+    }
+
+    pub fn set_entities(&mut self, entities: &Vec<EntityModel>) {
+        self.entities = entities
+            .iter()
+            .map(|e| -> Box<dyn IEntity> { Box::new(e.clone()) })
+            .collect();
     }
 
     pub fn player_world(&self) -> WorldCoord {

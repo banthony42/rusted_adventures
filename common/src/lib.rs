@@ -5,5 +5,5 @@ pub mod record;
 pub mod utils;
 
 pub mod grpc_codegen {
-    include!("../GRPC_codegen/rpg.package.rs");
+    include!("../grpc_codegen/rpg.package.rs");
 }

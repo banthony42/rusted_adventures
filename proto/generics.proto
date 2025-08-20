@@ -1,5 +1,8 @@
 syntax="proto3";
 package RPG.package;
 
+message EmptyRequest {
+}
+
 message EmptyReply {   
 }

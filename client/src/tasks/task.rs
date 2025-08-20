@@ -1,3 +1,4 @@
+use crate::entities::model::EntityModel;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use tonic::async_trait;
@@ -7,8 +8,8 @@ pub enum GameData {
     Login(String),
     Token(String),
     Message(String),
-    Player(bool),
-    Entities(Vec<bool>),
+    Player(EntityModel),
+    Entities(Vec<EntityModel>),
 }
 
 pub struct TaskData {

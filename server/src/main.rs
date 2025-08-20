@@ -1,19 +1,22 @@
-use common::authenticator::Authenticator;
+use ::common::grpc_codegen::rpg_chat_server::RpgChatServer;
+use common::{authenticator::Authenticator, grpc_codegen::rpg_entity_server::RpgEntityServer};
 use services::chat::RpgChatService;
+use services::entities::RpgEntityService;
 use tokio::runtime::{Builder, Runtime};
 use tonic::{metadata::MetadataValue, transport::Server};
 
 use common::grpc_codegen::rpg_authenticate_server::RpgAuthenticateServer;
-use common::grpc_codegen::rpg_chat_server::RpgChatServer;
+
 use services::authenticate::RpgAuthenticateService;
 use tonic::{Request, Status};
 use world::engine::WorldEngine;
 
 pub mod proto {
     pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
-        include_bytes!("../../common/GRPC_codegen/rpg_services_descriptor.bin");
+        include_bytes!("../../common/grpc_codegen/rpg_services_descriptor.bin");
 }
 
+mod generics;
 mod services;
 mod world;
 
@@ -33,7 +36,7 @@ fn run_world_engine_on_another_thread() -> Runtime {
     return runtime;
 }
 
-fn authentication_interceptor(req: Request<()>) -> Result<Request<()>, Status> {
+fn auth_interceptor(req: Request<()>) -> Result<Request<()>, Status> {
     match req.metadata().get("login") {
         Some(login_md) => {
             let login = login_md
@@ -66,8 +69,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_v1()
         .unwrap();
 
-    let rpg_chat = RpgChatService::new();
-
     // For setup simplicity the WorldEngine coexist within the Grpc Server.
     // I insist on the term 'WorldENGINE' because it's not a server since it not handle connections or requests.
     // We spawn a new thread where the WorldEngine will run.
@@ -86,8 +87,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(reflection_service)
         .add_service(RpgAuthenticateServer::new(rpg_authenticate))
         .add_service(RpgChatServer::with_interceptor(
-            rpg_chat,
-            authentication_interceptor,
+            RpgChatService::new(),
+            auth_interceptor,
+        ))
+        .add_service(RpgEntityServer::with_interceptor(
+            RpgEntityService::new(),
+            auth_interceptor,
         ))
         .serve(addr)
         .await?;

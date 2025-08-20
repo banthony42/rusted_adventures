@@ -24,8 +24,8 @@ pub struct Game {
     pub world: World,
     pub interface: Interface,
     pub font: Font,
-    pub chat: ChatController,
-    pub entities: EntityController,
+    pub chat_controller: ChatController,
+    pub ent_controller: EntityController,
     pub logout: bool,
     pub login: String,
     pub token: String,
@@ -49,8 +49,9 @@ impl Game {
             world: World::new(window),
             interface: Interface::new(),
             // TODO: this cause tentative gRPC connection with empty login/token
-            chat: ChatController::new(String::default(), String::default()),
-            entities: EntityController::new(
+            // "Authenticator: Fail to get token for: "
+            chat_controller: ChatController::new(String::default(), String::default()),
+            ent_controller: EntityController::new(
                 String::default(),
                 String::default(),
                 load_assets(window),
@@ -65,12 +66,12 @@ impl GameState for Game {
             GameData::Login(login) => self.login = login.clone(),
             GameData::Token(token) => self.token = token.clone(),
             GameData::Message(_) => {}
-            GameData::Player(_) => {}   // pass to EntityController
-            GameData::Entities(_) => {} // pass to EntityController
+            GameData::Player(player) => self.ent_controller.set_player(player),
+            GameData::Entities(entities) => self.ent_controller.set_entities(entities),
         });
         println!("==> (Game) Player connected: {:?}", data);
-        self.chat = ChatController::new(self.login.clone(), self.token.clone());
-        self.chat.resize(&self.margin);
+        self.chat_controller = ChatController::new(self.login.clone(), self.token.clone());
+        self.chat_controller.resize(&self.margin);
     }
 
     fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
@@ -90,22 +91,23 @@ impl GameState for Game {
         });
 
         self.world
-            .render(evnt, window, &self.entities.player_world());
-        self.entities.render(evnt, window);
+            .render(evnt, window, &self.ent_controller.player_world());
+        self.ent_controller.render(evnt, window);
         self.interface.render(evnt, window, &self);
-        self.chat.render(evnt, window, &mut self.font);
+        self.chat_controller.render(evnt, window, &mut self.font);
     }
 
     fn update(&mut self, _args: &UpdateArgs, delta_ts: u128) {
-        self.world.update(delta_ts, &self.entities.player_world());
-        self.entities.update(delta_ts, &self.world);
+        self.world
+            .update(delta_ts, &self.ent_controller.player_world());
+        self.ent_controller.update(delta_ts, &self.world);
         self.interface.update(_args, delta_ts);
-        self.chat.update(delta_ts);
+        self.chat_controller.update(delta_ts);
     }
 
     fn key_press(&mut self, args: &Button) {
-        self.entities.key_press(args, &self.world.world);
-        self.chat.key_press(&args, &mut self.font);
+        self.ent_controller.key_press(args, &self.world.world);
+        self.chat_controller.key_press(&args, &mut self.font);
 
         if let &Button::Keyboard(key) = args {
             match key {
@@ -118,16 +120,16 @@ impl GameState for Game {
     fn key_release(&mut self, _args: &Button) {}
 
     fn text_input(&mut self, args: &String) {
-        self.chat.text_input(args, &mut self.font);
+        self.chat_controller.text_input(args, &mut self.font);
     }
 
     fn mouse_cursor_args(&mut self, args: &[f64; 2]) {
-        self.entities.mouse_cursor_args(args);
-        self.chat.mouse_cursor_args(args);
+        self.ent_controller.mouse_cursor_args(args);
+        self.chat_controller.mouse_cursor_args(args);
     }
 
     fn mouse_scroll_args(&mut self, args: &[f64; 2]) {
-        self.chat.mouse_scroll_args(args);
+        self.chat_controller.mouse_scroll_args(args);
     }
 
     fn resize_window(&mut self, args: &ResizeArgs) {
@@ -138,8 +140,8 @@ impl GameState for Game {
         println!("==> (Game) Resized: {:?}", window_size);
         self.margin = self.handle_resize(window_size, MAP_WIDTH, GAME_HEIGHT);
         self.world.resize(&self.margin);
-        self.entities.resize(&self.margin);
+        self.ent_controller.resize(&self.margin);
         self.interface.resize(&self.margin);
-        self.chat.resize(&self.margin);
+        self.chat_controller.resize(&self.margin);
     }
 }

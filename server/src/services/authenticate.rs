@@ -14,7 +14,7 @@ impl RpgAuthenticate for RpgAuthenticateService {
     async fn authenticate_user(
         &self,
         request: tonic::Request<AuthRequest>,
-    ) -> std::result::Result<tonic::Response<AuthReply>, tonic::Status> {
+    ) -> Result<tonic::Response<AuthReply>, tonic::Status> {
         let auth_req: AuthRequest = request.into_inner();
         println!("[Server]: [AuthenticateUser] : with: {:?}", auth_req);
 
@@ -63,7 +63,7 @@ impl RpgAuthenticate for RpgAuthenticateService {
                 );
                 // Automate characters creation :
                 // for now only one character is allowed per account
-                let mut account_characters = CharacterAccountHandler::new(auth_req.login.clone());
+                let mut account_characters = CharacterAccountHandler::new(&auth_req.login);
                 account_characters
                     .get_all()
                     .map_err(|e| tonic::Status::internal(e.to_string()))
@@ -91,7 +91,7 @@ impl RpgAuthenticate for RpgAuthenticateService {
     async fn logout(
         &self,
         request: tonic::Request<LogoutRequest>,
-    ) -> std::result::Result<tonic::Response<EmptyReply>, tonic::Status> {
+    ) -> Result<tonic::Response<EmptyReply>, tonic::Status> {
         let logout_request: LogoutRequest = request.into_inner();
         println!("[Server]: [LogoutUser] : with: {:?}", logout_request);
 

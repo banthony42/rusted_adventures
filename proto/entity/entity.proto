@@ -1,0 +1,76 @@
+syntax="proto3";
+package RPG.package;
+
+import "generics.proto";
+
+enum Bestiary {
+    HUMAN = 0;
+    BOUFTOU = 1;
+}
+
+message Coord {
+    int64 x = 1;
+    int64 y = 2;
+}
+
+message Location {
+    Coord world = 1;
+    Coord map = 2;
+}
+
+message Entity {
+    string uuid = 1;
+    string name = 2;
+    Bestiary family = 3;
+    Location location = 4;
+}
+
+message PlayerData {
+    Entity entity = 1;
+}
+
+message Entities {
+    repeated Entity entities = 1;
+}
+
+message PlayerMove {
+    Location new_location = 1;
+}
+
+message EntityMove {
+    string uuid = 1;
+    Location new_location = 2;
+}
+
+message EntitySpawn {
+    Entity new_entity = 1;
+}
+
+message EntityDespawn {
+    string uuid = 1;
+}
+
+message ClientEntityEvent {
+    oneof event {
+        PlayerMove player_move_event = 1;
+    };
+}
+
+message ServerEntityEvent {
+    oneof event {
+        EntityMove entity_move_event = 1;
+        EntitySpawn entity_spawn_event = 2;
+        EntityDespawn entity_despawn_event = 3;
+    };
+}
+
+message PlayerNewMapRequest {
+    Location new_location = 1;
+}
+
+service RPGEntity {
+    rpc GetPlayer (EmptyRequest) returns (PlayerData);
+    rpc GetEntities (EmptyRequest) returns (Entities);
+    rpc EntityEventBus (stream ClientEntityEvent) returns (stream ServerEntityEvent);
+    rpc PlayerNewMap (PlayerNewMapRequest) returns (EmptyReply);
+}

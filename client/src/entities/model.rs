@@ -7,7 +7,7 @@ use crate::{
 const ENTITY_RUN_SPEED: f64 = 225.0;
 const ENTITY_RUN_STEP_DURATION: f64 = 1.0 / ENTITY_RUN_SPEED;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Orientation {
     Est,
     West,
@@ -15,6 +15,7 @@ pub enum Orientation {
     South,
 }
 
+#[derive(Debug, Clone)]
 pub struct EntityModel {
     name: String,
     race: Bestiary,
@@ -94,6 +95,7 @@ impl EntityModel {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum Bestiary {
     Human,
     Bouftou,

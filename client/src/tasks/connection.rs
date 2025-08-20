@@ -1,12 +1,20 @@
 use crate::constants::SERVER_ENDPOINT;
+use crate::entities::model::{Bestiary, EntityModel, IEntity};
+use crate::world::{MapCoord, WorldCoord};
 
 use super::task::{GameData, TaskData, TaskInterface};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
-use common::grpc_codegen::{AuthReply, AuthRequest};
+use common::grpc_codegen::rpg_entity_client::RpgEntityClient;
+use common::grpc_codegen::{
+    AuthReply, AuthRequest, Bestiary as RpcBestiary, EmptyRequest, Entities, Entity, PlayerData,
+};
 use std::error::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tonic::async_trait;
+use tonic::metadata::MetadataValue;
+use tonic::transport::Endpoint;
+use tonic::{Request, Status};
 
 #[derive(Clone)]
 pub struct ConnectionTask {
@@ -41,8 +49,8 @@ impl TaskInterface for ConnectionTask {
 
         // Simulate additional request to server
         let _ = tokio::join!(
-            self.simulate_player_request(&token),
-            self.simulate_entity_request(&token)
+            self.fetch_player_request(&token),
+            self.fetch_entity_request(&token)
         );
 
         let mut locked_task = self.data.lock().unwrap();
@@ -86,25 +94,94 @@ impl ConnectionTask {
         Ok(token)
     }
 
-    async fn simulate_player_request(
+    // TODO: duplicate code from ChatClient and EntityClient
+    fn auth_interceptor(
+        login: String,
+        token: String,
+    ) -> impl Fn(tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
+        return move |mut req: Request<()>| -> Result<Request<()>, Status> {
+            let login_md: MetadataValue<_> = login.parse().unwrap();
+            let token_md: MetadataValue<_> = token.parse().unwrap();
+
+            req.metadata_mut().insert("login", login_md);
+            req.metadata_mut().insert("authorization", token_md);
+            Ok(req)
+        };
+    }
+
+    async fn fetch_player_request(
         &self,
-        _token: &String,
+        token: &String,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
-        tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
-        let mut locked_task = self.data.lock().unwrap();
-        locked_task.step += 1;
-        locked_task.data.push(GameData::Message(self.login.clone()));
+        let endpoint = Endpoint::from_static(SERVER_ENDPOINT).connect().await?;
+
+        let mut client = RpgEntityClient::with_interceptor(
+            endpoint,
+            Self::auth_interceptor(self.login.clone(), token.clone()),
+        );
+
+        let request = tonic::Request::new(EmptyRequest {});
+        let response: tonic::Response<PlayerData> = client.get_player(request).await?;
+        let response_player_data = response.into_inner().entity;
+
+        if let Some(entity) = response_player_data {
+            let mut locked_task = self.data.lock().unwrap();
+            locked_task.step += 1;
+            locked_task
+                .data
+                .push(GameData::Player((&entity).try_into().unwrap()));
+        }
         Ok(())
     }
 
-    async fn simulate_entity_request(
+    async fn fetch_entity_request(
         &self,
-        _token: &String,
+        token: &String,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
-        tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+        let endpoint = Endpoint::from_static(SERVER_ENDPOINT).connect().await?;
+
+        let mut client = RpgEntityClient::with_interceptor(
+            endpoint,
+            Self::auth_interceptor(self.login.clone(), token.clone()),
+        );
+
+        let request = tonic::Request::new(EmptyRequest {});
+        let response: tonic::Response<Entities> = client.get_entities(request).await?;
+        let response_player_data = response.into_inner().entities;
+        let entities_data: Vec<EntityModel> = response_player_data
+            .iter()
+            .map(|e| e.try_into().unwrap())
+            .collect();
+
         let mut locked_task = self.data.lock().unwrap();
         locked_task.step += 1;
-        locked_task.data.push(GameData::Entities(Vec::new()));
+        locked_task.data.push(GameData::Entities(entities_data));
         Ok(())
+    }
+}
+
+impl TryInto<EntityModel> for &Entity {
+    type Error = &'static str;
+
+    fn try_into(self) -> Result<EntityModel, Self::Error> {
+        let mut entity_model = match self.family() {
+            RpcBestiary::Bouftou => EntityModel::new(self.name.clone(), Bestiary::Bouftou),
+            RpcBestiary::Human => EntityModel::new(self.name.clone(), Bestiary::Human),
+        };
+
+        // For now i don't find the tonic / gRPC syntax or trick to force a field to not be an rust Option
+        // entity.proto Location.world and Location.map should be always defined
+        // That's why here i use massively unwrap() for now, i want the code to fail explictly here
+        let rpc_world = self.location.unwrap().world.unwrap();
+        let rpc_map = self.location.unwrap().map.unwrap();
+        entity_model.set_world(WorldCoord {
+            x: rpc_world.x as i8, // protobuf smallest int type is i32
+            y: rpc_world.y as i8, // protobuf smallest int type is i32
+        });
+        entity_model.set_map(MapCoord {
+            x: rpc_map.x,
+            y: rpc_map.y,
+        });
+        Ok(entity_model)
     }
 }
