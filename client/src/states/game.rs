@@ -51,11 +51,7 @@ impl Game {
             // TODO: this cause tentative gRPC connection with empty login/token
             // "Authenticator: Fail to get token for: "
             chat_controller: ChatController::new(String::default(), String::default()),
-            ent_controller: EntityController::new(
-                String::default(),
-                String::default(),
-                load_assets(window),
-            ),
+            ent_controller: EntityController::new(load_assets(window)),
         };
     }
 }
@@ -70,6 +66,8 @@ impl GameState for Game {
             GameData::Entities(entities) => self.ent_controller.set_entities(entities),
         });
         println!("==> (Game) Player connected: {:?}", data);
+        self.ent_controller
+            .init(self.login.clone(), self.token.clone());
         self.chat_controller = ChatController::new(self.login.clone(), self.token.clone());
         self.chat_controller.resize(&self.margin);
     }

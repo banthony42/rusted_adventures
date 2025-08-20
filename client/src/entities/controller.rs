@@ -31,26 +31,56 @@ use tokio::sync::mpsc::{self, Sender};
 use tokio::time::{sleep, Duration};
 
 pub struct EntityController {
-    player: Box<dyn IEntity>,
-    entities: Vec<Box<dyn IEntity>>,
+    player: Option<Box<dyn IEntity>>,
+    entities: Option<Vec<Box<dyn IEntity>>>,
     path_finder: PathFinder<AStar>,
     view: EntityView,
     mouse_pos: [f64; 2],
     pub margin: Size,
-    tx: Sender<ClientEntityEvent>,
+    tx: Option<Sender<ClientEntityEvent>>,
     _runtime: Runtime,
 }
 
 impl EntityController {
-    pub fn new(login: String, token: String, assets: HashMap<EntityAssets, GameAsset>) -> Self {
-        let (controller_tx, mut controller_rx) = mpsc::channel::<ClientEntityEvent>(10);
+    pub fn new(assets: HashMap<EntityAssets, GameAsset>) -> Self {
         let runtime = Builder::new_multi_thread()
             .worker_threads(1)
             .enable_all()
             .build()
             .expect("Fail to invoke async context.");
 
-        runtime.spawn(async move {
+        EntityController {
+            _runtime: runtime,
+            tx: None,
+            path_finder: PathFinder::new(AStar::new()),
+            mouse_pos: [0.0, 0.0],
+            view: EntityView::new(assets),
+            entities: None,
+            player: None,
+            margin: Size {
+                width: 0.0,
+                height: 0.0,
+            },
+        }
+    }
+
+    pub fn set_player(&mut self, player_data: &EntityModel) {
+        self.player = Some(Box::new(player_data.clone()));
+    }
+
+    pub fn set_entities(&mut self, entities: &Vec<EntityModel>) {
+        self.entities = Some(
+            entities
+                .iter()
+                .map(|e| -> Box<dyn IEntity> { Box::new(e.clone()) })
+                .collect(),
+        );
+    }
+
+    pub fn init(&mut self, login: String, token: String) {
+        let (controller_tx, mut controller_rx) = mpsc::channel::<ClientEntityEvent>(10);
+        self.tx = Some(controller_tx);
+        self._runtime.spawn(async move {
             loop {
                 println!("===> EntityEventBus: try to connect ...");
 
@@ -96,51 +126,36 @@ impl EntityController {
                 sleep(Duration::from_millis(5000)).await;
             }
         });
-
-        let player = EntityClient::fetch_player();
-        EntityController {
-            _runtime: runtime,
-            tx: controller_tx.clone(),
-            path_finder: PathFinder::new(AStar::new()),
-            mouse_pos: [0.0, 0.0],
-            view: EntityView::new(assets),
-            entities: EntityClient::fetch_entities(player.get_world()),
-            player,
-            margin: Size {
-                width: 0.0,
-                height: 0.0,
-            },
-        }
-    }
-
-    pub fn set_player(&mut self, player_data: &EntityModel) {
-        self.player = Box::new(player_data.clone());
-    }
-
-    pub fn set_entities(&mut self, entities: &Vec<EntityModel>) {
-        self.entities = entities
-            .iter()
-            .map(|e| -> Box<dyn IEntity> { Box::new(e.clone()) })
-            .collect();
     }
 
     pub fn player_world(&self) -> WorldCoord {
-        self.player.get_world().clone()
+        match &self.player {
+            Some(player) => player.get_world().clone(),
+            None => WorldCoord::default(),
+        }
     }
 
     pub fn render(&mut self, evnt: &piston::Event, window: &mut piston_window::PistonWindow) {
-        self.view.render(evnt, window, &self.player);
-        for entity in &self.entities {
-            self.view.render(evnt, window, entity);
+        if let Some(player) = &self.player {
+            self.view.render(evnt, window, &player);
+        }
+        if let Some(entities) = &self.entities {
+            for entity in entities {
+                self.view.render(evnt, window, entity);
+            }
         }
     }
 
     pub fn update(&mut self, delta_ts: u128, world: &World) {
-        self.player.update(delta_ts, world);
-        self.view.update(delta_ts, &mut self.player);
-        for entity in &mut self.entities {
-            entity.update(delta_ts, world); // TODO: separate more entities from player (world is needed to change map, mobs will not change map)
-            self.view.update(delta_ts, entity);
+        if let Some(player) = &mut self.player {
+            player.update(delta_ts, world);
+            self.view.update(delta_ts, player);
+        }
+        if let Some(entities) = &mut self.entities {
+            for entity in entities {
+                entity.update(delta_ts, world); // TODO: separate more entities from player (world is needed to change map, mobs will not change map)
+                self.view.update(delta_ts, entity);
+            }
         }
     }
 
@@ -154,52 +169,59 @@ impl EntityController {
     }
 
     pub fn key_press(&mut self, args: &Button, world_map: &HashMap<WorldCoord, MapData>) {
-        if let Button::Mouse(MouseButton::Left) = args {
-            let mouse_x = (self.mouse_pos[0] - self.margin.width) as i64;
-            let mouse_y = (self.mouse_pos[1] - self.margin.height) as i64;
+        if let Some(player) = &mut self.player {
+            if let Button::Mouse(MouseButton::Left) = args {
+                let mouse_x = (self.mouse_pos[0] - self.margin.width) as i64;
+                let mouse_y = (self.mouse_pos[1] - self.margin.height) as i64;
 
-            let destination = MapCoord {
-                x: mouse_x / 64,
-                y: mouse_y / 64,
-            }
-            .limit();
+                let destination = MapCoord {
+                    x: mouse_x / 64,
+                    y: mouse_y / 64,
+                }
+                .limit();
 
-            let next_map_x: Option<Orientation> = match mouse_x {
-                x if x > MAP_EAST_LIMIT as i64 => Some(Orientation::Est),
-                x if x < MAP_CHANGE_LIMIT as i64 => Some(Orientation::West),
-                _ => None,
-            };
-            let next_map_y: Option<Orientation> = match mouse_y {
-                y if y > MAP_SOUTH_LIMIT as i64 => Some(Orientation::South),
-                y if y < MAP_CHANGE_LIMIT as i64 => Some(Orientation::North),
-                _ => None,
-            };
+                let next_map_x: Option<Orientation> = match mouse_x {
+                    x if x > MAP_EAST_LIMIT as i64 => Some(Orientation::Est),
+                    x if x < MAP_CHANGE_LIMIT as i64 => Some(Orientation::West),
+                    _ => None,
+                };
+                let next_map_y: Option<Orientation> = match mouse_y {
+                    y if y > MAP_SOUTH_LIMIT as i64 => Some(Orientation::South),
+                    y if y < MAP_CHANGE_LIMIT as i64 => Some(Orientation::North),
+                    _ => None,
+                };
 
-            if let Some(map_data) = world_map.get(&self.player.get_world()) {
-                self.path_finder
-                    .compute(self.player.get_map(), destination, &map_data.colliders);
-                self.player
-                    .set_path(self.path_finder.get_path(), next_map_x.or(next_map_y));
-            }
-        }
-
-        if let Button::Mouse(MouseButton::Right) = args {
-            println!("Simulate entities serveur new position received.");
-
-            let mouse_x = (self.mouse_pos[0] - self.margin.width) as i64;
-            let mouse_y = (self.mouse_pos[1] - self.margin.height) as i64;
-
-            let destination = MapCoord {
-                x: mouse_x / 64,
-                y: mouse_y / 64,
-            }
-            .limit();
-
-            if let Some(map_data) = world_map.get(&self.player.get_world()) {
-                for entity in &mut self.entities {
+                if let Some(map_data) = world_map.get(&player.get_world()) {
                     self.path_finder
-                        .compute(entity.get_map(), destination, &map_data.colliders);
-                    entity.set_path(self.path_finder.get_path(), None);
+                        .compute(player.get_map(), destination, &map_data.colliders);
+                    player.set_path(self.path_finder.get_path(), next_map_x.or(next_map_y));
+                }
+            }
+
+            // TEMPORARY to test entities movements
+            if let Some(entities) = &mut self.entities {
+                if let Button::Mouse(MouseButton::Right) = args {
+                    println!("Simulate entities serveur new position received.");
+
+                    let mouse_x = (self.mouse_pos[0] - self.margin.width) as i64;
+                    let mouse_y = (self.mouse_pos[1] - self.margin.height) as i64;
+
+                    let destination = MapCoord {
+                        x: mouse_x / 64,
+                        y: mouse_y / 64,
+                    }
+                    .limit();
+
+                    if let Some(map_data) = world_map.get(&player.get_world()) {
+                        for entity in entities {
+                            self.path_finder.compute(
+                                entity.get_map(),
+                                destination,
+                                &map_data.colliders,
+                            );
+                            entity.set_path(self.path_finder.get_path(), None);
+                        }
+                    }
                 }
             }
         }

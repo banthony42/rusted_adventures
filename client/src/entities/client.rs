@@ -68,23 +68,4 @@ impl EntityClient {
 
         Ok(EntityClient { tx, response })
     }
-
-    pub fn fetch_player() -> Box<dyn IEntity> {
-        // Call gRPC to get player data ...
-        let mut player = Box::new(EntityModel::new("New-Sulfurel".into(), Bestiary::Human));
-        player.set_world(WorldCoord { x: 1, y: 0 });
-        player.set_map(MapCoord { x: 2, y: 3 });
-
-        player
-    }
-
-    pub fn fetch_entities(world: WorldCoord) -> Vec<Box<dyn IEntity>> {
-        // Call gRPC to get entities data of the given world map
-
-        let mut entity = Box::new(EntityModel::new("New-Bouftou".into(), Bestiary::Bouftou));
-        entity.set_world(world);
-        entity.set_map(MapCoord { x: 7, y: 5 });
-
-        vec![entity]
-    }
 }
