@@ -1,3 +1,5 @@
+use rand::distr::Map;
+
 use crate::{
     constants::*,
     import::assets::{Animations, EntityAssets},
@@ -18,12 +20,14 @@ pub enum Orientation {
 #[derive(Debug, Clone)]
 pub struct EntityModel {
     name: String,
+    uuid: String,
     race: Bestiary,
     offset: MapCoord,
     step: f64,
     map: MapCoord,
     world: WorldCoord,
     state: Animations,
+    destination: Option<MapCoord>,
     path: Vec<MapCoord>,
     orientation: Orientation,
     next_map: Option<Orientation>,
@@ -32,9 +36,11 @@ pub struct EntityModel {
 }
 
 // Needed to manipulate EntityModel attributes using IEntity abstraction
-pub trait IEntity {
+pub trait IEntity: Send {
     fn get_world(&self) -> WorldCoord;
     fn set_world(&mut self, world: WorldCoord);
+
+    fn get_uuid(&self) -> &String;
 
     fn get_map(&self) -> MapCoord;
     fn set_map(&mut self, map: MapCoord);
@@ -49,21 +55,26 @@ pub trait IEntity {
 
     fn set_path(&mut self, path: Vec<MapCoord>, next_map: Option<Orientation>);
 
-    fn update(&mut self, delta_ts: u128, world: &World);
+    fn consume_destination(&mut self) -> Option<MapCoord>;
+    fn set_destination(&mut self, destination: MapCoord);
+
+    fn update(&mut self, delta_ts: u128, world: &World) -> Option<EntityMoveEvent>;
     fn get_real_pos(&self) -> MapCoord;
 
     fn get_orientation(&self) -> &Orientation;
 }
 
 impl EntityModel {
-    pub fn new(name: String, race: Bestiary) -> Self {
+    pub fn new(name: String, uuid: String, race: Bestiary) -> Self {
         EntityModel {
             name,
+            uuid,
             race,
             offset: MapCoord::default(),
             world: WorldCoord::default(),
             map: MapCoord::default(),
             state: Animations::default(),
+            destination: None,
             path: Vec::new(),
             orientation: Orientation::Est,
             next_map: None,
@@ -99,6 +110,11 @@ impl EntityModel {
 pub enum Bestiary {
     Human,
     Bouftou,
+}
+
+pub enum EntityMoveEvent {
+    CELL_UPDATE,
+    MAP_UPDATE,
 }
 
 impl IEntity for EntityModel {
@@ -143,13 +159,15 @@ impl IEntity for EntityModel {
         self.next_map = next_map;
     }
 
-    fn update(&mut self, delta_ts: u128, world: &World) {
+    fn update(&mut self, delta_ts: u128, world: &World) -> Option<EntityMoveEvent> {
+        let mut new_pos: Option<EntityMoveEvent> = None;
         if self.path.is_empty() {
             self.set_state(Animations::Idle);
             self.world = match self.next_map.take() {
                 Some(Orientation::Est) => {
                     if let Some(new_map) = world.get_east_map(&self.world) {
                         self.map.x = 0;
+                        new_pos = Some(EntityMoveEvent::MAP_UPDATE);
                         new_map.0
                     } else {
                         self.world
@@ -158,13 +176,14 @@ impl IEntity for EntityModel {
                 Some(Orientation::West) => {
                     if let Some(new_map) = world.get_west_map(&self.world) {
                         self.map.x = TILEMAP_WIDTH as i64 - 1;
+                        new_pos = Some(EntityMoveEvent::MAP_UPDATE);
                         new_map.0
                     } else {
                         self.world
                     }
                 }
                 _ => self.world,
-            }
+            };
         } else {
             self.set_state(Animations::Run);
             let target = *self.path.last().unwrap(); //TODO: remove unwrap
@@ -176,6 +195,7 @@ impl IEntity for EntityModel {
                 self.offset.x = 0;
                 self.offset.y = 0;
                 self.step = 0.0;
+                new_pos = Some(EntityMoveEvent::CELL_UPDATE);
             } else {
                 direction *= 64.0;
                 self.offset = MapCoord {
@@ -195,6 +215,7 @@ impl IEntity for EntityModel {
                 self.orientation = new_orientation;
             }
         }
+        new_pos
     }
 
     fn get_real_pos(&self) -> MapCoord {
@@ -206,6 +227,18 @@ impl IEntity for EntityModel {
 
     fn get_orientation(&self) -> &Orientation {
         &self.orientation
+    }
+
+    fn get_uuid(&self) -> &String {
+        &self.uuid
+    }
+
+    fn consume_destination(&mut self) -> Option<MapCoord> {
+        self.destination.take()
+    }
+
+    fn set_destination(&mut self, destination: MapCoord) {
+        self.destination = Some(destination);
     }
 }
 

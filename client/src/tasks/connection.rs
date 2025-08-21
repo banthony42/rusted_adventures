@@ -74,6 +74,7 @@ impl ConnectionTask {
 
     async fn connect_user(&self) -> Result<String, Box<dyn Error + Send + Sync>> {
         if self.login.eq("offline") {
+            // TODO: offline mode make user enter in game mode but player entity is empty
             return Ok(String::from("offline-token"));
         }
 
@@ -165,8 +166,12 @@ impl TryInto<EntityModel> for &Entity {
 
     fn try_into(self) -> Result<EntityModel, Self::Error> {
         let mut entity_model = match self.family() {
-            RpcBestiary::Bouftou => EntityModel::new(self.name.clone(), Bestiary::Bouftou),
-            RpcBestiary::Human => EntityModel::new(self.name.clone(), Bestiary::Human),
+            RpcBestiary::Bouftou => {
+                EntityModel::new(self.name.clone(), self.uuid.clone(), Bestiary::Bouftou)
+            }
+            RpcBestiary::Human => {
+                EntityModel::new(self.name.clone(), self.uuid.clone(), Bestiary::Human)
+            }
         };
 
         // For now i don't find the tonic / gRPC syntax or trick to force a field to not be an rust Option

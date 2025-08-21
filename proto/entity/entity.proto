@@ -33,8 +33,14 @@ message Entities {
     repeated Entity entities = 1;
 }
 
+enum LocationType {
+    New = 0;
+    Update = 1;
+}
+
 message PlayerMove {
     Location new_location = 1;
+    LocationType location_type = 2;
 }
 
 message EntityMove {
@@ -72,5 +78,4 @@ service RPGEntity {
     rpc GetPlayer (EmptyRequest) returns (PlayerData);
     rpc GetEntities (EmptyRequest) returns (Entities);
     rpc EntityEventBus (stream ClientEntityEvent) returns (stream ServerEntityEvent);
-    rpc PlayerNewMap (PlayerNewMapRequest) returns (EmptyReply);
 }
