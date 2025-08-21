@@ -1,15 +1,17 @@
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::sync::Arc;
+use std::time::Duration;
 
 use common::grpc_codegen::{
     client_entity_event::Event::PlayerMoveEvent, rpg_entity_server::RpgEntity,
-    Bestiary as RpcBestiary, ClientEntityEvent, Coord as RpcCoord, EmptyReply, EmptyRequest,
-    Entities, Entity as RpcEntity, Location, PlayerData, PlayerMove, PlayerNewMapRequest,
-    ServerEntityEvent,
+    Bestiary as RpcBestiary, ClientEntityEvent, Coord as RpcCoord, EmptyRequest, Entities,
+    Entity as RpcEntity, Location, PlayerData, PlayerMove, ServerEntityEvent,
 };
+use common::grpc_codegen::{server_entity_event, EntityMove};
 use tokio::sync::mpsc::{self, Sender};
 use tokio::sync::Mutex;
+use tokio::time::sleep;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 use tonic::{Request, Response, Status, Streaming};
@@ -35,6 +37,15 @@ impl RpgEntityEvent {
 
 async fn player_move(move_event: PlayerMove, clients: ArcMutexHashMapClient) {
     println!("===> PLAYER MOVE: {:?}", move_event);
+    // TODO: Update DB
+
+    // TODO: If world map has change:
+    //      broadcast all clients on the last map with EntityDespawn
+    //      broadcast all clients on the new map with EntitySpawn
+    // else (world map has not change:)
+    //      If this move event has type: LocationType::New
+    //          broadcast all clients on the same map with EntityMove
+    //          (avoid to update all clients at each cell update, only when player change destination on the map)
 }
 
 type ArcMutexHashMapClient = Arc<Mutex<HashMap<String, Sender<Result<ServerEntityEvent, Status>>>>>;
@@ -62,6 +73,38 @@ impl RpgEntityService {
                     Some(PlayerMoveEvent(me)) => player_move(me, clts.clone()).await,
                     None => todo!(),
                 };
+            }
+        });
+
+        // Temporary to test the system : (entity movements)
+        // Every 10 seconds, simulate deplacement for hardcoded `entity_1uuid`
+        let cclts = clients.clone();
+        tokio::spawn(async move {
+            loop {
+                sleep(Duration::from_millis(10000)).await;
+                let entity_move_event = ServerEntityEvent {
+                    event: Some(server_entity_event::Event::EntityMoveEvent(EntityMove {
+                        uuid: "entity_1uuid".into(),
+                        new_location: Some(Location {
+                            world: Some(RpcCoord { x: 1, y: 0 }),
+                            map: Some(RpcCoord {
+                                x: rand::random_range(0..=15),
+                                y: rand::random_range(0..=11),
+                            }),
+                        }),
+                    })),
+                };
+
+                {
+                    let clts = cclts.lock().await;
+                    // Send the EntityMove event to each clients
+                    for (_, server_event_tx) in clts.iter() {
+                        if let Err(err) = server_event_tx.send(Ok(entity_move_event.clone())).await
+                        {
+                            println!("Error: chat broadcast: {:?}", err);
+                        }
+                    }
+                }
             }
         });
 
@@ -94,6 +137,9 @@ impl RpgEntity for RpgEntityService {
         let event_tx = self.event_tx.clone();
         let cl = self.clients.clone();
         tokio::spawn(async move {
+            // Get character info from DB
+            // TODO: Broadcast all clients with EntitySpawn
+            // Update DB ? player is connected ?
             while let Some(chat_event) = client_stream.next().await {
                 if let Err(status) = chat_event.as_ref() {
                     if let Some(io_err) = match_for_io_error(&status) {
@@ -115,6 +161,8 @@ impl RpgEntity for RpgEntityService {
                 }
             }
             println!("RpgEntityService: client: {:?} disconnected", login);
+            // TODO: Broadcast all clients with EntityDespawn
+            // Update DB ? player is disconnected ?
             cl.lock().await.remove(&login);
         });
 
@@ -122,13 +170,6 @@ impl RpgEntity for RpgEntityService {
         // any data send through tx will be received by the gRPC codegen
         // and transmit to the client through gRPC request
         Ok(Response::new(ReceiverStream::new(server_event_rx)))
-    }
-
-    async fn player_new_map(
-        &self,
-        request: tonic::Request<PlayerNewMapRequest>,
-    ) -> Result<tonic::Response<EmptyReply>, tonic::Status> {
-        todo!()
     }
 
     async fn get_player(
