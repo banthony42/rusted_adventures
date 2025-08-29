@@ -2,7 +2,7 @@ use diesel::{
     dsl::insert_into, ExpressionMethods, QueryDsl, QueryResult, RunQueryDsl, SelectableHelper,
 };
 
-use crate::database::schema::locations::dsl::*;
+use crate::database::{model::location::UpdateLocationDestination, schema::locations::dsl::*};
 
 use super::{CreateLocation, Location, UpdateLocation};
 
@@ -25,6 +25,16 @@ impl Location {
             .set(item)
             .returning(Location::as_returning())
             .get_result(db)
+    }
+
+    pub fn update_destination(
+        db: &mut Connection,
+        e_id: &i32,
+        new_destination: UpdateLocationDestination,
+    ) -> QueryResult<usize> {
+        diesel::update(locations.filter(entity_id.eq(e_id)))
+            .set(new_destination)
+            .execute(db)
     }
 
     /// Delete Location in DB of the given entity id

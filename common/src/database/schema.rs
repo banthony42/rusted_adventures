@@ -8,13 +8,12 @@ pub mod sql_types {
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "pgclass"))]
     pub struct Pgclass;
-
-    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "point", schema = "pg_catalog"))]
-    pub struct Point;
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use diesel_geometry::sql_types::*;
+
     accounts (id) {
         id -> Uuid,
         #[max_length = 12]
@@ -28,6 +27,7 @@ diesel::table! {
 
 diesel::table! {
     use diesel::sql_types::*;
+    use diesel_geometry::sql_types::*;
     use super::sql_types::Pgclass;
 
     characters (id) {
@@ -39,6 +39,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use diesel_geometry::sql_types::*;
+
     entities (id) {
         id -> Int4,
         uuid -> Uuid,
@@ -49,17 +52,19 @@ diesel::table! {
 
 diesel::table! {
     use diesel::sql_types::*;
-    use super::sql_types::Point;
+    use diesel_geometry::sql_types::*;
 
     locations (entity_id) {
         entity_id -> Int4,
         world -> Point,
         map -> Point,
+        destination -> Nullable<Point>,
     }
 }
 
 diesel::table! {
     use diesel::sql_types::*;
+    use diesel_geometry::sql_types::*;
     use super::sql_types::Pgbestiary;
 
     monsters (id) {

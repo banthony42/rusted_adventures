@@ -165,7 +165,6 @@ impl GameState for Login {
                         self.username.set_focus(true);
                     }
                 }
-                piston::Key::Escape => std::process::exit(0),
                 piston::Key::Return => self.login = self.should_connect_user(),
                 _ => {}
             }

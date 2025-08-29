@@ -2,9 +2,15 @@ use diesel::{
     associations::HasTable, dsl::insert_into, ExpressionMethods, QueryDsl, QueryResult,
     RunQueryDsl, SelectableHelper,
 };
+use diesel_geometry::{data_types::PgPoint, prelude::PgSameAsExpressionMethods};
 use uuid::Uuid;
 
-use crate::database::schema::{accounts, characters::dsl::*};
+use crate::database::schema::{
+    accounts,
+    characters::dsl::*,
+    entities,
+    locations::{self},
+};
 
 use super::{Character, CreateCharacter, UpdateCharacter};
 
@@ -38,6 +44,19 @@ impl Character {
             .load(db)?;
 
         Ok(chars)
+    }
+
+    pub fn read_all_by_world(
+        db: &mut Connection,
+        world_coord: PgPoint,
+    ) -> QueryResult<Vec<String>> {
+        let entities = locations::dsl::locations::table()
+            .filter(locations::world.same_as(world_coord))
+            .inner_join(entities::table)
+            .select(entities::name)
+            .load(db)?;
+
+        Ok(entities)
     }
 
     /// Update an Character in DB for the given character id according to the given UpdateCharacter item.

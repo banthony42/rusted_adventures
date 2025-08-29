@@ -128,7 +128,10 @@ impl EntityController {
                                                         entities.push(Box::new(instance));
                                                     }
                                                 },
-                                                EntityDespawnEvent(_entity_despawn) => todo!(),
+                                                EntityDespawnEvent(entity_despawn) => {
+                                                    let mut entities = some_entities.lock().await;
+                                                    entities.retain(|entity| !entity.get_uuid().eq(&entity_despawn.uuid));
+                                                },
                                             }
                                         }
                                     },
@@ -214,12 +217,12 @@ impl EntityController {
 
     pub fn update(&mut self, delta_ts: u128, world: &World) {
         if let Some(player) = &mut self.player {
-            if player.update(delta_ts, world).is_some() {
+            if let Some(location_type) = player.update(delta_ts, world) {
                 Self::send_player_move_event(
                     &self.tx,
                     player.get_world(),
                     player.get_map(),
-                    LocationType::Update,
+                    location_type,
                 );
             }
             self.view.update(delta_ts, player);
@@ -296,38 +299,11 @@ impl EntityController {
                             &self.tx,
                             player.get_world(),
                             destination,
-                            LocationType::New,
+                            LocationType::NewMap,
                         );
                     }
                 }
             }
-
-            // TEMPORARY to test entities movements
-            // if let Some(entities) = &mut self.entities {
-            //     if let Button::Mouse(MouseButton::Right) = args {
-            //         println!("Simulate entities serveur new position received.");
-
-            //         let mouse_x = (self.mouse_pos[0] - self.margin.width) as i64;
-            //         let mouse_y = (self.mouse_pos[1] - self.margin.height) as i64;
-
-            //         let destination = MapCoord {
-            //             x: mouse_x / 64,
-            //             y: mouse_y / 64,
-            //         }
-            //         .limit();
-
-            //         if let Some(map_data) = world_map.get(&player.get_world()) {
-            //             for entity in entities {
-            //                 self.path_finder.compute(
-            //                     entity.get_map(),
-            //                     destination,
-            //                     &map_data.colliders,
-            //                 );
-            //                 entity.set_path(self.path_finder.get_path(), None);
-            //             }
-            //         }
-            //     }
-            // }
         }
     }
 }

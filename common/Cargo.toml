@@ -13,5 +13,8 @@ prost = "*"
 uuid = "1.15.1"
 byteorder = "1.5.0"
 
+[dependencies.diesel_geometry]
+git = "https://github.com/neeryapp/diesel_geometry.git"
+
 [build-dependencies]
 tonic-build = "*"

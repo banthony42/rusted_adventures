@@ -34,8 +34,9 @@ message Entities {
 }
 
 enum LocationType {
-    New = 0;
-    Update = 1;
+    NewWorld = 0;
+    NewMap = 1;
+    Update = 2;
 }
 
 message PlayerMove {

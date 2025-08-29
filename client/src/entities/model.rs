@@ -1,3 +1,4 @@
+use common::grpc_codegen::LocationType;
 use rand::distr::Map;
 
 use crate::{
@@ -58,7 +59,7 @@ pub trait IEntity: Send {
     fn consume_destination(&mut self) -> Option<MapCoord>;
     fn set_destination(&mut self, destination: MapCoord);
 
-    fn update(&mut self, delta_ts: u128, world: &World) -> Option<EntityMoveEvent>;
+    fn update(&mut self, delta_ts: u128, world: &World) -> Option<LocationType>;
     fn get_real_pos(&self) -> MapCoord;
 
     fn get_orientation(&self) -> &Orientation;
@@ -112,11 +113,6 @@ pub enum Bestiary {
     Bouftou,
 }
 
-pub enum EntityMoveEvent {
-    CELL_UPDATE,
-    MAP_UPDATE,
-}
-
 impl IEntity for EntityModel {
     fn set_world(&mut self, world: WorldCoord) {
         self.world = world;
@@ -159,15 +155,15 @@ impl IEntity for EntityModel {
         self.next_map = next_map;
     }
 
-    fn update(&mut self, delta_ts: u128, world: &World) -> Option<EntityMoveEvent> {
-        let mut new_pos: Option<EntityMoveEvent> = None;
+    fn update(&mut self, delta_ts: u128, world: &World) -> Option<LocationType> {
+        let mut new_pos: Option<LocationType> = None;
         if self.path.is_empty() {
             self.set_state(Animations::Idle);
             self.world = match self.next_map.take() {
                 Some(Orientation::Est) => {
                     if let Some(new_map) = world.get_east_map(&self.world) {
                         self.map.x = 0;
-                        new_pos = Some(EntityMoveEvent::MAP_UPDATE);
+                        new_pos = Some(LocationType::NewWorld);
                         new_map.0
                     } else {
                         self.world
@@ -176,7 +172,7 @@ impl IEntity for EntityModel {
                 Some(Orientation::West) => {
                     if let Some(new_map) = world.get_west_map(&self.world) {
                         self.map.x = TILEMAP_WIDTH as i64 - 1;
-                        new_pos = Some(EntityMoveEvent::MAP_UPDATE);
+                        new_pos = Some(LocationType::NewWorld);
                         new_map.0
                     } else {
                         self.world
@@ -195,7 +191,7 @@ impl IEntity for EntityModel {
                 self.offset.x = 0;
                 self.offset.y = 0;
                 self.step = 0.0;
-                new_pos = Some(EntityMoveEvent::CELL_UPDATE);
+                new_pos = Some(LocationType::Update);
             } else {
                 direction *= 64.0;
                 self.offset = MapCoord {

@@ -31,6 +31,7 @@ create table monsters(
 create table locations(
     entity_id integer primary key references entities(id) on delete cascade,
     world point not null,
-    map point not null
+    map point not null,
+    destination point
 );
 

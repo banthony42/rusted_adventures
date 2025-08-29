@@ -13,7 +13,7 @@ use crate::database::schema::sql_types::Pgclass;
 
 pub mod character;
 
-#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq)]
+#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, Clone)]
 #[diesel(sql_type = Pgclass)]
 pub enum Classes {
     Warrior,
