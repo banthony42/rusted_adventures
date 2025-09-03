@@ -13,7 +13,7 @@ pub mod entity;
 
 use crate::database::schema::sql_types::Pgbestiary;
 
-#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq)]
+#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, Clone)]
 #[diesel(sql_type = Pgbestiary)]
 pub enum Bestiary {
     Human,

@@ -11,10 +11,20 @@ use crate::{
             location::{CreateLocation, Location, UpdateLocation, UpdateLocationDestination},
         },
     },
-    grpc_codegen::{Coord, Location as RpcLocation},
+    grpc_codegen::{Bestiary, Coord, Location as RpcLocation},
 };
 
 use crate::grpc_codegen::Entity as RpcEntity;
+
+impl Into<Coord> for PgPoint {
+    fn into(self) -> Coord {
+        Coord {
+            x: self.0 as i64,
+            y: self.1 as i64,
+        }
+    }
+}
+
 pub struct CharacterInfo {
     pub uuid: String,
     pub eid: i32,
@@ -69,29 +79,49 @@ impl CharacterAccountHandler {
         self.get_all_player_on_world(info.world)
     }
 
-    pub fn get_entities_on_same_world(&mut self) -> Result<Vec<RpcEntity>, Error> {
+    pub fn get_entities_on_same_world(&mut self) -> Result<Vec<(RpcEntity, Option<Coord>)>, Error> {
         let info = self.get_character_info()?;
-        let entities =
-            Character::get_all_entities_by_map(&mut self.connection, &self.login, info.world)?;
 
-        Ok(entities
+        let players =
+            Character::get_all_players_by_world(&mut self.connection, &self.login, info.world)?;
+        let mut players_as_rpcentities: Vec<(RpcEntity, Option<Coord>)> = players
             .iter()
-            .map(|ent| RpcEntity {
-                uuid: ent.0.clone(),
-                name: ent.1.clone(),
-                family: ent.2.clone() as i32,
-                location: Some(RpcLocation {
-                    world: Some(Coord {
-                        x: info.world.0 as i64,
-                        y: info.world.1 as i64,
-                    }),
-                    map: Some(Coord {
-                        x: ent.3 .0 as i64,
-                        y: ent.3 .1 as i64,
-                    }),
-                }),
+            .map(|ent| {
+                (
+                    RpcEntity {
+                        uuid: ent.0.clone(),
+                        name: ent.1.clone(),
+                        family: Bestiary::Human as i32,
+                        location: Some(RpcLocation {
+                            world: Some(info.world.into()),
+                            map: Some(ent.3.into()),
+                        }),
+                    },
+                    ent.4.map(|d| d.into()),
+                )
             })
-            .collect())
+            .collect();
+
+        let monsters = Character::get_all_monsters_by_world(&mut self.connection, info.world)?;
+        let mut monsters_as_rpcentities: Vec<(RpcEntity, Option<Coord>)> = monsters
+            .iter()
+            .map(|ent| {
+                (
+                    RpcEntity {
+                        uuid: format!("{}.{}", ent.1, ent.0),
+                        name: ent.1.clone(),
+                        family: ent.2.clone() as i32,
+                        location: Some(RpcLocation {
+                            world: Some(info.world.into()),
+                            map: Some(ent.3.into()),
+                        }),
+                    },
+                    ent.4.map(|d| d.into()),
+                )
+            })
+            .collect();
+        players_as_rpcentities.append(&mut monsters_as_rpcentities);
+        Ok(players_as_rpcentities)
     }
 
     /// Update the entity location with `new_loc`

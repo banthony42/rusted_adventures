@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use common::character::CharacterAccountHandler;
-use common::database::model::entity::Bestiary;
+use common::database::model::entity::Entity;
 use common::database::model::location::{Location, UpdateLocationDestination};
 use common::grpc_codegen::{
     client_entity_event::Event::PlayerMoveEvent, rpg_entity_server::RpgEntity,
@@ -149,14 +149,8 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
             println!("======> MOVE EVENT: players same map: {:?}", players);
             let move_event = ServerEntityEvent::new_move(
                 char_info.uuid,
-                RpcCoord {
-                    x: new_dest_event.world.unwrap().x,
-                    y: new_dest_event.world.unwrap().y,
-                },
-                RpcCoord {
-                    x: new_dest_event.map.unwrap().x,
-                    y: new_dest_event.map.unwrap().y,
-                },
+                new_dest_event.world.unwrap(),
+                new_dest_event.map.unwrap(),
             );
             {
                 let clts = clients.lock().await;
@@ -202,26 +196,18 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
             char_handler.update_location(new_dest_event);
 
             // Broadcast all players on the world map with a spawn event
-            let world_loc = RpcCoord {
-                x: new_dest_event.world.unwrap().x,
-                y: new_dest_event.world.unwrap().y,
-            };
-            let map_loc = RpcCoord {
-                x: new_dest_event.map.unwrap().x,
-                y: new_dest_event.map.unwrap().y,
-            };
             let sender_spawn_event = ServerEntityEvent::new_spawn(
                 char_info.uuid.clone(),
                 sender.clone(),
                 char_info.class.into(),
-                world_loc.clone(),
-                map_loc.clone(),
+                new_dest_event.world.unwrap(),
+                new_dest_event.map.unwrap(),
             );
 
             if let Ok(entities_on_new_world) = char_handler.get_entities_on_same_world() {
                 let clts = clients.lock().await;
                 let sender_tx = clts.get(&sender).unwrap();
-                for entity in entities_on_new_world.iter() {
+                for (entity, entity_dest) in entities_on_new_world.iter() {
                     let entity_spawn_event =
                         ServerEntityEvent::new_spawn_from_entity(entity.clone());
                     if let Err(err) = sender_tx.send(Ok(entity_spawn_event)).await {
@@ -231,6 +217,19 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                         );
                     } else {
                         println!(" Send spawn {:?} for {:?}", sender, entity.name);
+                        if let Some(dest) = entity_dest {
+                            let entity_move_event = ServerEntityEvent::new_move(
+                                entity.uuid.clone(),
+                                entity.location.unwrap().world.unwrap().into(),
+                                *dest,
+                            );
+                            if let Err(err) = sender_tx.send(Ok(entity_move_event)).await {
+                                println!(
+                                "Error: sending entities move event after spawn: ({:?}) for {:?} : {:?}",
+                                entity.name, sender, err
+                            );
+                            }
+                        }
                     }
 
                     if entity.family() == RpcBestiary::Human {
@@ -293,31 +292,31 @@ impl RpgEntityService {
 
         // TODO: Temporary to test the system : (entity movements)
         // Every 10 seconds, simulate deplacement for hardcoded `entity_1uuid`
-        let cclts = clients.clone();
-        tokio::spawn(async move {
-            loop {
-                sleep(Duration::from_millis(10000)).await;
-                let entity_move_event = ServerEntityEvent::new_move(
-                    "entity_1uuid".into(),
-                    RpcCoord { x: 1, y: 0 },
-                    RpcCoord {
-                        x: rand::random_range(0..=15),
-                        y: rand::random_range(0..=11),
-                    },
-                );
+        // let cclts = clients.clone();
+        // tokio::spawn(async move {
+        //     loop {
+        //         sleep(Duration::from_millis(10000)).await;
+        //         let entity_move_event = ServerEntityEvent::new_move(
+        //             "entity_1uuid".into(),
+        //             RpcCoord { x: 1, y: 0 },
+        //             RpcCoord {
+        //                 x: rand::random_range(0..=15),
+        //                 y: rand::random_range(0..=11),
+        //             },
+        //         );
 
-                {
-                    let clts = cclts.lock().await;
-                    // Send the EntityMove event to each clients
-                    for (_, server_event_tx) in clts.iter() {
-                        if let Err(err) = server_event_tx.send(Ok(entity_move_event.clone())).await
-                        {
-                            println!("Error: entity move event broadcast: {:?}", err);
-                        }
-                    }
-                }
-            }
-        });
+        //         {
+        //             let clts = cclts.lock().await;
+        //             // Send the EntityMove event to each clients
+        //             for (_, server_event_tx) in clts.iter() {
+        //                 if let Err(err) = server_event_tx.send(Ok(entity_move_event.clone())).await
+        //                 {
+        //                     println!("Error: entity move event broadcast: {:?}", err);
+        //                 }
+        //             }
+        //         }
+        //     }
+        // });
 
         Self { clients, event_tx }
     }
@@ -357,14 +356,8 @@ impl RpgEntity for RpgEntityService {
                 char_info.uuid.clone(),
                 login.clone(),
                 char_info.class.into(),
-                RpcCoord {
-                    x: char_info.world.0 as i64,
-                    y: char_info.world.1 as i64,
-                },
-                RpcCoord {
-                    x: char_info.map.0 as i64,
-                    y: char_info.map.1 as i64,
-                },
+                char_info.world.into(),
+                char_info.map.into(),
             );
 
             let result_players = character_handler.get_all_player_on_world(char_info.world);
@@ -459,14 +452,8 @@ impl RpgEntity for RpgEntityService {
                 name: login,
                 family: RpcBestiary::Human.into(),
                 location: Some(RpcLocation {
-                    world: Some(RpcCoord {
-                        x: char_info.world.0 as i64,
-                        y: char_info.world.1 as i64,
-                    }),
-                    map: Some(RpcCoord {
-                        x: char_info.map.0 as i64,
-                        y: char_info.map.1 as i64,
-                    }),
+                    world: Some(char_info.world.into()),
+                    map: Some(char_info.map.into()),
                 }),
             }),
         };
@@ -484,22 +471,10 @@ impl RpgEntity for RpgEntityService {
         let mut character_handler = CharacterAccountHandler::new(&login);
 
         let result = character_handler.get_entities_on_same_world();
+        let data = result.unwrap(); // TODO
 
-        let mut data = result.unwrap(); // TODO
-
-        // TODO: Temporary hardcoded entities to test rpc communication
-        // next step get data from database
-        let entity_1 = RpcEntity {
-            uuid: "entity_1uuid".into(),
-            name: "Bouftou1Hardcoded".into(),
-            family: RpcBestiary::Bouftou.into(),
-            location: Some(RpcLocation {
-                world: Some(RpcCoord { x: 1, y: 0 }), // Consider only one character per account so retrieve this location using login/token metadata
-                map: Some(RpcCoord { x: 2, y: 4 }),
-            }),
-        };
-        data.push(entity_1);
-        let response = tonic::Response::new(Entities { entities: data });
+        let entities: Vec<RpcEntity> = data.iter().map(|(ent, _)| ent.clone()).collect();
+        let response = tonic::Response::new(Entities { entities });
 
         Ok(response)
     }

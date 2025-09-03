@@ -1,17 +1,18 @@
 use diesel::{
-    associations::HasTable, dsl::insert_into, sql_types::Integer, ExpressionMethods, QueryDsl,
-    QueryResult, RunQueryDsl, SelectableHelper,
+    associations::HasTable, dsl::insert_into, ExpressionMethods, QueryDsl, QueryResult,
+    RunQueryDsl, SelectableHelper,
 };
 use diesel_geometry::{data_types::PgPoint, prelude::PgSameAsExpressionMethods};
 use uuid::Uuid;
 
 use crate::database::{
-    model::character::Classes,
+    model::{character::Classes, entity::Bestiary},
     schema::{
-        accounts::{self, session_token},
+        accounts::{self},
         characters::dsl::*,
         entities,
         locations::dsl::*,
+        monsters,
     },
 };
 
@@ -64,28 +65,65 @@ impl Character {
         Ok(entities)
     }
 
-    pub fn get_all_entities_by_map(
+    pub fn get_all_monsters_by_world(
+        db: &mut Connection,
+        world_coord: PgPoint,
+    ) -> QueryResult<Vec<(i32, String, Bestiary, PgPoint, Option<PgPoint>)>> {
+        let monsters: Vec<(i32, String, Bestiary, PgPoint, Option<PgPoint>)> =
+            entities::dsl::entities::table()
+                .inner_join(locations)
+                .inner_join(monsters::table)
+                .filter(world.same_as(world_coord))
+                .select((
+                    entities::id,
+                    entities::name,
+                    monsters::race,
+                    map,
+                    destination,
+                ))
+                .load(db)?;
+        Ok(monsters)
+    }
+
+    pub fn get_all_players_by_world(
         db: &mut Connection,
         login: &String,
         world_coord: PgPoint,
-    ) -> QueryResult<Vec<(String, String, Classes, PgPoint)>> {
-        let data: Vec<(Uuid, i32, String, Classes, PgPoint)> = entities::dsl::entities::table()
-            .inner_join(locations)
-            .inner_join(characters)
-            .select((account_id, entities::id, entities::name, class, map))
-            .filter(entities::name.ne(login))
-            .filter(world.same_as(world_coord))
-            .load(db)?;
+    ) -> QueryResult<Vec<(String, String, Classes, PgPoint, Option<PgPoint>)>> {
+        let players: Vec<(Uuid, i32, String, Classes, PgPoint, Option<PgPoint>)> =
+            entities::dsl::entities::table()
+                .inner_join(locations)
+                .inner_join(characters)
+                .select((
+                    account_id,
+                    entities::id,
+                    entities::name,
+                    class,
+                    map,
+                    destination,
+                ))
+                .filter(entities::name.ne(login))
+                .filter(world.same_as(world_coord))
+                .load(db)?;
 
         let connected_player: Vec<Uuid> = accounts::table
+            .inner_join(characters)
             .filter(accounts::session_token.is_not_null())
             .select(accounts::id)
             .load(db)?;
 
-        Ok(data
+        Ok(players
             .iter()
             .filter(|d| connected_player.contains(&d.0))
-            .map(|d| (format!("{}.{}", d.0, d.1), d.2.clone(), d.3.clone(), d.4))
+            .map(|d| {
+                (
+                    format!("{}.{}", d.0, d.1),
+                    d.2.clone(),
+                    d.3.clone(),
+                    d.4,
+                    d.5,
+                )
+            })
             .collect())
     }
 

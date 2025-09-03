@@ -12,7 +12,7 @@ create type PGBestiary as ENUM(
 create table entities(
     id serial primary key,
     uuid uuid not null unique default gen_random_uuid(),
-    name varchar(16) not null unique
+    name varchar(16) not null
 );
 
 create table characters(
@@ -34,4 +34,20 @@ create table locations(
     map point not null,
     destination point
 );
+
+-- Populate world with hardcoded monsters for now
+insert into entities(name)
+    values ('Bouftou'),
+('Bouftou'),
+('Bouftou');
+
+insert into monsters(entity_id, race)
+    values (1, 'Bouftou'),
+(2, 'Bouftou'),
+(3, 'Bouftou');
+
+insert into locations(entity_id, world, map)
+    values (1, point(0.0, 0.0), point(5.0, 5.0)),
+(2, point(0.0, 0.0), point(7.0, 7.0)),
+(3, point(1.0, 0.0), point(2.0, 2.0));
 
