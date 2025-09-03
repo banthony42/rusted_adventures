@@ -31,11 +31,17 @@ use tokio::sync::mpsc::{self, Sender};
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
 
+enum EntityOperation {
+    IDLE,
+    CLEAR_ENTITIES,
+}
+
 // TODO: transform player/entities into struct EntityModel
 // protected by an ArcMutex therefore both the eventbus thread and main thread could use it
 pub struct EntityController {
     player: Option<Box<dyn IEntity>>,
     entities: Option<Arc<Mutex<Vec<Box<dyn IEntity>>>>>,
+    operations: EntityOperation,
     path_finder: PathFinder<AStar>,
     view: EntityView,
     mouse_pos: [f64; 2],
@@ -54,6 +60,7 @@ impl EntityController {
 
         EntityController {
             _runtime: runtime,
+            operations: EntityOperation::IDLE,
             tx: None,
             path_finder: PathFinder::new(AStar::new()),
             mouse_pos: [0.0, 0.0],
@@ -101,6 +108,7 @@ impl EntityController {
                                         if let Some(se) = server_entity_event.event {
                                             match se {
                                                 EntityMoveEvent(entity_move) => {
+                                                    println!("====> EntityMoveEvent: {:?}", entity_move);
                                                         let mut entities = some_entities.lock().await;
                                                         let _ = entities.iter_mut()
                                                         .filter(|entity| entity_move.uuid.eq(entity.get_uuid()))
@@ -115,6 +123,7 @@ impl EntityController {
                                                         .collect::<Vec<_>>();
                                                 },
                                                 EntitySpawnEvent(entity_spawn) => {
+                                                    println!("====> EntitySpawnEvent: {:?}", entity_spawn);
                                                     if let Some(new_entity) = entity_spawn.new_entity {
                                                         let mut instance = match new_entity.family() {
                                                             RpcBestiary::Human => EntityModel::new(new_entity.name, new_entity.uuid, Bestiary::Human),
@@ -124,11 +133,13 @@ impl EntityController {
                                                         let w = new_entity.location.unwrap().world.unwrap();
                                                         instance.set_map(MapCoord {x: m.x, y: m.y});
                                                         instance.set_world(WorldCoord {x: w.x as i8, y: w.y as i8});
+                                                        instance.set_path(Vec::new(), None);
                                                         let mut entities = some_entities.lock().await;
                                                         entities.push(Box::new(instance));
                                                     }
                                                 },
                                                 EntityDespawnEvent(entity_despawn) => {
+                                                    println!("====> EntityDespawnEvent: {:?}",entity_despawn );
                                                     let mut entities = some_entities.lock().await;
                                                     entities.retain(|entity| !entity.get_uuid().eq(&entity_despawn.uuid));
                                                 },
@@ -210,13 +221,15 @@ impl EntityController {
             if let Err(error) = tx.try_send(event) {
                 println!("Entity controller tx error: {:?}", error);
             } else {
-                println!("Entity controller tx: send: {:?}", event);
+                // println!("Entity controller tx: send: {:?}", event);
             }
         }
     }
 
     pub fn update(&mut self, delta_ts: u128, world: &World) {
         if let Some(player) = &mut self.player {
+            self.view.update(delta_ts, player);
+
             if let Some(location_type) = player.update(delta_ts, world) {
                 Self::send_player_move_event(
                     &self.tx,
@@ -224,11 +237,22 @@ impl EntityController {
                     player.get_map(),
                     location_type,
                 );
+
+                if location_type == LocationType::NewWorld {
+                    self.operations = EntityOperation::CLEAR_ENTITIES;
+                }
             }
-            self.view.update(delta_ts, player);
 
             if let Some(am_entities) = &mut self.entities {
                 if let Ok(mut entities) = am_entities.try_lock() {
+                    match self.operations {
+                        EntityOperation::CLEAR_ENTITIES => {
+                            entities.clear();
+                            self.operations = EntityOperation::IDLE;
+                        }
+                        _ => {}
+                    }
+
                     let _ = entities
                         .iter_mut()
                         .map(|entity| {

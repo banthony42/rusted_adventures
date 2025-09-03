@@ -30,11 +30,11 @@ pub struct CreateLocation {
 pub struct UpdateLocation {
     pub world: PgPoint,
     pub map: PgPoint,
-    pub destination: Option<PgPoint>,
 }
 
 #[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = crate::database::schema::locations)]
+#[diesel(treat_none_as_null = true)]
 pub struct UpdateLocationDestination {
     pub destination: Option<PgPoint>,
 }

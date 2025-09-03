@@ -9,7 +9,7 @@ use diesel::{
     Selectable,
 };
 
-use crate::database::schema::sql_types::Pgclass;
+use crate::{database::schema::sql_types::Pgclass, grpc_codegen::Bestiary};
 
 pub mod character;
 
@@ -18,6 +18,15 @@ pub mod character;
 pub enum Classes {
     Warrior,
     Witcher,
+}
+
+impl Into<Bestiary> for Classes {
+    fn into(self) -> Bestiary {
+        match self {
+            Classes::Warrior => Bestiary::Human,
+            Classes::Witcher => Bestiary::Human,
+        }
+    }
 }
 
 impl ToSql<Pgclass, Pg> for Classes {

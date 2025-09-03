@@ -1,5 +1,6 @@
 use diesel::{
-    dsl::insert_into, ExpressionMethods, QueryDsl, QueryResult, RunQueryDsl, SelectableHelper,
+    associations::HasTable, dsl::insert_into, ExpressionMethods, QueryDsl, QueryResult,
+    RunQueryDsl, SelectableHelper,
 };
 
 use crate::database::{model::location::UpdateLocationDestination, schema::locations::dsl::*};

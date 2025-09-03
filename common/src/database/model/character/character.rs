@@ -1,15 +1,18 @@
 use diesel::{
-    associations::HasTable, dsl::insert_into, ExpressionMethods, QueryDsl, QueryResult,
-    RunQueryDsl, SelectableHelper,
+    associations::HasTable, dsl::insert_into, sql_types::Integer, ExpressionMethods, QueryDsl,
+    QueryResult, RunQueryDsl, SelectableHelper,
 };
 use diesel_geometry::{data_types::PgPoint, prelude::PgSameAsExpressionMethods};
 use uuid::Uuid;
 
-use crate::database::schema::{
-    accounts,
-    characters::dsl::*,
-    entities,
-    locations::{self},
+use crate::database::{
+    model::character::Classes,
+    schema::{
+        accounts::{self, session_token},
+        characters::dsl::*,
+        entities,
+        locations::dsl::*,
+    },
 };
 
 use super::{Character, CreateCharacter, UpdateCharacter};
@@ -43,6 +46,8 @@ impl Character {
             .select(Character::as_select())
             .load(db)?;
 
+        // Instead of getting all characters
+        // select with : where login = entity.name
         Ok(chars)
     }
 
@@ -50,13 +55,38 @@ impl Character {
         db: &mut Connection,
         world_coord: PgPoint,
     ) -> QueryResult<Vec<String>> {
-        let entities = locations::dsl::locations::table()
-            .filter(locations::world.same_as(world_coord))
+        let entities = locations::table()
+            .filter(world.same_as(world_coord))
             .inner_join(entities::table)
             .select(entities::name)
             .load(db)?;
 
         Ok(entities)
+    }
+
+    pub fn get_all_entities_by_map(
+        db: &mut Connection,
+        login: &String,
+        world_coord: PgPoint,
+    ) -> QueryResult<Vec<(String, String, Classes, PgPoint)>> {
+        let data: Vec<(Uuid, i32, String, Classes, PgPoint)> = entities::dsl::entities::table()
+            .inner_join(locations)
+            .inner_join(characters)
+            .select((account_id, entities::id, entities::name, class, map))
+            .filter(entities::name.ne(login))
+            .filter(world.same_as(world_coord))
+            .load(db)?;
+
+        let connected_player: Vec<Uuid> = accounts::table
+            .filter(accounts::session_token.is_not_null())
+            .select(accounts::id)
+            .load(db)?;
+
+        Ok(data
+            .iter()
+            .filter(|d| connected_player.contains(&d.0))
+            .map(|d| (format!("{}.{}", d.0, d.1), d.2.clone(), d.3.clone(), d.4))
+            .collect())
     }
 
     /// Update an Character in DB for the given character id according to the given UpdateCharacter item.

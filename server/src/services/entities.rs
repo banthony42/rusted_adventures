@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use common::character::CharacterAccountHandler;
+use common::database::model::entity::Bestiary;
 use common::database::model::location::{Location, UpdateLocationDestination};
 use common::grpc_codegen::{
     client_entity_event::Event::PlayerMoveEvent, rpg_entity_server::RpgEntity,
@@ -34,6 +35,7 @@ trait ServerEntityEventExtension {
         world: RpcCoord,
         map: RpcCoord,
     ) -> Self;
+    fn new_spawn_from_entity(entity: RpcEntity) -> Self;
     fn new_despawn(uuid: String) -> Self;
 }
 
@@ -76,6 +78,14 @@ impl ServerEntityEventExtension for ServerEntityEvent {
         }
     }
 
+    fn new_spawn_from_entity(entity: RpcEntity) -> Self {
+        ServerEntityEvent {
+            event: Some(EntitySpawnEvent(EntitySpawn {
+                new_entity: Some(entity),
+            })),
+        }
+    }
+
     fn new_despawn(uuid: String) -> Self {
         ServerEntityEvent {
             event: Some(EntityDespawnEvent(EntityDespawn { uuid })),
@@ -100,8 +110,8 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
 
     match move_event.location_type() {
         LocationType::NewMap => {
-            // LocationType::NewMap (new cell destination)
-            //      update DB with the new dest
+            // (new cell destination)
+            // update DB with the new dest
             let mut char_handler = CharacterAccountHandler::new(&sender);
             let char_info_result = char_handler.get_character_info();
             if let Err(err) = char_info_result {
@@ -110,7 +120,7 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
             }
 
             if move_event.new_location.is_none() {
-                println!("Server: player move: new_location is none.");
+                println!("Server: player move: LocationType::NewMap: new_location is none.");
                 return;
             }
 
@@ -160,15 +170,93 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
             }
         }
         LocationType::NewWorld => {
-            // TODO:LocationType::NewWorld (player has change map)
-            //      update DB with the new loc and set dest to null
-            //      broadcast all clients on the last map with EntityDespawn
-            //      broadcast all clients on the new map with EntitySpawn
+            // LocationType::NewWorld (player has change map)
+
+            // TODO: same for all LocationType
+            if move_event.new_location.is_none() {
+                println!("Server: player move: LocationType::Update: new_location is none.");
+                return;
+            }
+            let new_dest_event = move_event.new_location.unwrap();
+
+            let mut char_handler = CharacterAccountHandler::new(&sender);
+            let char_info = char_handler.get_character_info().unwrap();
+
+            // Broadcast all players on last world with a despawn event
+            let despawn_event = ServerEntityEvent::new_despawn(char_info.uuid.clone());
+            if let Ok(players_on_last_world) = char_handler.get_players_on_same_world() {
+                let clts = clients.lock().await;
+                for (clogin, setx) in clts
+                    .iter()
+                    .filter(|(login, _)| players_on_last_world.contains(login) && sender.ne(*login))
+                {
+                    if let Err(err) = setx.send(Ok(despawn_event.clone())).await {
+                        println!("Error: entity despawn event broadcast: {:?}", err);
+                    } else {
+                        println!(" Send spawn {:?} for {:?}", sender, clogin);
+                    }
+                }
+            }
+
+            // Update the new world and map in DB
+            char_handler.update_location(new_dest_event);
+
+            // Broadcast all players on the world map with a spawn event
+            let world_loc = RpcCoord {
+                x: new_dest_event.world.unwrap().x,
+                y: new_dest_event.world.unwrap().y,
+            };
+            let map_loc = RpcCoord {
+                x: new_dest_event.map.unwrap().x,
+                y: new_dest_event.map.unwrap().y,
+            };
+            let sender_spawn_event = ServerEntityEvent::new_spawn(
+                char_info.uuid.clone(),
+                sender.clone(),
+                char_info.class.into(),
+                world_loc.clone(),
+                map_loc.clone(),
+            );
+
+            if let Ok(entities_on_new_world) = char_handler.get_entities_on_same_world() {
+                let clts = clients.lock().await;
+                let sender_tx = clts.get(&sender).unwrap();
+                for entity in entities_on_new_world.iter() {
+                    let entity_spawn_event =
+                        ServerEntityEvent::new_spawn_from_entity(entity.clone());
+                    if let Err(err) = sender_tx.send(Ok(entity_spawn_event)).await {
+                        println!(
+                            "Error: sending entities spawn event: ({:?}) for {:?} : {:?}",
+                            entity.name, sender, err
+                        );
+                    } else {
+                        println!(" Send spawn {:?} for {:?}", sender, entity.name);
+                    }
+
+                    if entity.family() == RpcBestiary::Human {
+                        let entity_tx = clts.get(&entity.name).unwrap();
+                        if let Err(err) = entity_tx.send(Ok(sender_spawn_event.clone())).await {
+                            println!(
+                                "Error: sending sender spawn event: ({:?}) for {:?} : {:?}",
+                                sender, entity.name, err
+                            );
+                        } else {
+                            println!(" Send spawn {:?} for {:?}", sender, entity.name);
+                        }
+                    }
+                }
+            }
         }
         LocationType::Update => {
-            // TODO:LocationType::Update (player has change cell)
-            //      Just update the DB with the new location
-            //      If dest from DB == new location from the update, player path is finish, set dest to null
+            // (player has change cell)
+            // Just update the DB with the new location
+            if move_event.new_location.is_none() {
+                println!("Server: player move: LocationType::Update: new_location is none.");
+                return;
+            }
+            let new_dest_event = move_event.new_location.unwrap();
+            let mut char_handler = CharacterAccountHandler::new(&sender);
+            char_handler.update_location(new_dest_event);
         }
     }
 }
@@ -266,9 +354,9 @@ impl RpgEntity for RpgEntityService {
 
             // Broadcast client on same map with EntitySpawn
             let spawn_event = ServerEntityEvent::new_spawn(
-                char_info.uuid,
+                char_info.uuid.clone(),
                 login.clone(),
-                RpcBestiary::Human,
+                char_info.class.into(),
                 RpcCoord {
                     x: char_info.world.0 as i64,
                     y: char_info.world.1 as i64,
@@ -278,17 +366,25 @@ impl RpgEntity for RpgEntityService {
                     y: char_info.map.1 as i64,
                 },
             );
+
+            let result_players = character_handler.get_all_player_on_world(char_info.world);
+            if let Err(err) = result_players {
+                println!("Server: player move: get_all_player_on_world: {:?}", err);
+                return;
+            }
+            let players = result_players.unwrap();
+
             {
                 let cc = cl.lock().await;
                 // Send the EntitySpawn event to each clients (on same map)
-                // TODO: send only to player on same map
-                for (clogin, setx) in cc.iter() {
-                    if login.ne(clogin) {
-                        if let Err(err) = setx.send(Ok(spawn_event.clone())).await {
-                            println!("Error: entity spawn event broadcast: {:?}", err);
-                        } else {
-                            println!(" Send spawn {:?} for {:?}", login, clogin);
-                        }
+                for (clogin, setx) in cc
+                    .iter()
+                    .filter(|(l, _)| login.ne(*l) && players.contains(l))
+                {
+                    if let Err(err) = setx.send(Ok(spawn_event.clone())).await {
+                        println!("Error: entity spawn event broadcast: {:?}", err);
+                    } else {
+                        println!(" Send spawn {:?} for {:?}", login, clogin);
                     }
                 }
             }
@@ -317,7 +413,7 @@ impl RpgEntity for RpgEntityService {
             println!("RpgEntityService: client: {:?} disconnected", login);
             cl.lock().await.remove(&login);
 
-            let entity_move_event = ServerEntityEvent::new_despawn(format!("{}_uuid42", login));
+            let entity_move_event = ServerEntityEvent::new_despawn(char_info.uuid);
             {
                 let cc = cl.lock().await;
                 // Send the EntityMove event to each clients
@@ -383,6 +479,14 @@ impl RpgEntity for RpgEntityService {
         &self,
         request: tonic::Request<EmptyRequest>,
     ) -> Result<tonic::Response<Entities>, tonic::Status> {
+        let (metadata, _, _) = request.into_parts();
+        let login = metadata.get("login").unwrap().to_str().unwrap().to_string();
+        let mut character_handler = CharacterAccountHandler::new(&login);
+
+        let result = character_handler.get_entities_on_same_world();
+
+        let mut data = result.unwrap(); // TODO
+
         // TODO: Temporary hardcoded entities to test rpc communication
         // next step get data from database
         let entity_1 = RpcEntity {
@@ -394,10 +498,8 @@ impl RpgEntity for RpgEntityService {
                 map: Some(RpcCoord { x: 2, y: 4 }),
             }),
         };
-
-        let response = tonic::Response::new(Entities {
-            entities: vec![entity_1],
-        });
+        data.push(entity_1);
+        let response = tonic::Response::new(Entities { entities: data });
 
         Ok(response)
     }

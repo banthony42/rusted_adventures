@@ -67,6 +67,7 @@ pub trait IEntity: Send {
 
 impl EntityModel {
     pub fn new(name: String, uuid: String, race: Bestiary) -> Self {
+        println!("EntityModel: new: {:?} - {:?}", name, race);
         EntityModel {
             name,
             uuid,
