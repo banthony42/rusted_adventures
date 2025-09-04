@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use common::character::CharacterAccountHandler;
+use common::database::model::account::{Account, UpdateAccount};
 use common::database::model::entity::Entity;
 use common::database::model::location::{Location, UpdateLocationDestination};
 use common::grpc_codegen::{
@@ -158,7 +159,7 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                     if let Err(err) = setx.send(Ok(move_event.clone())).await {
                         println!("Error: entity move event broadcast: {:?}", err);
                     } else {
-                        println!(" Send spawn {:?} for {:?}", sender, clogin);
+                        println!(" Send move {:?} for {:?}", sender, clogin);
                     }
                 }
             }
@@ -187,7 +188,7 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                     if let Err(err) = setx.send(Ok(despawn_event.clone())).await {
                         println!("Error: entity despawn event broadcast: {:?}", err);
                     } else {
-                        println!(" Send spawn {:?} for {:?}", sender, clogin);
+                        println!(" Send despawn {:?} for {:?}", sender, clogin);
                     }
                 }
             }
@@ -216,7 +217,7 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                             entity.name, sender, err
                         );
                     } else {
-                        println!(" Send spawn {:?} for {:?}", sender, entity.name);
+                        println!(" Send move {:?} for {:?}", sender, entity.name);
                         if let Some(dest) = entity_dest {
                             let entity_move_event = ServerEntityEvent::new_move(
                                 entity.uuid.clone(),
@@ -233,14 +234,20 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                     }
 
                     if entity.family() == RpcBestiary::Human {
-                        let entity_tx = clts.get(&entity.name).unwrap();
-                        if let Err(err) = entity_tx.send(Ok(sender_spawn_event.clone())).await {
-                            println!(
-                                "Error: sending sender spawn event: ({:?}) for {:?} : {:?}",
-                                sender, entity.name, err
-                            );
+                        if let Some(entity_tx) = clts.get(&entity.name) {
+                            if let Err(err) = entity_tx.send(Ok(sender_spawn_event.clone())).await {
+                                println!(
+                                    "Error: sending sender spawn event: ({:?}) for {:?} : {:?}",
+                                    sender, entity.name, err
+                                );
+                            } else {
+                                println!(" Send spawn {:?} for {:?}", sender, entity.name);
+                            }
                         } else {
-                            println!(" Send spawn {:?} for {:?}", sender, entity.name);
+                            println!(
+                                "===> Error: Fail to get client stream for {:?}",
+                                entity.name
+                            );
                         }
                     }
                 }
@@ -415,10 +422,20 @@ impl RpgEntity for RpgEntityService {
                     if let Err(err) = setx.send(Ok(entity_move_event.clone())).await {
                         println!("Error: entity move event broadcast: {:?}", err);
                     } else {
-                        println!(" Send spawn {:?} for {:?}", login, clogin);
+                        println!(" Send move {:?} for {:?}", login, clogin);
                     }
                 }
             }
+            // Revoke the token
+            let _ = Account::update(
+                &mut character_handler.connection,
+                &login,
+                &UpdateAccount {
+                    login: None,
+                    password: None,
+                    session_token: Some(None),
+                },
+            );
         });
 
         self.clients
