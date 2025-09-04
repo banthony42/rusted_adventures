@@ -16,11 +16,11 @@ impl RpgAuthenticate for RpgAuthenticateService {
         request: tonic::Request<AuthRequest>,
     ) -> Result<tonic::Response<AuthReply>, tonic::Status> {
         let auth_req: AuthRequest = request.into_inner();
-        println!("[Server]: [AuthenticateUser] : with: {:?}", auth_req);
+        println!("Server: AuthenticateUser: with: {:?}", auth_req);
 
         let mut user = Authenticator::new(&auth_req.login);
         if !user.authenticate(&auth_req.password) {
-            println!("[Server]: [AuthenticateUser] : Error: Invalid login or password.");
+            println!("Server: AuthenticateUser: Error: Invalid login or password.");
             return Err(tonic::Status::invalid_argument("Invalid login or password"));
         }
 
@@ -53,14 +53,11 @@ impl RpgAuthenticate for RpgAuthenticateService {
         return user
             .set_token(&new_token)
             .map_err(|e| {
-                println!("[Server]: [AuthenticateUser] : Error: {}", e.to_string());
+                println!("Server: AuthenticateUser: Error: {}", e.to_string());
                 tonic::Status::internal(e.to_string())
             })
             .and_then(|()| {
-                println!(
-                    "[Server]: [AuthenticateUser] : Success: token: {}",
-                    new_token
-                );
+                println!("Server: AuthenticateUser: Success: token: {}", new_token);
                 // Automate characters creation :
                 // for now only one character is allowed per account
                 let mut account_characters = CharacterAccountHandler::new(&auth_req.login);
@@ -68,7 +65,7 @@ impl RpgAuthenticate for RpgAuthenticateService {
                     .get_all()
                     .map_err(|e| tonic::Status::internal(e.to_string()))
                     .and_then(|characters| {
-                        let prefix = "[Server]: [AuthenticateUser] : [CreateCharacter]:";
+                        let prefix = "Server: AuthenticateUser: [CreateCharacter]:";
 
                         if characters.is_empty() {
                             let res = account_characters.create(&auth_req.login, Classes::Warrior);
@@ -93,15 +90,15 @@ impl RpgAuthenticate for RpgAuthenticateService {
         request: tonic::Request<LogoutRequest>,
     ) -> Result<tonic::Response<EmptyReply>, tonic::Status> {
         let logout_request: LogoutRequest = request.into_inner();
-        println!("[Server]: [LogoutUser] : with: {:?}", logout_request);
+        println!("Server: LogoutUser: with: {:?}", logout_request);
 
         let mut authenticator = Authenticator::new(&logout_request.login);
         if !authenticator.logout(Some(logout_request.token.clone())) {
-            println!("[Server]: [LogoutUser] : Error: internal error");
+            println!("Server: LogoutUser: Error: internal error");
             return Err(tonic::Status::internal("Logout failed"));
         }
 
-        println!("[Server]: [LogoutUser] : Success");
+        println!("Server: LogoutUser: Success");
         Ok(Response::new(EmptyReply {}))
     }
 }

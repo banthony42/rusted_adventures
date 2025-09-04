@@ -40,7 +40,7 @@ impl RpgChatEvent {
 }
 
 async fn broadcast(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
-    println!("{:?}", chat_event);
+    println!("Server: RpgChatService: {:?}", chat_event);
     let (sender, event) = chat_event.into_parts();
 
     let new_event = ServerChatEvent {
@@ -55,13 +55,13 @@ async fn broadcast(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
     // Send the event to each client filtering out the sender to avoid send him it's own event.
     for (_, server_event_tx) in clts.iter().filter(|(name, _)| name.as_str().ne(&sender)) {
         if let Err(err) = server_event_tx.send(Ok(new_event.clone())).await {
-            println!("Error: chat broadcast: {:?}", err);
+            println!("Server: RpgChatService: Error: chat broadcast: {:?}", err);
         }
     }
 }
 
 async fn whisper(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
-    println!("{:?}", chat_event);
+    println!("Server: RpgChatService: {:?}", chat_event);
     let (sender, event) = chat_event.into_parts();
 
     if let Some(recipient) = event.recipient {
@@ -88,7 +88,7 @@ async fn whisper(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
                     event: Some(Event::ServerEvent(ServerEventType::SrvUnack as i32)),
                 };
                 if let Err(err) = sender_event_tx.send(Ok(sender_unacknowledgement)).await {
-                    println!("Error: chat whisper: {:?}", err)
+                    println!("Server: RpgChatService: Error: chat whisper: {:?}", err)
                 }
                 return;
             }
@@ -100,13 +100,13 @@ async fn whisper(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
                 event: Some(Event::ServerEvent(ServerEventType::SrvAck as i32)),
             };
             if let Err(err) = sender_event_tx.send(Ok(sender_acknowledgement)).await {
-                println!("Error: chat whisper: {:?}", err)
+                println!("Server: RpgChatService: Error: chat whisper: {:?}", err)
             }
         }
 
         if let Some(recipient_event_tx) = clts.get(&recipient) {
             if let Err(err) = recipient_event_tx.send(Ok(new_event)).await {
-                println!("Error: chat whisper: {:?}", err)
+                println!("Server: RpgChatService: Error: chat whisper: {:?}", err)
             }
         }
     }
@@ -166,11 +166,11 @@ impl RpgChat for RpgChatService {
                 if let Err(status) = chat_event.as_ref() {
                     if let Some(io_err) = match_for_io_error(&status) {
                         if io_err.kind() == ErrorKind::BrokenPipe {
-                            println!("RpgChatService client: {:?} : broken pipe", login);
+                            println!("Server: RpgChatService client: {:?} : broken pipe", login);
                             break;
                         }
                     }
-                    println!("RpgChatService: client {:?} : {:?}", login, status);
+                    println!("Server: RpgChatService: client {:?} : {:?}", login, status);
                 }
 
                 if let Some(event) = chat_event.ok() {
@@ -182,7 +182,7 @@ impl RpgChat for RpgChatService {
                     }
                 }
             }
-            println!("RpgChatService: client: {:?} disconnected", login);
+            println!("Server: RpgChatService: client: {:?} disconnected", login);
             cl.lock().await.remove(&login);
         });
 

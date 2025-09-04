@@ -1,26 +1,14 @@
-use super::model::{Bestiary, EntityModel, IEntity};
 use crate::constants::SERVER_ENDPOINT;
-use crate::world::{MapCoord, WorldCoord};
 use common::grpc_codegen::rpg_entity_client::RpgEntityClient;
-use common::grpc_codegen::server_entity_event::Event::{
-    EntityDespawnEvent, EntityMoveEvent, EntitySpawnEvent,
-};
 use common::grpc_codegen::{ClientEntityEvent, ServerEntityEvent};
 use std::error::Error;
-use tokio::runtime::{Builder, Runtime};
-use tokio::select;
 use tokio::sync::mpsc::{self, Sender};
-use tokio::time::{sleep, Duration};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::metadata::MetadataValue;
 use tonic::transport::Endpoint;
 use tonic::{Request, Response, Status, Streaming};
 
 type ResponseStreamingServerEntityEvent = Response<Streaming<ServerEntityEvent>>;
-struct EntityClientConnection {
-    tx: Sender<ClientEntityEvent>,
-    response: ResponseStreamingServerEntityEvent,
-}
 
 pub struct EntityClient {
     tx: Sender<ClientEntityEvent>,

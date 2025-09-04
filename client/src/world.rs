@@ -264,10 +264,13 @@ impl World {
     }
 
     pub fn update(&mut self, delta_ts: u128, world_coord: &WorldCoord) {
-        let map_data = self
-            .world
-            .get_mut(world_coord)
-            .expect(format!("==> Trying to get map_data from : {:?}", world_coord).as_str());
+        let map_data = self.world.get_mut(world_coord).expect(
+            format!(
+                "Client: world: update: trying to get map_data from : {:?}",
+                world_coord
+            )
+            .as_str(),
+        );
 
         let frame = &map_data.frames[map_data.f_ptr];
         if map_data.timer >= frame.duration as u128 {

@@ -103,7 +103,10 @@ impl Authenticator<'_> {
         match Account::read(self.connection.as_mut().unwrap(), &self.login) {
             Ok(account) => account.session_token,
             Err(_) => {
-                println!("Authenticator: Fail to get token for: {}", self.login);
+                println!(
+                    "Server: Authenticator: Fail to get token for: {}",
+                    self.login
+                );
                 None
             }
         }

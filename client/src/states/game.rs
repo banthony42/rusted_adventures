@@ -65,7 +65,7 @@ impl GameState for Game {
             GameData::Player(player) => self.ent_controller.set_player(player),
             GameData::Entities(entities) => self.ent_controller.set_entities(entities),
         });
-        println!("==> (Game) Player connected: {:?}", data);
+        println!("Client: Game: Player connected: {:?}", data);
         self.ent_controller
             .init(self.login.clone(), self.token.clone());
         self.chat_controller = ChatController::new(self.login.clone(), self.token.clone());
@@ -135,7 +135,7 @@ impl GameState for Game {
             width: args.window_size[0],
             height: args.window_size[1],
         };
-        println!("==> (Game) Resized: {:?}", window_size);
+        println!("Client: Game: Resized: {:?}", window_size);
         self.margin = self.handle_resize(window_size, MAP_WIDTH, GAME_HEIGHT);
         self.world.resize(&self.margin);
         self.ent_controller.resize(&self.margin);

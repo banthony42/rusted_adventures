@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::sync::Arc;
-use std::time::Duration;
 
 use common::character::CharacterAccountHandler;
 use common::database::model::account::{Account, UpdateAccount};
-use common::database::model::entity::Entity;
 use common::database::model::location::{Location, UpdateLocationDestination};
 use common::grpc_codegen::{
     client_entity_event::Event::PlayerMoveEvent, rpg_entity_server::RpgEntity,
@@ -20,7 +18,6 @@ use common::grpc_codegen::{EntityDespawn, LocationType};
 
 use tokio::sync::mpsc::{self, Sender};
 use tokio::sync::Mutex;
-use tokio::time::sleep;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 use tonic::{Request, Response, Status, Streaming};
@@ -107,7 +104,12 @@ impl RpgEntityEvent {
 }
 
 async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHashMapClient) {
-    println!("===> PLAYER MOVE: {:?}", move_event);
+    if move_event.new_location.is_none() {
+        println!("Server: player move: LocationType::NewMap: new_location is none.");
+        return;
+    }
+    let new_dest_event = move_event.new_location.unwrap();
+    println!("Server: player move: {:?}", move_event);
 
     match move_event.location_type() {
         LocationType::NewMap => {
@@ -120,13 +122,7 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                 return;
             }
 
-            if move_event.new_location.is_none() {
-                println!("Server: player move: LocationType::NewMap: new_location is none.");
-                return;
-            }
-
             let char_info = char_info_result.unwrap();
-            let new_dest_event = move_event.new_location.unwrap();
 
             if let Err(err) = Location::update_destination(
                 &mut char_handler.connection,
@@ -147,7 +143,6 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                 return;
             }
             let players = result_players.unwrap();
-            println!("======> MOVE EVENT: players same map: {:?}", players);
             let move_event = ServerEntityEvent::new_move(
                 char_info.uuid,
                 new_dest_event.world.unwrap(),
@@ -155,25 +150,26 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
             );
             {
                 let clts = clients.lock().await;
-                for (clogin, setx) in clts.iter().filter(|(login, _)| players.contains(login)) {
+                for (clogin, setx) in clts
+                    .iter()
+                    .filter(|(login, _)| players.contains(login) && sender.ne(*login))
+                {
                     if let Err(err) = setx.send(Ok(move_event.clone())).await {
-                        println!("Error: entity move event broadcast: {:?}", err);
+                        println!(
+                            "Server: player move: Error: entity move event broadcast: {:?}",
+                            err
+                        );
                     } else {
-                        println!(" Send move {:?} for {:?}", sender, clogin);
+                        println!(
+                            "Server: player move: Send move {:?} for {:?}",
+                            sender, clogin
+                        );
                     }
                 }
             }
         }
         LocationType::NewWorld => {
             // LocationType::NewWorld (player has change map)
-
-            // TODO: same for all LocationType
-            if move_event.new_location.is_none() {
-                println!("Server: player move: LocationType::Update: new_location is none.");
-                return;
-            }
-            let new_dest_event = move_event.new_location.unwrap();
-
             let mut char_handler = CharacterAccountHandler::new(&sender);
             let char_info = char_handler.get_character_info().unwrap();
 
@@ -186,9 +182,15 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                     .filter(|(login, _)| players_on_last_world.contains(login) && sender.ne(*login))
                 {
                     if let Err(err) = setx.send(Ok(despawn_event.clone())).await {
-                        println!("Error: entity despawn event broadcast: {:?}", err);
+                        println!(
+                            "Server: player move: Error: entity despawn event broadcast: {:?}",
+                            err
+                        );
                     } else {
-                        println!(" Send despawn {:?} for {:?}", sender, clogin);
+                        println!(
+                            "Server: player move: send despawn {:?} for {:?}",
+                            sender, clogin
+                        );
                     }
                 }
             }
@@ -211,24 +213,30 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                 for (entity, entity_dest) in entities_on_new_world.iter() {
                     let entity_spawn_event =
                         ServerEntityEvent::new_spawn_from_entity(entity.clone());
+                    // This player (sender) just change map, send to him each new entity on the new map
                     if let Err(err) = sender_tx.send(Ok(entity_spawn_event)).await {
                         println!(
-                            "Error: sending entities spawn event: ({:?}) for {:?} : {:?}",
+                            "Server: player move: Error: sending entities spawn event: ({:?}) for {:?} : {:?}",
                             entity.name, sender, err
                         );
                     } else {
-                        println!(" Send move {:?} for {:?}", sender, entity.name);
                         if let Some(dest) = entity_dest {
                             let entity_move_event = ServerEntityEvent::new_move(
                                 entity.uuid.clone(),
                                 entity.location.unwrap().world.unwrap().into(),
                                 *dest,
                             );
+                            // This player (sender)
                             if let Err(err) = sender_tx.send(Ok(entity_move_event)).await {
                                 println!(
-                                "Error: sending entities move event after spawn: ({:?}) for {:?} : {:?}",
+                                "Server: player move: Error: sending entities move event after spawn: ({:?}) for {:?} : {:?}",
                                 entity.name, sender, err
-                            );
+                                );
+                            } else {
+                                println!(
+                                    "Server: player move: send move {:?} for {:?}",
+                                    entity.name, sender
+                                );
                             }
                         }
                     }
@@ -237,15 +245,18 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                         if let Some(entity_tx) = clts.get(&entity.name) {
                             if let Err(err) = entity_tx.send(Ok(sender_spawn_event.clone())).await {
                                 println!(
-                                    "Error: sending sender spawn event: ({:?}) for {:?} : {:?}",
+                                    "Server: player move: Error: sending sender spawn event: ({:?}) for {:?} : {:?}",
                                     sender, entity.name, err
                                 );
                             } else {
-                                println!(" Send spawn {:?} for {:?}", sender, entity.name);
+                                println!(
+                                    "Server: player move: send spawn {:?} for {:?}",
+                                    sender, entity.name
+                                );
                             }
                         } else {
                             println!(
-                                "===> Error: Fail to get client stream for {:?}",
+                                "Server: player move: Error: Fail to get client stream for {:?}",
                                 entity.name
                             );
                         }
@@ -256,11 +267,6 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
         LocationType::Update => {
             // (player has change cell)
             // Just update the DB with the new location
-            if move_event.new_location.is_none() {
-                println!("Server: player move: LocationType::Update: new_location is none.");
-                return;
-            }
-            let new_dest_event = move_event.new_location.unwrap();
             let mut char_handler = CharacterAccountHandler::new(&sender);
             char_handler.update_location(new_dest_event);
         }
@@ -296,35 +302,6 @@ impl RpgEntityService {
                 };
             }
         });
-
-        // TODO: Temporary to test the system : (entity movements)
-        // Every 10 seconds, simulate deplacement for hardcoded `entity_1uuid`
-        // let cclts = clients.clone();
-        // tokio::spawn(async move {
-        //     loop {
-        //         sleep(Duration::from_millis(10000)).await;
-        //         let entity_move_event = ServerEntityEvent::new_move(
-        //             "entity_1uuid".into(),
-        //             RpcCoord { x: 1, y: 0 },
-        //             RpcCoord {
-        //                 x: rand::random_range(0..=15),
-        //                 y: rand::random_range(0..=11),
-        //             },
-        //         );
-
-        //         {
-        //             let clts = cclts.lock().await;
-        //             // Send the EntityMove event to each clients
-        //             for (_, server_event_tx) in clts.iter() {
-        //                 if let Err(err) = server_event_tx.send(Ok(entity_move_event.clone())).await
-        //                 {
-        //                     println!("Error: entity move event broadcast: {:?}", err);
-        //                 }
-        //             }
-        //         }
-        //     }
-        // });
-
         Self { clients, event_tx }
     }
 }
@@ -369,7 +346,10 @@ impl RpgEntity for RpgEntityService {
 
             let result_players = character_handler.get_all_player_on_world(char_info.world);
             if let Err(err) = result_players {
-                println!("Server: player move: get_all_player_on_world: {:?}", err);
+                println!(
+                    "Server: entity_event_bus: get_all_player_on_world: {:?}",
+                    err
+                );
                 return;
             }
             let players = result_players.unwrap();
@@ -382,9 +362,15 @@ impl RpgEntity for RpgEntityService {
                     .filter(|(l, _)| login.ne(*l) && players.contains(l))
                 {
                     if let Err(err) = setx.send(Ok(spawn_event.clone())).await {
-                        println!("Error: entity spawn event broadcast: {:?}", err);
+                        println!(
+                            "Server: entity_event_bus: Error: entity spawn event broadcast: {:?}",
+                            err
+                        );
                     } else {
-                        println!(" Send spawn {:?} for {:?}", login, clogin);
+                        println!(
+                            "Server: entity_event_bus: send spawn {:?} for {:?}",
+                            login, clogin
+                        );
                     }
                 }
             }
@@ -394,11 +380,11 @@ impl RpgEntity for RpgEntityService {
                 if let Err(status) = entity_event.as_ref() {
                     if let Some(io_err) = match_for_io_error(&status) {
                         if io_err.kind() == ErrorKind::BrokenPipe {
-                            println!("RpgEntityService client: {:?} : broken pipe", login);
+                            println!("Server: entity_event_bus: {:?} : broken pipe", login);
                             break;
                         }
                     }
-                    println!("RpgEntityService: client {:?} : {:?}", login, status);
+                    println!("Server: entity_event_bus: {:?} : {:?}", login, status);
                 }
 
                 if let Some(event) = entity_event.ok() {
@@ -410,19 +396,25 @@ impl RpgEntity for RpgEntityService {
                     }
                 }
             }
-            println!("RpgEntityService: client: {:?} disconnected", login);
+            println!("Server: entity_event_bus: client: {:?} disconnected", login);
             cl.lock().await.remove(&login);
 
-            let entity_move_event = ServerEntityEvent::new_despawn(char_info.uuid);
+            let entity_despawn = ServerEntityEvent::new_despawn(char_info.uuid);
             {
                 let cc = cl.lock().await;
                 // Send the EntityMove event to each clients
                 // TODO: send only to player on same map
                 for (clogin, setx) in cc.iter() {
-                    if let Err(err) = setx.send(Ok(entity_move_event.clone())).await {
-                        println!("Error: entity move event broadcast: {:?}", err);
+                    if let Err(err) = setx.send(Ok(entity_despawn.clone())).await {
+                        println!(
+                            "Server: entity_event_bus: Error: entity despawn event broadcast: {:?}",
+                            err
+                        );
                     } else {
-                        println!(" Send move {:?} for {:?}", login, clogin);
+                        println!(
+                            "Server: entity_event_bus: send despawn {:?} for {:?}",
+                            login, clogin
+                        );
                     }
                 }
             }
@@ -487,12 +479,13 @@ impl RpgEntity for RpgEntityService {
         let login = metadata.get("login").unwrap().to_str().unwrap().to_string();
         let mut character_handler = CharacterAccountHandler::new(&login);
 
-        let result = character_handler.get_entities_on_same_world();
-        let data = result.unwrap(); // TODO
-
-        let entities: Vec<RpcEntity> = data.iter().map(|(ent, _)| ent.clone()).collect();
-        let response = tonic::Response::new(Entities { entities });
-
-        Ok(response)
+        let entities: Vec<RpcEntity> = match character_handler.get_entities_on_same_world() {
+            Ok(data) => data.iter().map(|(ent, _)| ent.clone()).collect(),
+            Err(err) => {
+                println!("Server: get_entities: Error : {:?}", err);
+                Vec::new()
+            }
+        };
+        Ok(tonic::Response::new(Entities { entities }))
     }
 }

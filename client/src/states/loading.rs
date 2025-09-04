@@ -158,11 +158,6 @@ impl GameState for Loading {
             let time_prog = self.timeout * task_data.step as u128 / (task_data.steps) as u128;
             if self.progress < time_prog {
                 self.progress = time_prog;
-                println!(
-                    "==> (Loading) progress: {} - {}",
-                    task_data.step as f64 / task_data.steps as f64,
-                    time_prog
-                );
             }
         }
     }
@@ -170,8 +165,6 @@ impl GameState for Loading {
     fn resize_window(&mut self, args: &ResizeArgs) {
         let window_width = args.window_size[0];
         let window_height = args.window_size[1];
-        println!("==> (Loading) Resized: {window_width}x{window_height}");
-
         self.margin = self.handle_resize(
             Size {
                 width: window_width,

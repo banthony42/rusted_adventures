@@ -4,8 +4,7 @@ use piston::{Button, MouseButton, Size};
 
 use crate::{
     constants::{
-        MAP_CHANGE_LIMIT, MAP_EAST_LIMIT, MAP_HEIGHT, MAP_HEIGHT_RANGE, MAP_SOUTH_LIMIT, MAP_WIDTH,
-        MAP_WIDTH_RANGE,
+        MAP_CHANGE_LIMIT, MAP_EAST_LIMIT, MAP_HEIGHT_RANGE, MAP_SOUTH_LIMIT, MAP_WIDTH_RANGE,
     },
     entities::{
         model::{Bestiary, EntityModel, Orientation},
@@ -35,8 +34,8 @@ use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
 
 enum EntityOperation {
-    IDLE,
-    CLEAR_ENTITIES,
+    Idle,
+    ClearEntities,
 }
 
 // TODO: transform player/entities into struct EntityModel
@@ -63,7 +62,7 @@ impl EntityController {
 
         EntityController {
             _runtime: runtime,
-            operations: EntityOperation::IDLE,
+            operations: EntityOperation::Idle,
             tx: None,
             path_finder: PathFinder::new(AStar::new()),
             mouse_pos: [0.0, 0.0],
@@ -97,10 +96,10 @@ impl EntityController {
 
         self._runtime.spawn(async move {
             loop {
-                println!("===> EntityEventBus: try to connect ...");
+                println!("Client: EntityController: EntityEventBus: try to connect ...");
 
                 if let Ok(connexion) = EntityClient::connect(login.clone(), token.clone()).await {
-                    println!("===> EntityEventBus: connection succeed.");
+                    println!("Client: EntityController: EntityEventBus connection succeed.");
                     let (stream_tx, response) = connexion.into_parts();
                     let mut stream = response.into_inner();
                     loop {
@@ -111,7 +110,7 @@ impl EntityController {
                                         if let Some(se) = server_entity_event.event {
                                             match se {
                                                 EntityMoveEvent(entity_move) => {
-                                                    println!("====> EntityMoveEvent: {:?}", entity_move);
+                                                    println!("Client: EntityController: EntityMoveEvent: {:?}", entity_move);
                                                         let mut entities = some_entities.lock().await;
                                                         let _ = entities.iter_mut()
                                                         .filter(|entity| entity_move.uuid.eq(entity.get_uuid()))
@@ -126,7 +125,7 @@ impl EntityController {
                                                         .collect::<Vec<_>>();
                                                 },
                                                 EntitySpawnEvent(entity_spawn) => {
-                                                    println!("====> EntitySpawnEvent: {:?}", entity_spawn);
+                                                    println!("Client: EntityController: EntitySpawnEvent: {:?}", entity_spawn);
                                                     if let Some(new_entity) = entity_spawn.new_entity {
                                                         let mut instance = match new_entity.family() {
                                                             RpcBestiary::Human => EntityModel::new(new_entity.name, new_entity.uuid, Bestiary::Human),
@@ -142,7 +141,7 @@ impl EntityController {
                                                     }
                                                 },
                                                 EntityDespawnEvent(entity_despawn) => {
-                                                    println!("====> EntityDespawnEvent: {:?}",entity_despawn );
+                                                    println!("Client: EntityController: EntityDespawnEvent: {:?}",entity_despawn );
                                                     let mut entities = some_entities.lock().await;
                                                     entities.retain(|entity| !entity.get_uuid().eq(&entity_despawn.uuid));
                                                 },
@@ -167,7 +166,7 @@ impl EntityController {
                             }
                         }
                     }
-                    println!("===> EntityEventBus: connection failed.");
+                    println!("Client: EntityController: EntityEventBus: connection failed.");
                 }
                 // The EntityEventBus connexion has failed, or has been shutdown
                 // Wait some time before trying to reconnect
@@ -242,16 +241,16 @@ impl EntityController {
                 );
 
                 if location_type == LocationType::NewWorld {
-                    self.operations = EntityOperation::CLEAR_ENTITIES;
+                    self.operations = EntityOperation::ClearEntities;
                 }
             }
 
             if let Some(am_entities) = &mut self.entities {
                 if let Ok(mut entities) = am_entities.try_lock() {
                     match self.operations {
-                        EntityOperation::CLEAR_ENTITIES => {
+                        EntityOperation::ClearEntities => {
                             entities.clear();
-                            self.operations = EntityOperation::IDLE;
+                            self.operations = EntityOperation::Idle;
                         }
                         _ => {}
                     }

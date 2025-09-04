@@ -144,10 +144,6 @@ impl CharacterAccountHandler {
             );
 
             if let Ok(ul) = ul_result {
-                println!(
-                    "=====> update_location: comparison: {:?} - {:?}",
-                    ul.destination, ul.map
-                );
                 if ul.destination == Some(ul.map) {
                     let _udresult = Location::update_destination(
                         &mut self.connection,
