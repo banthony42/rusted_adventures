@@ -151,7 +151,7 @@ impl CharacterAccountHandler {
                 if ul.destination == Some(ul.map) {
                     let _udresult = Location::update_destination(
                         &mut self.connection,
-                        &1,
+                        &info.eid,
                         UpdateLocationDestination { destination: None },
                     );
                 }
