@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 // Map and Interface size
 // Add check after loading map and gui, if size differ from const stop the program
 pub const TILEMAP_WIDTH: usize = 16;
@@ -29,6 +31,9 @@ pub const GUI_CHAT_HEIGHT: usize = 140;
 pub const WINDOW_WIDTH: usize = MAP_WIDTH;
 pub const WINDOW_HEIGHT: usize = MAP_HEIGHT + GUI_HEIGHT;
 pub const WINDOW_WIDTH_CENTER: usize = WINDOW_WIDTH / 2;
+
+pub const MAP_WIDTH_RANGE: Range<i64> = 0..MAP_WIDTH as i64;
+pub const MAP_HEIGHT_RANGE: Range<i64> = 0..MAP_HEIGHT as i64;
 
 pub const SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
 pub const CHAT_SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";

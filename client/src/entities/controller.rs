@@ -3,7 +3,10 @@ use std::{collections::HashMap, sync::Arc};
 use piston::{Button, MouseButton, Size};
 
 use crate::{
-    constants::{MAP_CHANGE_LIMIT, MAP_EAST_LIMIT, MAP_SOUTH_LIMIT},
+    constants::{
+        MAP_CHANGE_LIMIT, MAP_EAST_LIMIT, MAP_HEIGHT, MAP_HEIGHT_RANGE, MAP_SOUTH_LIMIT, MAP_WIDTH,
+        MAP_WIDTH_RANGE,
+    },
     entities::{
         model::{Bestiary, EntityModel, Orientation},
         path_finding::PathFinder,
@@ -293,6 +296,10 @@ impl EntityController {
             if let Button::Mouse(MouseButton::Left) = args {
                 let mouse_x = (self.mouse_pos[0] - self.margin.width) as i64;
                 let mouse_y = (self.mouse_pos[1] - self.margin.height) as i64;
+
+                if !MAP_WIDTH_RANGE.contains(&mouse_x) || !MAP_HEIGHT_RANGE.contains(&mouse_y) {
+                    return;
+                }
 
                 let destination = MapCoord {
                     x: mouse_x / 64,
