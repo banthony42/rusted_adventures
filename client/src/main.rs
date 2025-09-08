@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use common::utils::get_timestamp;
 use constants::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use piston_window::*;
@@ -5,6 +7,8 @@ use states::{
     login::Login,
     states::{GameState, StateFactory},
 };
+
+use crate::interface::load_icon;
 
 mod chat;
 mod constants;
@@ -35,6 +39,12 @@ fn run_game() {
                 std::process::exit(2);
             }
         };
+
+    window
+        .window
+        .ctx
+        .window()
+        .set_window_icon(Some(load_icon(Path::new("../assets/interface/logo.png"))));
 
     let mut state: Box<dyn GameState> = StateFactory::<Login>::new(&mut window);
     let mut ts: u128 = 0;

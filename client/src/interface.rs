@@ -1,5 +1,10 @@
+extern crate image;
+
+use std::path::Path;
+
 use piston_window::*;
 use types::Color;
+use winit::window::Icon;
 
 use crate::{constants::*, import::assets::HardTexture, states::game::Game};
 
@@ -125,4 +130,16 @@ impl Interface {
     //         render_entity_name(entity);
     //     }
     // }
+}
+
+pub fn load_icon(path: &Path) -> Icon {
+    let (icon_rgba, icon_width, icon_height) = {
+        let image = image::open(path)
+            .expect("Failed to open icon path")
+            .into_rgba8();
+        let (width, height) = image.dimensions();
+        let rgba = image.into_raw();
+        (rgba, width, height)
+    };
+    Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Failed to open icon")
 }
