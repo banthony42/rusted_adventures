@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use piston::{Button, MouseButton, Size};
+use piston_window::PistonWindow;
 
 use crate::{
     constants::{
@@ -11,6 +12,7 @@ use crate::{
         path_finding::PathFinder,
     },
     import::assets::{EntityAssets, GameAsset},
+    ui::font::Font,
     world::{MapCoord, MapData, World, WorldCoord},
 };
 
@@ -182,16 +184,16 @@ impl EntityController {
         }
     }
 
-    pub fn render(&mut self, evnt: &piston::Event, window: &mut piston_window::PistonWindow) {
+    pub fn render(&mut self, evnt: &piston::Event, window: &mut PistonWindow, font: &mut Font) {
         if let Some(player) = &self.player {
-            self.view.render(evnt, window, &player);
+            self.view.render(evnt, window, &player, font);
         }
         if let Some(am_entities) = &self.entities {
             if let Ok(entities) = am_entities.try_lock() {
                 let _ = entities
                     .iter()
                     .map(|entity| {
-                        self.view.render(evnt, window, entity);
+                        self.view.render(evnt, window, entity, font);
                     })
                     .collect::<Vec<_>>();
             } else {

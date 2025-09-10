@@ -37,3 +37,35 @@ pub const MAP_HEIGHT_RANGE: Range<i64> = 0..MAP_HEIGHT as i64;
 
 pub const SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
 pub const CHAT_SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
+
+pub enum Species {
+    Human,
+    Bouftou,
+    Amount,
+}
+
+pub struct SpeciesConstants<'a> {
+    pub font_color: &'a str,
+    // See notes about render_offest below
+    pub render_offset_x: f64,
+    pub render_offset_y: f64,
+}
+
+pub const BESTIARY: [SpeciesConstants; Species::Amount as usize] = [
+    // Species::Human
+    SpeciesConstants {
+        font_color: "0017ad",
+        render_offset_x: 0.0,
+        render_offset_y: 64.0,
+    },
+    // Species::Bouftou
+    SpeciesConstants {
+        font_color: "c5c9e8",
+        render_offset_x: 0.0,
+        render_offset_y: 0.0,
+    },
+];
+
+// render_offset:
+// Sprites are render at their position, and drawn from top to bottom
+// Knowing that we need offsets for sprites higher and or larger than one tile.

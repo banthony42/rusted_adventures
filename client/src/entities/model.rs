@@ -37,6 +37,10 @@ pub struct EntityModel {
 
 // Needed to manipulate EntityModel attributes using IEntity abstraction
 pub trait IEntity: Send {
+    fn get_name(&self) -> &String;
+
+    fn get_race(&self) -> &Bestiary;
+
     fn get_world(&self) -> WorldCoord;
     fn set_world(&mut self, world: WorldCoord);
 
@@ -106,13 +110,17 @@ impl EntityModel {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Bestiary {
     Human,
     Bouftou,
 }
 
 impl IEntity for EntityModel {
+    fn get_name(&self) -> &String {
+        &self.name
+    }
+
     fn set_world(&mut self, world: WorldCoord) {
         self.world = world;
     }
@@ -234,6 +242,10 @@ impl IEntity for EntityModel {
 
     fn set_destination(&mut self, destination: MapCoord) {
         self.destination = Some(destination);
+    }
+
+    fn get_race(&self) -> &Bestiary {
+        &self.race
     }
 }
 

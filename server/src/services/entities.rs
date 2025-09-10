@@ -241,6 +241,7 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                         }
                     }
 
+                    // Warn all players on the new map, that sender is here
                     if entity.family() == RpcBestiary::Human {
                         if let Some(entity_tx) = clts.get(&entity.name) {
                             if let Err(err) = entity_tx.send(Ok(sender_spawn_event.clone())).await {

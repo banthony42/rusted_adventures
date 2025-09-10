@@ -90,8 +90,8 @@ impl GameState for Game {
 
         self.world
             .render(evnt, window, &self.ent_controller.player_world());
-        self.ent_controller.render(evnt, window);
-        self.interface.render(evnt, window, &self);
+        self.ent_controller.render(evnt, window, &mut self.font);
+        self.interface.render(evnt, window, &self.hard_textures);
         self.chat_controller.render(evnt, window, &mut self.font);
     }
 
