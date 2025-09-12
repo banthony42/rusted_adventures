@@ -2,6 +2,7 @@ use piston_window::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+use std::path::Path;
 
 #[derive(Deserialize, Default, Debug)]
 struct JSONAssetRect {
@@ -43,6 +44,7 @@ pub struct GameAsset {
 impl GameAsset {
     fn load_game_asset_from_json(
         json_game_asset: JSONGameAsset,
+        base_folder: &Path,
         window: &mut PistonWindow,
     ) -> GameAsset {
         let frames: Vec<AssetFrame> = json_game_asset
@@ -61,17 +63,19 @@ impl GameAsset {
             })
             .collect();
 
+        let full_path = base_folder.join(json_game_asset.meta.image);
         let texture = match Texture::from_path(
             &mut window.create_texture_context(),
-            format!("../assets/tests/{}", json_game_asset.meta.image.clone()),
+            &full_path,
             Flip::None,
             &TextureSettings::new(),
         ) {
             Ok(texture) => texture,
             Err(error) => {
                 println!(
-                    "Fail to load texture ({} PNG): {}",
-                    json_game_asset.meta.image, error
+                    "Fail to load texture ({:?} PNG): {}",
+                    full_path.to_str(),
+                    error
                 );
                 std::process::exit(2);
             }
@@ -83,13 +87,17 @@ impl GameAsset {
         };
     }
 
-    pub fn load_asset(path: &str, window: &mut PistonWindow) -> GameAsset {
+    pub fn load_asset(path: &Path, window: &mut PistonWindow) -> GameAsset {
+        let parent = path
+            .parent()
+            .expect(&format!("Fail to get parent dir of: {:?}", path.to_str()));
+
         let raw_data: String = fs::read_to_string(path).expect("load_asset: Unable to read file.");
 
         let json_game_asset = serde_json::from_str::<JSONGameAsset>(&raw_data)
-            .expect(&format!("Fail to load JSON asset: {}", path));
+            .expect(&format!("Fail to load JSON asset: {:?}", path.to_str()));
 
-        return Self::load_game_asset_from_json(json_game_asset, window);
+        return Self::load_game_asset_from_json(json_game_asset, parent, window);
     }
 }
 
