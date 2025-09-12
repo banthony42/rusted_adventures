@@ -111,6 +111,8 @@ pub enum Animations {
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Copy)]
 pub enum EntityAssets {
     Character(Animations),
+    Warrior(Animations),
+    Mage(Animations),
     Bouftou(Animations),
 }
 
@@ -123,20 +125,36 @@ impl Default for EntityAssets {
 pub fn load_assets(window: &mut PistonWindow) -> HashMap<EntityAssets, GameAsset> {
     let assets_list = vec![
         (
+            EntityAssets::Warrior(Animations::Idle),
+            Path::new("../assets/characters/warrior-Idle.json"),
+        ),
+        (
+            EntityAssets::Warrior(Animations::Run),
+            Path::new("../assets/characters/warrior-Run.json"),
+        ),
+        (
+            EntityAssets::Mage(Animations::Idle),
+            Path::new("../assets/characters/mage-Idle.json"),
+        ),
+        (
+            EntityAssets::Mage(Animations::Run),
+            Path::new("../assets/characters/mage-Run.json"),
+        ),
+        (
             EntityAssets::Character(Animations::Idle),
-            "../assets/tests/character_animation-Idle.json",
+            Path::new("../assets/tests/character_animation-Idle.json"),
         ),
         (
             EntityAssets::Character(Animations::Run),
-            "../assets/tests/character_animation-Run.json",
+            Path::new("../assets/tests/character_animation-Run.json"),
         ),
         (
             EntityAssets::Bouftou(Animations::Idle),
-            "../assets/tests/bouftou_animation-Idle.json",
+            Path::new("../assets/tests/bouftou_animation-Idle.json"),
         ),
         (
             EntityAssets::Bouftou(Animations::Run),
-            "../assets/tests/bouftou_animation-Run.json",
+            Path::new("../assets/tests/bouftou_animation-Run.json"),
         ),
     ];
 
