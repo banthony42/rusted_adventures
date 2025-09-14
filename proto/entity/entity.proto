@@ -3,9 +3,14 @@ package RPG.package;
 
 import "generics.proto";
 
-enum Bestiary {
-    HUMAN = 0;
-    BOUFTOU = 1;
+enum Species {
+    BOUFTOU = 0;
+    CRABEDOEUF = 1;
+}
+
+enum Classes {
+    WARRIOR = 0;
+    MAGE = 1;
 }
 
 message Coord {
@@ -21,8 +26,11 @@ message Location {
 message Entity {
     string uuid = 1;
     string name = 2;
-    Bestiary family = 3;
-    Location location = 4;
+    oneof family {
+        Species species = 3;
+        Classes class = 4;
+    };
+    Location location = 5;
 }
 
 message PlayerData {

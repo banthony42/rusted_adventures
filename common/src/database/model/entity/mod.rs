@@ -11,19 +11,28 @@ use diesel::{
 
 pub mod entity;
 
-use crate::database::schema::sql_types::Pgbestiary;
+use crate::{database::schema::sql_types::Pgbestiary, grpc_codegen::{entity::Family, Species}};
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, Clone)]
 #[diesel(sql_type = Pgbestiary)]
 pub enum Bestiary {
-    Human,
     Bouftou,
+    Crabedoeuf,
+}
+
+impl Into<Family> for Bestiary {
+    fn into(self) -> Family {
+        match self {
+            Bestiary::Bouftou => Family::Species(Species::Bouftou.into()),
+            Bestiary::Crabedoeuf => Family::Species(Species::Crabedoeuf.into()),
+        }
+    }
 }
 
 impl ToSql<Pgbestiary, Pg> for Bestiary {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
         match *self {
-            Bestiary::Human => out.write_all(b"Human")?,
+            Bestiary::Crabedoeuf => out.write_all(b"Crabedoeuf")?,
             Bestiary::Bouftou => out.write_all(b"Bouftou")?,
         }
         Ok(IsNull::No)
@@ -34,7 +43,7 @@ impl FromSql<Pgbestiary, Pg> for Bestiary {
     fn from_sql(bytes: PgValue<'_>) -> deserialize::Result<Self> {
         match bytes.as_bytes() {
             b"Bouftou" => Ok(Bestiary::Bouftou),
-            b"Human" => Ok(Bestiary::Human),
+            b"Crabedoeuf" => Ok(Bestiary::Crabedoeuf),
             _ => Err("Unrecognized enum variant".into()),
         }
     }

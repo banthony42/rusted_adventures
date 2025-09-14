@@ -114,6 +114,7 @@ pub enum EntityAssets {
     Warrior(Animations),
     Mage(Animations),
     Bouftou(Animations),
+    Crabedoeuf(Animations)
 }
 
 impl Default for EntityAssets {
@@ -155,6 +156,14 @@ pub fn load_assets(window: &mut PistonWindow) -> HashMap<EntityAssets, GameAsset
         (
             EntityAssets::Bouftou(Animations::Run),
             Path::new("../assets/tests/bouftou_animation-Run.json"),
+        ),
+        (
+            EntityAssets::Crabedoeuf(Animations::Idle),
+            Path::new("../assets/tests/crabedoeuf-Idle.json"),
+        ),
+        (
+            EntityAssets::Crabedoeuf(Animations::Run),
+            Path::new("../assets/tests/crabedoeuf-Run.json"),
         ),
     ];
 

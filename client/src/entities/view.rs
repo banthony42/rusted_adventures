@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use piston_window::*;
 
 use crate::constants::*;
-use crate::entities::model::Bestiary;
 use crate::import::assets::{EntityAssets, GameAsset};
 use crate::ui::font::Font;
 
@@ -12,35 +11,20 @@ use super::model::{IEntity, Orientation};
 pub struct EntityView {
     pub assets: HashMap<EntityAssets, GameAsset>,
     pub margin: Size,
-    color_table: EntityColorTable,
+    species_lib: SpeciesLibrary,
 }
 
-struct EntityColorTable(Vec<[f32; 4]>);
-
-impl EntityColorTable {
-    fn new() -> Self {
-        Self(BESTIARY.iter().map(|species| color::hex(species.font_color)).collect())
-    }
-
-    fn get(&self, species: Species) -> [f32; 4] {
-        self.0[species as usize]
-    }
-}
 
 impl EntityView {
     pub fn new(assets: HashMap<EntityAssets, GameAsset>) -> Self {
         EntityView {
             assets,
-            color_table: EntityColorTable::new(),
+            species_lib: SpeciesLibrary::new(),
             margin: Size {
                 width: 0.0,
                 height: 0.0,
             },
         }
-    }
-
-    fn get_render_height_offset(&self, entity: &Box<dyn IEntity>) -> f64 {
-        BESTIARY[*entity.get_race() as usize].render_offset_y
     }
 
     pub fn render(
@@ -55,7 +39,7 @@ impl EntityView {
                 let asset_src_rect = asset.frames[entity.get_frame()].src_rect;
                 let asset_width = asset_src_rect[2];
                 let entity_pos = entity.get_real_pos();
-                let render_offset_y = BESTIARY[*entity.get_race() as usize].render_offset_y;
+                let render_offset_y = self.species_lib.get_height_offset(&entity.get_species());
 
                 let mut trans = ctx.transform.trans(
                     self.margin.width as f64 + entity_pos.x as f64,
@@ -98,12 +82,9 @@ impl EntityView {
 
         let text_position = [
             entity_pos.x as f64 + TILE_WIDTH as f64 / 2.0,
-            entity_pos.y as f64 - self.get_render_height_offset(entity),
+            entity_pos.y as f64 - self.species_lib.get_height_offset(entity.get_species()),
         ];
-        let text_color = match entity.get_race() {
-            &Bestiary::Human => self.color_table.get(Species::Human),
-            &Bestiary::Bouftou => self.color_table.get(Species::Bouftou),
-        };
+        let text_color = self.species_lib.get_font_color(entity.get_species());
         font.render_text_centered(
             entity.get_name(),
             17,

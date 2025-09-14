@@ -1,12 +1,12 @@
 -- Your SQL goes here
 create type PGClass as ENUM(
     'Warrior',
-    'Witcher'
+    'Mage'
 );
 
 create type PGBestiary as ENUM(
     'Bouftou',
-    'Human'
+    'Crabedoeuf'
 );
 
 create table entities(
@@ -39,12 +39,12 @@ create table locations(
 insert into entities(name)
     values ('Bouftou'),
 ('Bouftou'),
-('Bouftou');
+('Crabedoeuf');
 
 insert into monsters(entity_id, race)
     values (1, 'Bouftou'),
 (2, 'Bouftou'),
-(3, 'Bouftou');
+(3, 'Crabedoeuf');
 
 insert into locations(entity_id, world, map)
     values (1, point(0.0, 0.0), point(5.0, 5.0)),

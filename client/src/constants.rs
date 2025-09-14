@@ -1,4 +1,6 @@
-use std::ops::Range;
+use std::{collections::HashMap, ops::Range};
+
+use graphics::{color, types::Color};
 
 // Map and Interface size
 // Add check after loading map and gui, if size differ from const stop the program
@@ -38,33 +40,47 @@ pub const MAP_HEIGHT_RANGE: Range<i64> = 0..MAP_HEIGHT as i64;
 pub const SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
 pub const CHAT_SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
 
+#[derive(Hash, PartialEq, Eq, Debug, Clone)]
 pub enum Species {
-    Human,
+    Warrior,
+    Mage,
     Bouftou,
-    Amount,
+    Crabedoeuf
 }
 
-pub struct SpeciesConstants<'a> {
-    pub font_color: &'a str,
+pub struct SpeciesConstants {
+    pub font_color: Color,
     // See notes about render_offest below
-    pub render_offset_x: f64,
+    pub _render_offset_x: f64,
     pub render_offset_y: f64,
 }
 
-pub const BESTIARY: [SpeciesConstants; Species::Amount as usize] = [
-    // Species::Human
-    SpeciesConstants {
-        font_color: "0017ad",
-        render_offset_x: 0.0,
-        render_offset_y: 64.0,
-    },
-    // Species::Bouftou
-    SpeciesConstants {
-        font_color: "c5c9e8",
-        render_offset_x: 0.0,
-        render_offset_y: 0.0,
-    },
-];
+pub struct SpeciesLibrary(HashMap<Species, SpeciesConstants>);
+
+impl SpeciesLibrary {
+    pub fn new() -> Self {
+        SpeciesLibrary(HashMap::from([
+            (Species::Warrior, SpeciesConstants { font_color: color::hex("0017ad"), _render_offset_x: 0.0, render_offset_y: 64.0 }),
+            (Species::Mage, SpeciesConstants{ font_color: color::hex("0017ad"), _render_offset_x: 0.0, render_offset_y: 64.0 }),
+            (Species::Bouftou, SpeciesConstants{ font_color: color::hex("c5c9e8"), _render_offset_x: 0.0, render_offset_y: 0.0 }),
+            (Species::Crabedoeuf, SpeciesConstants{ font_color: color::hex("c5c9e8"), _render_offset_x: 0.0, render_offset_y: 0.0 })
+        ]))
+    }
+
+    fn _get_species_constants(&self, species: &Species) ->  &SpeciesConstants {
+        self.0.get(&species).expect(format!("SpeciesLibrary: Unknow species: {:?}", species).as_str())
+    }
+
+    pub fn get_font_color(&self, species: &Species) -> Color {
+        self._get_species_constants(species).font_color.clone()
+    }
+
+    pub fn get_height_offset(&self, species: &Species) -> f64 {
+        self._get_species_constants(species).render_offset_y
+    }
+
+}
+
 
 // render_offset:
 // Sprites are render at their position, and drawn from top to bottom

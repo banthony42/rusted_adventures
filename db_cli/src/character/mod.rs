@@ -23,7 +23,7 @@ pub enum CharacterSubcommand {
 #[derive(Debug, ValueEnum, Clone)]
 pub enum CharacterClass {
     Warrior,
-    Witcher,
+    Mage,
 }
 
 #[derive(Debug, Args)]

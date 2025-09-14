@@ -23,7 +23,7 @@ fn create_character(character: CreateCharacterCmd) {
 
     let pg_class = match character.class {
         CharacterClass::Warrior => Classes::Warrior,
-        CharacterClass::Witcher => Classes::Witcher,
+        CharacterClass::Mage => Classes::Mage,
     };
 
     if let Err(e) = character_handler.create(&character.login, pg_class) {

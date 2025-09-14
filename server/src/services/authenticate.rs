@@ -68,7 +68,10 @@ impl RpgAuthenticate for RpgAuthenticateService {
                         let prefix = "Server: AuthenticateUser: [CreateCharacter]:";
 
                         if characters.is_empty() {
-                            let res = account_characters.create(&auth_req.login, Classes::Warrior);
+                            let res = match rand::random::<bool>() {
+                                true => account_characters.create(&auth_req.login, Classes::Warrior),
+                                false => account_characters.create(&auth_req.login, Classes::Mage),
+                            };
                             if let Err(e) = res {
                                 println!("{} failed with: {:?}", prefix, e);
                                 return Err(tonic::Status::internal(e.to_string()));

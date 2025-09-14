@@ -5,10 +5,10 @@ use piston_window::PistonWindow;
 
 use crate::{
     constants::{
-        MAP_CHANGE_LIMIT, MAP_EAST_LIMIT, MAP_HEIGHT_RANGE, MAP_SOUTH_LIMIT, MAP_WIDTH_RANGE,
+        Species, MAP_CHANGE_LIMIT, MAP_EAST_LIMIT, MAP_HEIGHT_RANGE, MAP_SOUTH_LIMIT, MAP_WIDTH_RANGE
     },
     entities::{
-        model::{Bestiary, EntityModel, Orientation},
+        model::{EntityModel, Orientation},
         path_finding::PathFinder,
     },
     import::assets::{EntityAssets, GameAsset},
@@ -23,11 +23,11 @@ use super::{
     view::EntityView,
 };
 
-use common::grpc_codegen::ClientEntityEvent;
+use common::grpc_codegen::{ClientEntityEvent};
 use common::grpc_codegen::{
     client_entity_event::Event::PlayerMoveEvent,
     server_entity_event::Event::{EntityDespawnEvent, EntityMoveEvent, EntitySpawnEvent},
-    Bestiary as RpcBestiary, Coord, Location, LocationType, PlayerMove,
+    Coord, Location, LocationType, PlayerMove
 };
 use tokio::runtime::{Builder, Runtime};
 use tokio::select;
@@ -129,10 +129,8 @@ impl EntityController {
                                                 EntitySpawnEvent(entity_spawn) => {
                                                     println!("Client: EntityController: EntitySpawnEvent: {:?}", entity_spawn);
                                                     if let Some(new_entity) = entity_spawn.new_entity {
-                                                        let mut instance = match new_entity.family() {
-                                                            RpcBestiary::Human => EntityModel::new(new_entity.name, new_entity.uuid, Bestiary::Human),
-                                                            RpcBestiary::Bouftou => EntityModel::new(new_entity.name, new_entity.uuid, Bestiary::Bouftou),
-                                                        };
+                                                        let species = Species::from(new_entity.family.unwrap());
+                                                        let mut instance = EntityModel::new(new_entity.name, new_entity.uuid, species);
                                                         let m = new_entity.location.unwrap().map.unwrap();
                                                         let w = new_entity.location.unwrap().world.unwrap();
                                                         instance.set_map(MapCoord {x: m.x, y: m.y});

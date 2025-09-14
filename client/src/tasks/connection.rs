@@ -1,12 +1,12 @@
-use crate::constants::SERVER_ENDPOINT;
-use crate::entities::model::{Bestiary, EntityModel, IEntity};
+use crate::constants::{Species, SERVER_ENDPOINT};
+use crate::entities::model::{EntityModel, IEntity};
 use crate::world::{MapCoord, WorldCoord};
 
 use super::task::{GameData, TaskData, TaskInterface};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
 use common::grpc_codegen::rpg_entity_client::RpgEntityClient;
 use common::grpc_codegen::{
-    AuthReply, AuthRequest, Bestiary as RpcBestiary, EmptyRequest, Entities, Entity, PlayerData,
+    AuthReply, AuthRequest, EmptyRequest, Entities, Entity, PlayerData,
 };
 use std::error::Error;
 use std::sync::Arc;
@@ -165,15 +165,8 @@ impl TryInto<EntityModel> for &Entity {
     type Error = &'static str;
 
     fn try_into(self) -> Result<EntityModel, Self::Error> {
-        let mut entity_model = match self.family() {
-            RpcBestiary::Bouftou => {
-                EntityModel::new(self.name.clone(), self.uuid.clone(), Bestiary::Bouftou)
-            }
-            RpcBestiary::Human => {
-                EntityModel::new(self.name.clone(), self.uuid.clone(), Bestiary::Human)
-            }
-        };
-
+        let species = Species::from(self.family.unwrap());
+        let mut entity_model = EntityModel::new(self.name.clone(), self.uuid.clone(), species);
         // For now i don't find the tonic / gRPC syntax or trick to force a field to not be an rust Option
         // entity.proto Location.world and Location.map should be always defined
         // That's why here i use massively unwrap() for now, i want the code to fail explictly here

@@ -5,9 +5,10 @@ use std::sync::Arc;
 use common::character::CharacterAccountHandler;
 use common::database::model::account::{Account, UpdateAccount};
 use common::database::model::location::{Location, UpdateLocationDestination};
+use common::grpc_codegen::entity::Family;
 use common::grpc_codegen::{
     client_entity_event::Event::PlayerMoveEvent, rpg_entity_server::RpgEntity,
-    Bestiary as RpcBestiary, ClientEntityEvent, Coord as RpcCoord, EmptyRequest, Entities,
+    ClientEntityEvent, Coord as RpcCoord, EmptyRequest, Entities,
     Entity as RpcEntity, Location as RpcLocation, PlayerData, PlayerMove, ServerEntityEvent,
 };
 use common::grpc_codegen::{
@@ -29,7 +30,7 @@ trait ServerEntityEventExtension {
     fn new_spawn(
         uuid: String,
         name: String,
-        family: RpcBestiary,
+        family: Family,
         world: RpcCoord,
         map: RpcCoord,
     ) -> Self;
@@ -55,7 +56,7 @@ impl ServerEntityEventExtension for ServerEntityEvent {
     fn new_spawn(
         uuid: String,
         name: String,
-        family: RpcBestiary,
+        family: Family,
         world: RpcCoord,
         map: RpcCoord,
     ) -> Self {
@@ -63,7 +64,7 @@ impl ServerEntityEventExtension for ServerEntityEvent {
             new_entity: Some(RpcEntity {
                 uuid,
                 name,
-                family: family.into(),
+                family: Some(family),
                 location: Some(RpcLocation {
                     world: Some(world),
                     map: Some(map),
@@ -242,7 +243,7 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                     }
 
                     // Warn all players on the new map, that sender is here
-                    if entity.family() == RpcBestiary::Human {
+                    if let Some(Family::Class(_)) = entity.family {
                         if let Some(entity_tx) = clts.get(&entity.name) {
                             if let Err(err) = entity_tx.send(Ok(sender_spawn_event.clone())).await {
                                 println!(
@@ -460,7 +461,7 @@ impl RpgEntity for RpgEntityService {
             entity: Some(RpcEntity {
                 uuid: char_info.uuid,
                 name: login,
-                family: RpcBestiary::Human.into(),
+                family: Some(char_info.class.into()),
                 location: Some(RpcLocation {
                     world: Some(char_info.world.into()),
                     map: Some(char_info.map.into()),

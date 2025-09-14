@@ -9,7 +9,7 @@ use diesel::{
     Selectable,
 };
 
-use crate::{database::schema::sql_types::Pgclass, grpc_codegen::Bestiary};
+use crate::{database::schema::sql_types::Pgclass, grpc_codegen::entity::Family, grpc_codegen::Classes as RpcClasses};
 
 pub mod character;
 
@@ -17,14 +17,14 @@ pub mod character;
 #[diesel(sql_type = Pgclass)]
 pub enum Classes {
     Warrior,
-    Witcher,
+    Mage,
 }
 
-impl Into<Bestiary> for Classes {
-    fn into(self) -> Bestiary {
+impl Into<Family> for Classes {
+    fn into(self) -> Family {
         match self {
-            Classes::Warrior => Bestiary::Human,
-            Classes::Witcher => Bestiary::Human,
+            Classes::Warrior => Family::Class(RpcClasses::Warrior.into()),
+            Classes::Mage => Family::Class(RpcClasses::Mage.into()),
         }
     }
 }
@@ -33,7 +33,7 @@ impl ToSql<Pgclass, Pg> for Classes {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
         match *self {
             Classes::Warrior => out.write_all(b"Warrior")?,
-            Classes::Witcher => out.write_all(b"Witcher")?,
+            Classes::Mage => out.write_all(b"Mage")?,
         }
         Ok(IsNull::No)
     }
@@ -43,7 +43,7 @@ impl FromSql<Pgclass, Pg> for Classes {
     fn from_sql(bytes: PgValue<'_>) -> deserialize::Result<Self> {
         match bytes.as_bytes() {
             b"Warrior" => Ok(Classes::Warrior),
-            b"Witcher" => Ok(Classes::Witcher),
+            b"Mage" => Ok(Classes::Mage),
             _ => Err("Unrecognized enum variant".into()),
         }
     }

@@ -11,7 +11,7 @@ use crate::{
             location::{CreateLocation, Location, UpdateLocation, UpdateLocationDestination},
         },
     },
-    grpc_codegen::{Bestiary, Coord, Location as RpcLocation},
+    grpc_codegen::{Coord, Location as RpcLocation},
 };
 
 use crate::grpc_codegen::Entity as RpcEntity;
@@ -91,7 +91,7 @@ impl CharacterAccountHandler {
                     RpcEntity {
                         uuid: ent.0.clone(),
                         name: ent.1.clone(),
-                        family: Bestiary::Human as i32,
+                        family: Some(ent.2.clone().into()),
                         location: Some(RpcLocation {
                             world: Some(info.world.into()),
                             map: Some(ent.3.into()),
@@ -110,7 +110,7 @@ impl CharacterAccountHandler {
                     RpcEntity {
                         uuid: format!("{}.{}", ent.1, ent.0),
                         name: ent.1.clone(),
-                        family: ent.2.clone() as i32,
+                        family: Some(ent.2.clone().into()),
                         location: Some(RpcLocation {
                             world: Some(info.world.into()),
                             map: Some(ent.3.into()),

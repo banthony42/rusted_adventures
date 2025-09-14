@@ -1,4 +1,4 @@
-use common::grpc_codegen::LocationType;
+use common::{grpc_codegen::{entity::Family, LocationType, Species as RpcSpecies, Classes as RpcClasses}};
 
 use crate::{
     constants::*,
@@ -21,7 +21,7 @@ pub enum Orientation {
 pub struct EntityModel {
     name: String,
     uuid: String,
-    race: Bestiary,
+    species: Species,
     offset: MapCoord,
     step: f64,
     map: MapCoord,
@@ -39,7 +39,7 @@ pub struct EntityModel {
 pub trait IEntity: Send {
     fn get_name(&self) -> &String;
 
-    fn get_race(&self) -> &Bestiary;
+    fn get_species(&self) -> &Species;
 
     fn get_world(&self) -> WorldCoord;
     fn set_world(&mut self, world: WorldCoord);
@@ -69,11 +69,11 @@ pub trait IEntity: Send {
 }
 
 impl EntityModel {
-    pub fn new(name: String, uuid: String, race: Bestiary) -> Self {
+    pub fn new(name: String, uuid: String, race: Species) -> Self {
         EntityModel {
             name,
             uuid,
-            race,
+            species: race,
             offset: MapCoord::default(),
             world: WorldCoord::default(),
             map: MapCoord::default(),
@@ -89,15 +89,23 @@ impl EntityModel {
     }
 
     fn get_assets(&self) -> &EntityAssets {
-        match self.race {
-            Bestiary::Human => match self.state {
-                Animations::Idle => &EntityAssets::Character(Animations::Idle),
-                Animations::Run => &EntityAssets::Character(Animations::Run),
-            },
-            Bestiary::Bouftou => match self.state {
-                Animations::Idle => &EntityAssets::Bouftou(Animations::Idle),
-                Animations::Run => &EntityAssets::Bouftou(Animations::Run),
-            },
+        match self.species {
+            Species::Crabedoeuf => match self.state {
+                        Animations::Idle => &EntityAssets::Crabedoeuf(Animations::Idle),
+                        Animations::Run => &EntityAssets::Crabedoeuf(Animations::Run),
+                    },
+            Species::Bouftou => match self.state {
+                        Animations::Idle => &EntityAssets::Bouftou(Animations::Idle),
+                        Animations::Run => &EntityAssets::Bouftou(Animations::Run),
+                    },
+            Species::Warrior => match self.state {
+                        Animations::Idle => &EntityAssets::Warrior(Animations::Idle),
+                        Animations::Run => &EntityAssets::Warrior(Animations::Run),
+                    },
+            Species::Mage => match self.state {
+                        Animations::Idle => &EntityAssets::Mage(Animations::Idle),
+                        Animations::Run => &EntityAssets::Mage(Animations::Run),
+                    },
         }
     }
 
@@ -110,10 +118,25 @@ impl EntityModel {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum Bestiary {
-    Human,
-    Bouftou,
+impl From<Family> for Species {
+    fn from(value: Family) -> Self {
+        match value {
+            Family::Species(species) => {
+                match species {
+                    val if val == RpcSpecies::Bouftou as i32 => Species::Bouftou,
+                    val if val == RpcSpecies::Crabedoeuf as i32 => Species::Crabedoeuf,
+                    _ => todo!()
+                }
+            },
+            Family::Class(class) => {
+                match class {
+                    val if val == RpcClasses::Warrior as i32 => Species::Warrior,
+                    val if val == RpcClasses::Mage as i32 => Species::Mage,
+                    _ => todo!()
+                }
+            },
+        }
+    }
 }
 
 impl IEntity for EntityModel {
@@ -244,8 +267,8 @@ impl IEntity for EntityModel {
         self.destination = Some(destination);
     }
 
-    fn get_race(&self) -> &Bestiary {
-        &self.race
+    fn get_species(&self) -> &Species {
+        &self.species
     }
 }
 
