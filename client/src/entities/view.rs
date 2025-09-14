@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use piston_window::*;
 
-use crate::constants::*;
-use crate::import::assets::{EntityAssets, GameAsset};
+use crate::import::assets::{EntityAssets, GameAsset, SpeciesLibrary};
 use crate::ui::font::Font;
+use common::constants::*;
 
 use super::model::{IEntity, Orientation};
 
@@ -13,7 +13,6 @@ pub struct EntityView {
     pub margin: Size,
     species_lib: SpeciesLibrary,
 }
-
 
 impl EntityView {
     pub fn new(assets: HashMap<EntityAssets, GameAsset>) -> Self {

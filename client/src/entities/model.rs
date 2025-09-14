@@ -1,9 +1,11 @@
-use common::{grpc_codegen::{entity::Family, LocationType, Species as RpcSpecies, Classes as RpcClasses}};
+use common::grpc_codegen::{
+    entity::Family, Classes as RpcClasses, LocationType, Species as RpcSpecies,
+};
+use common::{constants::*, MapCoord, WorldCoord};
 
 use crate::{
-    constants::*,
-    import::assets::{Animations, EntityAssets},
-    world::{MapCoord, World, WorldCoord},
+    import::assets::{Animations, EntityAssets, Species},
+    world::World,
 };
 
 const ENTITY_RUN_SPEED: f64 = 225.0;
@@ -91,21 +93,21 @@ impl EntityModel {
     fn get_assets(&self) -> &EntityAssets {
         match self.species {
             Species::Crabedoeuf => match self.state {
-                        Animations::Idle => &EntityAssets::Crabedoeuf(Animations::Idle),
-                        Animations::Run => &EntityAssets::Crabedoeuf(Animations::Run),
-                    },
+                Animations::Idle => &EntityAssets::Crabedoeuf(Animations::Idle),
+                Animations::Run => &EntityAssets::Crabedoeuf(Animations::Run),
+            },
             Species::Bouftou => match self.state {
-                        Animations::Idle => &EntityAssets::Bouftou(Animations::Idle),
-                        Animations::Run => &EntityAssets::Bouftou(Animations::Run),
-                    },
+                Animations::Idle => &EntityAssets::Bouftou(Animations::Idle),
+                Animations::Run => &EntityAssets::Bouftou(Animations::Run),
+            },
             Species::Warrior => match self.state {
-                        Animations::Idle => &EntityAssets::Warrior(Animations::Idle),
-                        Animations::Run => &EntityAssets::Warrior(Animations::Run),
-                    },
+                Animations::Idle => &EntityAssets::Warrior(Animations::Idle),
+                Animations::Run => &EntityAssets::Warrior(Animations::Run),
+            },
             Species::Mage => match self.state {
-                        Animations::Idle => &EntityAssets::Mage(Animations::Idle),
-                        Animations::Run => &EntityAssets::Mage(Animations::Run),
-                    },
+                Animations::Idle => &EntityAssets::Mage(Animations::Idle),
+                Animations::Run => &EntityAssets::Mage(Animations::Run),
+            },
         }
     }
 
@@ -121,19 +123,15 @@ impl EntityModel {
 impl From<Family> for Species {
     fn from(value: Family) -> Self {
         match value {
-            Family::Species(species) => {
-                match species {
-                    val if val == RpcSpecies::Bouftou as i32 => Species::Bouftou,
-                    val if val == RpcSpecies::Crabedoeuf as i32 => Species::Crabedoeuf,
-                    _ => todo!()
-                }
+            Family::Species(species) => match species {
+                val if val == RpcSpecies::Bouftou as i32 => Species::Bouftou,
+                val if val == RpcSpecies::Crabedoeuf as i32 => Species::Crabedoeuf,
+                _ => todo!(),
             },
-            Family::Class(class) => {
-                match class {
-                    val if val == RpcClasses::Warrior as i32 => Species::Warrior,
-                    val if val == RpcClasses::Mage as i32 => Species::Mage,
-                    _ => todo!()
-                }
+            Family::Class(class) => match class {
+                val if val == RpcClasses::Warrior as i32 => Species::Warrior,
+                val if val == RpcClasses::Mage as i32 => Species::Mage,
+                _ => todo!(),
             },
         }
     }

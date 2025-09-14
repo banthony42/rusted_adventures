@@ -1,12 +1,10 @@
 use crate::tasks::connection::ConnectionTask;
 use crate::tasks::task::GameData;
-use crate::{
-    constants::*,
-    ui::{font::Font, input_field::InputField},
-};
+use crate::ui::{font::Font, input_field::InputField};
+use common::constants::*;
 use piston_window::*;
 
-use crate::constants::{WINDOW_HEIGHT, WINDOW_WIDTH};
+use common::constants::{WINDOW_HEIGHT, WINDOW_WIDTH};
 
 use super::loading::{Loading, LoadingNextState};
 use super::states::{GameState, StateFactory};

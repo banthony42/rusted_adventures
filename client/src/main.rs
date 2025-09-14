@@ -1,7 +1,7 @@
 use std::path::Path;
 
+use common::constants::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use common::utils::get_timestamp;
-use constants::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use piston_window::*;
 use states::{
     login::Login,
@@ -11,7 +11,6 @@ use states::{
 use crate::interface::load_icon;
 
 mod chat;
-mod constants;
 mod entities;
 mod import;
 mod interface;

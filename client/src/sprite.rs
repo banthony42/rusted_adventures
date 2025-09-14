@@ -1,4 +1,5 @@
-use crate::{constants::*, world::Offset};
+use crate::world::Offset;
+use common::constants::*;
 use piston_window::*;
 
 pub struct Sprite {

@@ -1,3 +1,5 @@
+use std::ops::{MulAssign, SubAssign};
+
 pub mod authenticator;
 pub mod character;
 pub mod database;
@@ -6,4 +8,153 @@ pub mod utils;
 
 pub mod grpc_codegen {
     include!("../grpc_codegen/rpg.package.rs");
+}
+
+pub mod constants {
+    use std::ops::Range;
+
+    // Map and Interface size
+    // Add check after loading map and gui, if size differ from const stop the program
+    pub const TILEMAP_WIDTH: usize = 16;
+    pub const TILEMAP_HEIGHT: usize = 12;
+    pub const TILEMAP_LINEAR_SIZE: usize = TILEMAP_WIDTH * TILEMAP_HEIGHT;
+    pub const TILE_WIDTH: usize = 64;
+    pub const TILE_HEIGHT: usize = 64;
+
+    pub const MAP_WIDTH: usize = (TILE_WIDTH * TILEMAP_WIDTH) as usize;
+    pub const MAP_HEIGHT: usize = (TILE_HEIGHT * TILEMAP_HEIGHT) as usize;
+    pub const MAP_WIDTH_CENTER: usize = (WINDOW_WIDTH - MAP_WIDTH) / 2;
+    pub const MAP_HEIGHT_CENTER: usize = (WINDOW_HEIGHT - GAME_HEIGHT) / 2;
+
+    pub const MAP_CHANGE_LIMIT: usize = 32;
+    pub const MAP_EAST_LIMIT: usize = MAP_WIDTH - MAP_CHANGE_LIMIT;
+    pub const MAP_SOUTH_LIMIT: usize = MAP_HEIGHT - MAP_CHANGE_LIMIT;
+
+    pub const GUI_WIDTH: usize = MAP_WIDTH;
+    pub const GUI_HEIGHT: usize = 192;
+    pub const GUI_WIDTH_CENTER: usize = (WINDOW_WIDTH - GUI_WIDTH) / 2;
+    pub const GAME_HEIGHT: usize = MAP_HEIGHT + GUI_HEIGHT;
+
+    pub const GUI_CHAT_X: usize = 20;
+    pub const GUI_CHAT_Y: usize = MAP_HEIGHT + 18;
+    pub const GUI_CHAT_WIDTH: usize = 408;
+    pub const GUI_CHAT_HEIGHT: usize = 140;
+
+    // Window size
+    pub const WINDOW_WIDTH: usize = MAP_WIDTH;
+    pub const WINDOW_HEIGHT: usize = MAP_HEIGHT + GUI_HEIGHT;
+    pub const WINDOW_WIDTH_CENTER: usize = WINDOW_WIDTH / 2;
+
+    pub const MAP_WIDTH_RANGE: Range<i64> = 0..MAP_WIDTH as i64;
+    pub const MAP_HEIGHT_RANGE: Range<i64> = 0..MAP_HEIGHT as i64;
+
+    pub const SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
+    pub const CHAT_SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct MapCoord {
+    pub x: i64,
+    pub y: i64,
+}
+
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct WorldCoord {
+    pub x: i8,
+    pub y: i8,
+}
+
+impl MapCoord {
+    /// Get linear index of this Map coordinate.
+    /// Then it can be use to retrieve the same pixel in an 1D array,
+    /// where its size is TILEMAP_LINEAR_SIZE (TILEMAP_WIDTH * TILEMAP_HEIGHT)
+    pub fn linear_index(&self) -> usize {
+        self.limit();
+        self.y as usize * constants::TILEMAP_WIDTH + self.x as usize
+    }
+
+    /// Limit this Map Coordinate to TILEMAP limits.
+    pub fn limit(mut self) -> Self {
+        self.x = self.x.max(0).min(constants::TILEMAP_WIDTH as i64 - 1);
+        self.y = self.y.max(0).min(constants::TILEMAP_HEIGHT as i64 - 1);
+        self
+    }
+
+    pub fn min(mut self, rhs: Self) -> Self {
+        self.x = self.x.min(rhs.x);
+        self.y = self.y.min(rhs.y);
+        self
+    }
+
+    pub fn is_null(&self) -> bool {
+        self.x == 0 && self.y == 0
+    }
+}
+
+impl std::ops::Mul<f64> for MapCoord {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Self {
+            x: (self.x as f64 * rhs) as i64,
+            y: (self.y as f64 * rhs) as i64,
+        }
+    }
+}
+
+impl MulAssign<f64> for MapCoord {
+    fn mul_assign(&mut self, rhs: f64) {
+        *self = *self * rhs;
+    }
+}
+
+impl std::ops::Sub for MapCoord {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
+impl SubAssign for MapCoord {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl std::ops::Add for MapCoord {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl std::ops::AddAssign for MapCoord {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl std::ops::Add for WorldCoord {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl std::ops::AddAssign for WorldCoord {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
 }

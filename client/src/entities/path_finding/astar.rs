@@ -1,4 +1,6 @@
-use crate::{constants::TILEMAP_LINEAR_SIZE, world::MapCoord};
+use common::MapCoord;
+
+use common::constants::TILEMAP_LINEAR_SIZE;
 
 use super::PathFindingStrategy;
 

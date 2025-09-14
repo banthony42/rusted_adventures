@@ -1,3 +1,4 @@
+use graphics::types::Color;
 use piston_window::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -114,7 +115,7 @@ pub enum EntityAssets {
     Warrior(Animations),
     Mage(Animations),
     Bouftou(Animations),
-    Crabedoeuf(Animations)
+    Crabedoeuf(Animations),
 }
 
 impl Default for EntityAssets {
@@ -122,6 +123,80 @@ impl Default for EntityAssets {
         Self::Character(Animations::default())
     }
 }
+
+#[derive(Hash, PartialEq, Eq, Debug, Clone)]
+pub enum Species {
+    Warrior,
+    Mage,
+    Bouftou,
+    Crabedoeuf,
+}
+
+pub struct SpeciesConstants {
+    pub font_color: Color,
+    // See notes about render_offest below
+    pub _render_offset_x: f64,
+    pub render_offset_y: f64,
+}
+
+pub struct SpeciesLibrary(HashMap<Species, SpeciesConstants>);
+
+impl SpeciesLibrary {
+    pub fn new() -> Self {
+        SpeciesLibrary(HashMap::from([
+            (
+                Species::Warrior,
+                SpeciesConstants {
+                    font_color: color::hex("0017ad"),
+                    _render_offset_x: 0.0,
+                    render_offset_y: 64.0,
+                },
+            ),
+            (
+                Species::Mage,
+                SpeciesConstants {
+                    font_color: color::hex("0017ad"),
+                    _render_offset_x: 0.0,
+                    render_offset_y: 64.0,
+                },
+            ),
+            (
+                Species::Bouftou,
+                SpeciesConstants {
+                    font_color: color::hex("c5c9e8"),
+                    _render_offset_x: 0.0,
+                    render_offset_y: 0.0,
+                },
+            ),
+            (
+                Species::Crabedoeuf,
+                SpeciesConstants {
+                    font_color: color::hex("c5c9e8"),
+                    _render_offset_x: 0.0,
+                    render_offset_y: 0.0,
+                },
+            ),
+        ]))
+    }
+
+    fn _get_species_constants(&self, species: &Species) -> &SpeciesConstants {
+        self.0
+            .get(&species)
+            .expect(format!("SpeciesLibrary: Unknow species: {:?}", species).as_str())
+    }
+
+    pub fn get_font_color(&self, species: &Species) -> Color {
+        self._get_species_constants(species).font_color.clone()
+    }
+
+    pub fn get_height_offset(&self, species: &Species) -> f64 {
+        self._get_species_constants(species).render_offset_y
+    }
+}
+
+// render_offset:
+// Sprites are render at their position, and drawn from top to bottom
+// Knowing that we need offsets for sprites higher and or larger than one tile.
 
 pub fn load_assets(window: &mut PistonWindow) -> HashMap<EntityAssets, GameAsset> {
     let assets_list = vec![

@@ -4,16 +4,13 @@ use piston::{Button, MouseButton, Size};
 use piston_window::PistonWindow;
 
 use crate::{
-    constants::{
-        Species, MAP_CHANGE_LIMIT, MAP_EAST_LIMIT, MAP_HEIGHT_RANGE, MAP_SOUTH_LIMIT, MAP_WIDTH_RANGE
-    },
     entities::{
         model::{EntityModel, Orientation},
         path_finding::PathFinder,
     },
-    import::assets::{EntityAssets, GameAsset},
+    import::assets::{EntityAssets, GameAsset, Species},
     ui::font::Font,
-    world::{MapCoord, MapData, World, WorldCoord},
+    world::{MapData, World},
 };
 
 use super::{
@@ -23,11 +20,14 @@ use super::{
     view::EntityView,
 };
 
-use common::grpc_codegen::{ClientEntityEvent};
-use common::grpc_codegen::{
-    client_entity_event::Event::PlayerMoveEvent,
-    server_entity_event::Event::{EntityDespawnEvent, EntityMoveEvent, EntitySpawnEvent},
-    Coord, Location, LocationType, PlayerMove
+use common::{constants::*, MapCoord};
+use common::{
+    grpc_codegen::{
+        client_entity_event::Event::PlayerMoveEvent,
+        server_entity_event::Event::{EntityDespawnEvent, EntityMoveEvent, EntitySpawnEvent},
+        ClientEntityEvent, Coord, Location, LocationType, PlayerMove,
+    },
+    WorldCoord,
 };
 use tokio::runtime::{Builder, Runtime};
 use tokio::select;

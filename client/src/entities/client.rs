@@ -1,4 +1,4 @@
-use crate::constants::SERVER_ENDPOINT;
+use common::constants::SERVER_ENDPOINT;
 use common::grpc_codegen::rpg_entity_client::RpgEntityClient;
 use common::grpc_codegen::{ClientEntityEvent, ServerEntityEvent};
 use std::error::Error;

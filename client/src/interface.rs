@@ -5,7 +5,8 @@ use std::{collections::HashMap, path::Path};
 use piston_window::*;
 use winit::window::Icon;
 
-use crate::{constants::*, import::assets::HardTexture};
+use crate::import::assets::HardTexture;
+use common::constants::*;
 
 pub struct Interface {
     img: Image,

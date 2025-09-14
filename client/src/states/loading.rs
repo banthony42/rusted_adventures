@@ -10,7 +10,8 @@ use tokio::time::{sleep, Duration};
 
 use crate::tasks::task::TaskData;
 use crate::tasks::task::TaskInterface;
-use crate::{constants::*, ui::font::Font};
+use crate::ui::font::Font;
+use common::constants::*;
 
 use super::game::Game;
 use super::login::Login;

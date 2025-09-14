@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 use crate::{
     chat::controller::ChatController,
-    constants::*,
     entities::controller::EntityController,
     import::assets::{load_assets, load_hard_drown_assets, HardTexture},
     interface::Interface,
@@ -12,6 +11,7 @@ use crate::{
     world::World,
     GameState,
 };
+use common::constants::*;
 
 use super::{
     loading::{Loading, LoadingNextState},

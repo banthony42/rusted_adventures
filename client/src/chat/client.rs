@@ -9,7 +9,7 @@ use common::grpc_codegen::ClientChatEvent;
 use common::grpc_codegen::ServerChatEvent;
 use std::error::Error;
 
-use crate::constants::CHAT_SERVER_ENDPOINT;
+use common::constants::CHAT_SERVER_ENDPOINT;
 
 type ResponseStreamingServerChatEvent = Response<Streaming<ServerChatEvent>>;
 pub struct ChatClient {

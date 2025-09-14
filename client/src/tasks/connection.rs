@@ -1,13 +1,12 @@
-use crate::constants::{Species, SERVER_ENDPOINT};
 use crate::entities::model::{EntityModel, IEntity};
-use crate::world::{MapCoord, WorldCoord};
+use crate::import::assets::Species;
+use common::constants::SERVER_ENDPOINT;
 
 use super::task::{GameData, TaskData, TaskInterface};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
 use common::grpc_codegen::rpg_entity_client::RpgEntityClient;
-use common::grpc_codegen::{
-    AuthReply, AuthRequest, EmptyRequest, Entities, Entity, PlayerData,
-};
+use common::grpc_codegen::{AuthReply, AuthRequest, EmptyRequest, Entities, Entity, PlayerData};
+use common::{MapCoord, WorldCoord};
 use std::error::Error;
 use std::sync::Arc;
 use std::sync::Mutex;

@@ -1,6 +1,6 @@
-pub mod astar;
+use common::MapCoord;
 
-use crate::world::MapCoord;
+pub mod astar;
 
 pub trait PathFindingStrategy {
     fn new() -> Self;

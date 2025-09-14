@@ -1,16 +1,14 @@
 use piston_window::*;
 
-use crate::{
-    constants::*,
-    ui::{
-        font::Font,
-        input_field::InputField,
-        text_field::{TextField, TextFieldFormat},
-    },
+use crate::ui::{
+    font::Font,
+    input_field::InputField,
+    text_field::{TextField, TextFieldFormat},
 };
 
 use super::model::ChatMessage;
 
+use common::constants::*;
 use common::grpc_codegen::server_chat_event::Event as SEvent;
 use common::grpc_codegen::ChatEventType;
 use common::grpc_codegen::ServerEventType;
