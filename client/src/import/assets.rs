@@ -1,3 +1,4 @@
+use common::constants::Species;
 use graphics::types::Color;
 use piston_window::*;
 use serde::{Deserialize, Serialize};
@@ -122,14 +123,6 @@ impl Default for EntityAssets {
     fn default() -> Self {
         Self::Character(Animations::default())
     }
-}
-
-#[derive(Hash, PartialEq, Eq, Debug, Clone)]
-pub enum Species {
-    Warrior,
-    Mage,
-    Bouftou,
-    Crabedoeuf,
 }
 
 pub struct SpeciesConstants {

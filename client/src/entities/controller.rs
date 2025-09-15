@@ -8,7 +8,7 @@ use crate::{
         model::{EntityModel, Orientation},
         path_finding::PathFinder,
     },
-    import::assets::{EntityAssets, GameAsset, Species},
+    import::assets::{EntityAssets, GameAsset},
     ui::font::Font,
     world::{MapData, World},
 };

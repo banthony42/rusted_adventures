@@ -1,6 +1,5 @@
 use crate::entities::model::{EntityModel, IEntity};
-use crate::import::assets::Species;
-use common::constants::SERVER_ENDPOINT;
+use common::constants::{Species, SERVER_ENDPOINT};
 
 use super::task::{GameData, TaskData, TaskInterface};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;

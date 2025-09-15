@@ -50,6 +50,35 @@ pub mod constants {
 
     pub const SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
     pub const CHAT_SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
+
+    #[derive(Hash, PartialEq, Eq, Debug, Clone)]
+    pub enum Species {
+        Warrior,
+        Mage,
+        Bouftou,
+        Crabedoeuf,
+    }
+
+    use crate::grpc_codegen;
+
+    use super::grpc_codegen::entity::Family;
+
+    impl From<Family> for Species {
+        fn from(value: Family) -> Self {
+            match value {
+                Family::Species(species) => match species {
+                    val if val == grpc_codegen::Species::Bouftou as i32 => Species::Bouftou,
+                    val if val == grpc_codegen::Species::Crabedoeuf as i32 => Species::Crabedoeuf,
+                    _ => todo!(),
+                },
+                Family::Class(class) => match class {
+                    val if val == grpc_codegen::Classes::Warrior as i32 => Species::Warrior,
+                    val if val == grpc_codegen::Classes::Mage as i32 => Species::Mage,
+                    _ => todo!(),
+                },
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

@@ -4,7 +4,7 @@ use common::grpc_codegen::{
 use common::{constants::*, MapCoord, WorldCoord};
 
 use crate::{
-    import::assets::{Animations, EntityAssets, Species},
+    import::assets::{Animations, EntityAssets},
     world::World,
 };
 
@@ -116,23 +116,6 @@ impl EntityModel {
             self.state = state;
             self.frame = 0;
             self.timer = 0;
-        }
-    }
-}
-
-impl From<Family> for Species {
-    fn from(value: Family) -> Self {
-        match value {
-            Family::Species(species) => match species {
-                val if val == RpcSpecies::Bouftou as i32 => Species::Bouftou,
-                val if val == RpcSpecies::Crabedoeuf as i32 => Species::Crabedoeuf,
-                _ => todo!(),
-            },
-            Family::Class(class) => match class {
-                val if val == RpcClasses::Warrior as i32 => Species::Warrior,
-                val if val == RpcClasses::Mage as i32 => Species::Mage,
-                _ => todo!(),
-            },
         }
     }
 }
