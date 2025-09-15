@@ -25,8 +25,30 @@ impl Into<Coord> for PgPoint {
     }
 }
 
+impl From<Coord> for PgPoint {
+    fn from(value: Coord) -> Self {
+        PgPoint(value.x as f64, value.y as f64)
+    }
+}
+
+impl Into<RpcEntity> for CharacterInfo {
+    fn into(self) -> RpcEntity {
+        RpcEntity {
+            uuid: self.uuid,
+            name: self.name,
+            family: Some(self.class.into()),
+            location: Some(RpcLocation {
+                world: Some(self.world.into()),
+                map: Some(self.map.into()),
+            }),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct CharacterInfo {
     pub uuid: String,
+    pub name: String,
     pub eid: i32,
     pub class: Classes,
     pub map: PgPoint,
@@ -34,15 +56,25 @@ pub struct CharacterInfo {
 }
 pub struct CharacterAccountHandler {
     login: String,
+    pub entity_id: i32,
+    pub uuid: String,
     pub connection: PgConnection,
 }
 
 impl CharacterAccountHandler {
-    pub fn new(login: &String) -> Self {
-        Self {
+    pub fn new(login: &String) -> Result<Self, Error> {
+        let mut connection = Database::new().establish_connection();
+        let characters = Character::read_all_by_account_login(&mut connection, &login)?;
+
+        // For now consider user is always playing the same characters
+        let character = &characters[0];
+
+        Ok(Self {
+            connection,
             login: login.clone(),
-            connection: Database::new().establish_connection(),
-        }
+            entity_id: character.entity_id,
+            uuid: format!("{}.{}", character.account_id, character.entity_id),
+        })
     }
 
     fn get_map_spawn() -> PgPoint {
@@ -63,6 +95,7 @@ impl CharacterAccountHandler {
 
         Ok(CharacterInfo {
             uuid: format!("{}.{}", chars.account_id, chars.entity_id),
+            name: self.login.clone(), // TODO retrieve value from entity.name
             eid: chars.entity_id,
             class: chars.class.clone(),
             map: location.map,
@@ -70,13 +103,9 @@ impl CharacterAccountHandler {
         })
     }
 
-    pub fn get_all_player_on_world(&mut self, world: PgPoint) -> Result<Vec<String>, Error> {
-        Character::read_all_by_world(&mut self.connection, world)
-    }
-
-    pub fn get_players_on_same_world(&mut self) -> Result<Vec<String>, Error> {
-        let info = self.get_character_info()?;
-        self.get_all_player_on_world(info.world)
+    pub fn get_players_on_world(&mut self) -> Result<Vec<String>, Error> {
+        let location = Location::read(&mut self.connection, &self.entity_id)?;
+        Character::read_all_by_world(&mut self.connection, location.world)
     }
 
     pub fn get_entities_on_same_world(&mut self) -> Result<Vec<(RpcEntity, Option<Coord>)>, Error> {
@@ -143,6 +172,9 @@ impl CharacterAccountHandler {
                 },
             );
 
+            // Could be a pgsql trigger maybe :
+            // When map position == destination
+            // Player has reached its destination, so reset destination to None
             if let Ok(ul) = ul_result {
                 if ul.destination == Some(ul.map) {
                     let _udresult = Location::update_destination(
@@ -152,6 +184,13 @@ impl CharacterAccountHandler {
                     );
                 }
             }
+        }
+    }
+
+    pub fn update_destination(&mut self, new_loc: UpdateLocationDestination) {
+        let result = Location::update_destination(&mut self.connection, &self.entity_id, new_loc);
+        if let Err(err) = result {
+            println!("Server: update_destination: {:?}", err);
         }
     }
 

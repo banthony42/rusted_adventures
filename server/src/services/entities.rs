@@ -4,18 +4,13 @@ use std::sync::Arc;
 
 use common::character::CharacterAccountHandler;
 use common::database::model::account::{Account, UpdateAccount};
-use common::database::model::location::{Location, UpdateLocationDestination};
 use common::grpc_codegen::entity::Family;
+use common::grpc_codegen::LocationType;
 use common::grpc_codegen::{
-    client_entity_event::Event::PlayerMoveEvent, rpg_entity_server::RpgEntity,
-    ClientEntityEvent, Coord as RpcCoord, EmptyRequest, Entities,
-    Entity as RpcEntity, Location as RpcLocation, PlayerData, PlayerMove, ServerEntityEvent,
+    client_entity_event::Event::PlayerMoveEvent, rpg_entity_server::RpgEntity, ClientEntityEvent,
+    EmptyRequest, Entities, Entity as RpcEntity, PlayerData, PlayerMove,
+    ServerEntityEvent as EntityEvent,
 };
-use common::grpc_codegen::{
-    server_entity_event::Event::{EntityDespawnEvent, EntityMoveEvent, EntitySpawnEvent},
-    EntityMove, EntitySpawn,
-};
-use common::grpc_codegen::{EntityDespawn, LocationType};
 
 use tokio::sync::mpsc::{self, Sender};
 use tokio::sync::Mutex;
@@ -25,72 +20,9 @@ use tonic::{Request, Response, Status, Streaming};
 
 use crate::generics::match_for_io_error;
 
-trait ServerEntityEventExtension {
-    fn new_move(uuid: String, world: RpcCoord, map: RpcCoord) -> Self;
-    fn new_spawn(
-        uuid: String,
-        name: String,
-        family: Family,
-        world: RpcCoord,
-        map: RpcCoord,
-    ) -> Self;
-    fn new_spawn_from_entity(entity: RpcEntity) -> Self;
-    fn new_despawn(uuid: String) -> Self;
-}
-
-impl ServerEntityEventExtension for ServerEntityEvent {
-    fn new_move(uuid: String, world: RpcCoord, map: RpcCoord) -> Self {
-        let entity = EntityMove {
-            uuid,
-            new_location: Some(RpcLocation {
-                world: Some(world),
-                map: Some(map),
-            }),
-        };
-
-        ServerEntityEvent {
-            event: Some(EntityMoveEvent(entity)),
-        }
-    }
-
-    fn new_spawn(
-        uuid: String,
-        name: String,
-        family: Family,
-        world: RpcCoord,
-        map: RpcCoord,
-    ) -> Self {
-        let entity_spawn = EntitySpawnEvent(EntitySpawn {
-            new_entity: Some(RpcEntity {
-                uuid,
-                name,
-                family: Some(family),
-                location: Some(RpcLocation {
-                    world: Some(world),
-                    map: Some(map),
-                }),
-            }),
-        });
-
-        ServerEntityEvent {
-            event: Some(entity_spawn),
-        }
-    }
-
-    fn new_spawn_from_entity(entity: RpcEntity) -> Self {
-        ServerEntityEvent {
-            event: Some(EntitySpawnEvent(EntitySpawn {
-                new_entity: Some(entity),
-            })),
-        }
-    }
-
-    fn new_despawn(uuid: String) -> Self {
-        ServerEntityEvent {
-            event: Some(EntityDespawnEvent(EntityDespawn { uuid })),
-        }
-    }
-}
+use crate::services::rpc_extensions::{
+    RpcCoordExtension, RpcLocationExtension, ServerEntityEventExtension,
+};
 
 #[derive(Debug)]
 struct RpgEntityEvent {
@@ -104,178 +36,118 @@ impl RpgEntityEvent {
     }
 }
 
-async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHashMapClient) {
-    if move_event.new_location.is_none() {
-        println!("Server: player move: LocationType::NewMap: new_location is none.");
+async fn send_entity_event(client: &EntityEventSender, event: &EntityEvent) -> bool {
+    if let Err(err) = client.send(Ok(event.clone())).await {
+        println!("Server: send_entity_event: Error: {:?}", err);
+        return false;
+    }
+    true
+}
+
+async fn broadcast_player_on_world(
+    sender: &String,
+    event: EntityEvent,
+    clients: &ArcMutexHashMapClient,
+    char_handler: &mut CharacterAccountHandler,
+) {
+    let result_players = char_handler.get_players_on_world();
+    if let Err(err) = result_players {
+        println!("Server: player move: get_players_on_world: {:?}", err);
         return;
     }
-    let new_dest_event = move_event.new_location.unwrap();
-    println!("Server: player move: {:?}", move_event);
+    let player_list = result_players.unwrap();
 
-    match move_event.location_type() {
-        LocationType::NewMap => {
-            // (new cell destination)
-            // update DB with the new dest
-            let mut char_handler = CharacterAccountHandler::new(&sender);
-            let char_info_result = char_handler.get_character_info();
-            if let Err(err) = char_info_result {
-                println!("Server: player move: {:?}", err);
-                return;
+    {
+        let clts = clients.lock().await;
+
+        for player in player_list.iter().filter(|name| sender.ne(*name)) {
+            if let Some(client_channel) = clts.get(player) {
+                send_entity_event(client_channel, &event).await;
             }
-
-            let char_info = char_info_result.unwrap();
-
-            if let Err(err) = Location::update_destination(
-                &mut char_handler.connection,
-                &char_info.eid,
-                UpdateLocationDestination::new(
-                    new_dest_event.map.unwrap().x as f64,
-                    new_dest_event.map.unwrap().y as f64,
-                ),
-            ) {
-                println!("Server: player move: update_destination: {:?}", err);
-                return;
-            }
-
-            // broadcast all clients on the same new map with EntityMove with the new destination
-            let result_players = char_handler.get_all_player_on_world(char_info.world);
-            if let Err(err) = result_players {
-                println!("Server: player move: get_all_player_on_world: {:?}", err);
-                return;
-            }
-            let players = result_players.unwrap();
-            let move_event = ServerEntityEvent::new_move(
-                char_info.uuid,
-                new_dest_event.world.unwrap(),
-                new_dest_event.map.unwrap(),
-            );
-            {
-                let clts = clients.lock().await;
-                for (clogin, setx) in clts
-                    .iter()
-                    .filter(|(login, _)| players.contains(login) && sender.ne(*login))
-                {
-                    if let Err(err) = setx.send(Ok(move_event.clone())).await {
-                        println!(
-                            "Server: player move: Error: entity move event broadcast: {:?}",
-                            err
-                        );
-                    } else {
-                        println!(
-                            "Server: player move: Send move {:?} for {:?}",
-                            sender, clogin
-                        );
-                    }
-                }
-            }
-        }
-        LocationType::NewWorld => {
-            // LocationType::NewWorld (player has change map)
-            let mut char_handler = CharacterAccountHandler::new(&sender);
-            let char_info = char_handler.get_character_info().unwrap();
-
-            // Broadcast all players on last world with a despawn event
-            let despawn_event = ServerEntityEvent::new_despawn(char_info.uuid.clone());
-            if let Ok(players_on_last_world) = char_handler.get_players_on_same_world() {
-                let clts = clients.lock().await;
-                for (clogin, setx) in clts
-                    .iter()
-                    .filter(|(login, _)| players_on_last_world.contains(login) && sender.ne(*login))
-                {
-                    if let Err(err) = setx.send(Ok(despawn_event.clone())).await {
-                        println!(
-                            "Server: player move: Error: entity despawn event broadcast: {:?}",
-                            err
-                        );
-                    } else {
-                        println!(
-                            "Server: player move: send despawn {:?} for {:?}",
-                            sender, clogin
-                        );
-                    }
-                }
-            }
-
-            // Update the new world and map in DB
-            char_handler.update_location(new_dest_event);
-
-            // Broadcast all players on the world map with a spawn event
-            let sender_spawn_event = ServerEntityEvent::new_spawn(
-                char_info.uuid.clone(),
-                sender.clone(),
-                char_info.class.into(),
-                new_dest_event.world.unwrap(),
-                new_dest_event.map.unwrap(),
-            );
-
-            if let Ok(entities_on_new_world) = char_handler.get_entities_on_same_world() {
-                let clts = clients.lock().await;
-                let sender_tx = clts.get(&sender).unwrap();
-                for (entity, entity_dest) in entities_on_new_world.iter() {
-                    let entity_spawn_event =
-                        ServerEntityEvent::new_spawn_from_entity(entity.clone());
-                    // This player (sender) just change map, send to him each new entity on the new map
-                    if let Err(err) = sender_tx.send(Ok(entity_spawn_event)).await {
-                        println!(
-                            "Server: player move: Error: sending entities spawn event: ({:?}) for {:?} : {:?}",
-                            entity.name, sender, err
-                        );
-                    } else {
-                        if let Some(dest) = entity_dest {
-                            let entity_move_event = ServerEntityEvent::new_move(
-                                entity.uuid.clone(),
-                                entity.location.unwrap().world.unwrap().into(),
-                                *dest,
-                            );
-                            // This player (sender)
-                            if let Err(err) = sender_tx.send(Ok(entity_move_event)).await {
-                                println!(
-                                "Server: player move: Error: sending entities move event after spawn: ({:?}) for {:?} : {:?}",
-                                entity.name, sender, err
-                                );
-                            } else {
-                                println!(
-                                    "Server: player move: send move {:?} for {:?}",
-                                    entity.name, sender
-                                );
-                            }
-                        }
-                    }
-
-                    // Warn all players on the new map, that sender is here
-                    if let Some(Family::Class(_)) = entity.family {
-                        if let Some(entity_tx) = clts.get(&entity.name) {
-                            if let Err(err) = entity_tx.send(Ok(sender_spawn_event.clone())).await {
-                                println!(
-                                    "Server: player move: Error: sending sender spawn event: ({:?}) for {:?} : {:?}",
-                                    sender, entity.name, err
-                                );
-                            } else {
-                                println!(
-                                    "Server: player move: send spawn {:?} for {:?}",
-                                    sender, entity.name
-                                );
-                            }
-                        } else {
-                            println!(
-                                "Server: player move: Error: Fail to get client stream for {:?}",
-                                entity.name
-                            );
-                        }
-                    }
-                }
-            }
-        }
-        LocationType::Update => {
-            // (player has change cell)
-            // Just update the DB with the new location
-            let mut char_handler = CharacterAccountHandler::new(&sender);
-            char_handler.update_location(new_dest_event);
         }
     }
 }
 
-type ArcMutexHashMapClient = Arc<Mutex<HashMap<String, Sender<Result<ServerEntityEvent, Status>>>>>;
+async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHashMapClient) {
+    let new_location = match move_event.new_location {
+        Some(location) => location,
+        None => {
+            println!("Server: player move: LocationType::NewMap: new_location is none.");
+            return;
+        }
+    };
+
+    let mut character = match CharacterAccountHandler::new(&sender) {
+        Ok(handler) => handler,
+        Err(err) => {
+            println!("Server: player move: CharacterAccountHandler : {:?}", err);
+            return;
+        }
+    };
+
+    println!("Server: player move: {:?}", move_event);
+
+    match move_event.location_type() {
+        // Player has changed cell
+        LocationType::Update => character.update_location(new_location),
+        LocationType::NewMap => {
+            // Player has changed destination
+            if let Some(new_destination) = new_location.into_update_destination() {
+                character.update_destination(new_destination);
+
+                // broadcast all clients on the same new map with EntityMove embedding the new destination
+                let uuid = character.uuid.clone();
+                let move_event = EntityEvent::movement(uuid, new_location);
+                broadcast_player_on_world(&sender, move_event, &clients, &mut character).await;
+            }
+        }
+        LocationType::NewWorld => {
+            // Player has changed map
+            // Broadcast all players on last world with a despawn event
+            let despawn_event = EntityEvent::despawn(character.uuid.clone());
+            broadcast_player_on_world(&sender, despawn_event, &clients, &mut character).await;
+
+            // Update the new world and map in DB
+            character.update_location(new_location);
+
+            let char_info = character.get_character_info().unwrap();
+            let sender_spawn = EntityEvent::spawn(char_info.clone().into());
+
+            if let Ok(entities_on_new_world) = character.get_entities_on_same_world() {
+                let clts = clients.lock().await;
+                let sender_tx = clts.get(&sender).unwrap();
+
+                // Parse all entities on same map (players and monsters)
+                for (entity, entity_destination) in entities_on_new_world.iter() {
+                    // Send each entity on the new map, to this player (sender)
+                    let entity_spawn = EntityEvent::spawn(entity.clone());
+                    if send_entity_event(sender_tx, &entity_spawn).await {
+                        // Also send move event for this entity if needed
+                        if let Some(dest) = entity_destination {
+                            let move_event =
+                                EntityEvent::movement(entity.uuid.clone(), dest.into_destination());
+                            send_entity_event(sender_tx, &move_event).await;
+                        }
+                    }
+
+                    // If entity is another player, warn him that sender has spawn here
+                    match (entity.family, clts.get(&entity.name)) {
+                        (Some(Family::Class(_)), Some(entity_tx)) => {
+                            send_entity_event(entity_tx, &sender_spawn).await;
+                        }
+                        _ => println!(
+                            "Server: player move: Error: Fail to get client stream for {:?}",
+                            entity.name
+                        ),
+                    };
+                }
+            }
+        }
+    }
+}
+
+type EntityEventSender = Sender<Result<EntityEvent, Status>>;
+type ArcMutexHashMapClient = Arc<Mutex<HashMap<String, EntityEventSender>>>;
 
 pub struct RpgEntityService {
     clients: ArcMutexHashMapClient,
@@ -286,10 +158,7 @@ impl RpgEntityService {
     pub fn new() -> Self {
         let (event_tx, mut event_rx) = mpsc::channel::<RpgEntityEvent>(10);
 
-        let clients = Arc::new(Mutex::new(HashMap::<
-            String,
-            Sender<Result<ServerEntityEvent, Status>>,
-        >::new()));
+        let clients = Arc::new(Mutex::new(HashMap::<String, EntityEventSender>::new()));
 
         let clts = clients.clone();
         // This task loop on the ChatEvent receive channel to handle
@@ -310,7 +179,7 @@ impl RpgEntityService {
 
 #[tonic::async_trait]
 impl RpgEntity for RpgEntityService {
-    type EntityEventBusStream = ReceiverStream<Result<ServerEntityEvent, Status>>;
+    type EntityEventBusStream = ReceiverStream<Result<EntityEvent, Status>>;
 
     async fn entity_event_bus(
         &self,
@@ -319,8 +188,7 @@ impl RpgEntity for RpgEntityService {
         let (metadata, _, mut client_stream) = request.into_parts();
         let login = metadata.get("login").unwrap().to_str().unwrap().to_string();
         let login_clone = login.clone();
-        let (server_event_tx, server_event_rx) =
-            mpsc::channel::<Result<ServerEntityEvent, Status>>(10);
+        let (server_event_tx, server_event_rx) = mpsc::channel::<Result<EntityEvent, Status>>(10);
 
         // For each ClientEntityEvent request receive from the stream,
         // send it through the RpgEntityEvent channel
@@ -329,53 +197,24 @@ impl RpgEntity for RpgEntityService {
         let cl = self.clients.clone();
         let stx = server_event_tx.clone();
         tokio::spawn(async move {
-            let mut character_handler = CharacterAccountHandler::new(&login);
-            let char_info_result = character_handler.get_character_info();
-            if let Err(err) = char_info_result {
-                let _ = stx.send(Err(Status::not_found(err.to_string()))).await;
-                return;
-            }
-            let char_info = char_info_result.unwrap();
-
-            // Broadcast client on same map with EntitySpawn
-            let spawn_event = ServerEntityEvent::new_spawn(
-                char_info.uuid.clone(),
-                login.clone(),
-                char_info.class.into(),
-                char_info.world.into(),
-                char_info.map.into(),
-            );
-
-            let result_players = character_handler.get_all_player_on_world(char_info.world);
-            if let Err(err) = result_players {
-                println!(
-                    "Server: entity_event_bus: get_all_player_on_world: {:?}",
-                    err
-                );
-                return;
-            }
-            let players = result_players.unwrap();
-
-            {
-                let cc = cl.lock().await;
-                // Send the EntitySpawn event to each clients (on same map)
-                for (clogin, setx) in cc
-                    .iter()
-                    .filter(|(l, _)| login.ne(*l) && players.contains(l))
-                {
-                    if let Err(err) = setx.send(Ok(spawn_event.clone())).await {
-                        println!(
-                            "Server: entity_event_bus: Error: entity spawn event broadcast: {:?}",
-                            err
-                        );
-                    } else {
-                        println!(
-                            "Server: entity_event_bus: send spawn {:?} for {:?}",
-                            login, clogin
-                        );
-                    }
+            let mut char_handler = match CharacterAccountHandler::new(&login) {
+                Ok(handler) => handler,
+                Err(err) => {
+                    println!("Server: entity_event_bus: {:?}", err);
+                    return;
                 }
-            }
+            };
+
+            let char_info = match char_handler.get_character_info() {
+                Ok(info) => info,
+                Err(err) => {
+                    let _ = stx.send(Err(Status::not_found(err.to_string()))).await;
+                    return;
+                }
+            };
+
+            let spawn_event = EntityEvent::spawn(char_info.clone().into());
+            broadcast_player_on_world(&login, spawn_event, &cl, &mut char_handler).await;
 
             // Loop to handle each client entity events
             while let Some(entity_event) = client_stream.next().await {
@@ -398,31 +237,16 @@ impl RpgEntity for RpgEntityService {
                     }
                 }
             }
-            println!("Server: entity_event_bus: client: {:?} disconnected", login);
-            cl.lock().await.remove(&login);
 
-            let entity_despawn = ServerEntityEvent::new_despawn(char_info.uuid);
+            println!("Server: entity_event_bus: client: {:?} disconnected", login);
+            let entity_despawn = EntityEvent::despawn(char_info.uuid);
+            broadcast_player_on_world(&login, entity_despawn, &cl, &mut char_handler).await;
             {
-                let cc = cl.lock().await;
-                // Send the EntityMove event to each clients
-                // TODO: send only to player on same map
-                for (clogin, setx) in cc.iter() {
-                    if let Err(err) = setx.send(Ok(entity_despawn.clone())).await {
-                        println!(
-                            "Server: entity_event_bus: Error: entity despawn event broadcast: {:?}",
-                            err
-                        );
-                    } else {
-                        println!(
-                            "Server: entity_event_bus: send despawn {:?} for {:?}",
-                            login, clogin
-                        );
-                    }
-                }
+                cl.lock().await.remove(&login);
             }
             // Revoke the token
             let _ = Account::update(
-                &mut character_handler.connection,
+                &mut char_handler.connection,
                 &login,
                 &UpdateAccount {
                     login: None,
@@ -449,28 +273,21 @@ impl RpgEntity for RpgEntityService {
     ) -> Result<tonic::Response<PlayerData>, tonic::Status> {
         let (metadata, _, _) = request.into_parts();
         let login = metadata.get("login").unwrap().to_str().unwrap().to_string();
-        let mut character_handler = CharacterAccountHandler::new(&login);
-        let char_info_result = character_handler.get_character_info();
-
-        if let Err(err) = char_info_result {
-            return Err(tonic::Status::not_found(err.to_string()));
-        }
-
-        let char_info = char_info_result.unwrap();
-        let data = PlayerData {
-            entity: Some(RpcEntity {
-                uuid: char_info.uuid,
-                name: login,
-                family: Some(char_info.class.into()),
-                location: Some(RpcLocation {
-                    world: Some(char_info.world.into()),
-                    map: Some(char_info.map.into()),
-                }),
-            }),
+        let mut char_handler = match CharacterAccountHandler::new(&login) {
+            Ok(handler) => handler,
+            Err(err) => {
+                println!("Server: get_player: {:?}", err);
+                return Err(tonic::Status::not_found(err.to_string()));
+            }
         };
-        let response = tonic::Response::new(data);
+        let char_info = match char_handler.get_character_info() {
+            Ok(info) => info,
+            Err(err) => return Err(tonic::Status::not_found(err.to_string())),
+        };
 
-        Ok(response)
+        Ok(tonic::Response::new(PlayerData {
+            entity: Some(char_info.into()),
+        }))
     }
 
     async fn get_entities(
@@ -479,9 +296,12 @@ impl RpgEntity for RpgEntityService {
     ) -> Result<tonic::Response<Entities>, tonic::Status> {
         let (metadata, _, _) = request.into_parts();
         let login = metadata.get("login").unwrap().to_str().unwrap().to_string();
-        let mut character_handler = CharacterAccountHandler::new(&login);
+        let mut char_handler = match CharacterAccountHandler::new(&login) {
+            Ok(handler) => handler,
+            Err(err) => return Err(tonic::Status::not_found(err.to_string())),
+        };
 
-        let entities: Vec<RpcEntity> = match character_handler.get_entities_on_same_world() {
+        let entities: Vec<RpcEntity> = match char_handler.get_entities_on_same_world() {
             Ok(data) => data.iter().map(|(ent, _)| ent.clone()).collect(),
             Err(err) => {
                 println!("Server: get_entities: Error : {:?}", err);

@@ -60,7 +60,16 @@ impl RpgAuthenticate for RpgAuthenticateService {
                 println!("Server: AuthenticateUser: Success: token: {}", new_token);
                 // Automate characters creation :
                 // for now only one character is allowed per account
-                let mut account_characters = CharacterAccountHandler::new(&auth_req.login);
+                let mut account_characters = match CharacterAccountHandler::new(&auth_req.login) {
+                    Ok(handler) => handler,
+                    Err(err) => {
+                        println!(
+                            "Server: AuthenticateUser: Error while retrieving character: {:?}",
+                            err
+                        );
+                        return Err(tonic::Status::not_found(err.to_string()));
+                    }
+                };
                 account_characters
                     .get_all()
                     .map_err(|e| tonic::Status::internal(e.to_string()))
@@ -69,7 +78,9 @@ impl RpgAuthenticate for RpgAuthenticateService {
 
                         if characters.is_empty() {
                             let res = match rand::random::<bool>() {
-                                true => account_characters.create(&auth_req.login, Classes::Warrior),
+                                true => {
+                                    account_characters.create(&auth_req.login, Classes::Warrior)
+                                }
                                 false => account_characters.create(&auth_req.login, Classes::Mage),
                             };
                             if let Err(e) = res {

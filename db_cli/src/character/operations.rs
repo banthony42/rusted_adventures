@@ -19,7 +19,13 @@ pub fn handle_character(character: CharacterCommand) {
 }
 
 fn create_character(character: CreateCharacterCmd) {
-    let mut character_handler = CharacterAccountHandler::new(&character.login);
+    let mut character_handler = match CharacterAccountHandler::new(&character.login) {
+        Ok(handler) => handler,
+        Err(err) => {
+            println!("Error while retrieving character: {:?}", err);
+            return;
+        }
+    };
 
     let pg_class = match character.class {
         CharacterClass::Warrior => Classes::Warrior,
