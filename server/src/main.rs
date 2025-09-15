@@ -28,9 +28,9 @@ fn run_world_engine_on_another_thread() -> Runtime {
         .build()
         .unwrap();
 
-    let world_engine = WorldEngine::new();
+    let mut world_engine = WorldEngine::new();
     runtime.spawn(async move {
-        world_engine.run().await;
+        world_engine.run();
     });
 
     return runtime;
