@@ -14,12 +14,14 @@ type Connection = diesel::pg::PgConnection;
 #[derive(Debug)]
 pub enum AccountError {
     NotConnected,
+    LogoutError,
 }
 
 impl Display for AccountError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
             AccountError::NotConnected => write!(f, "NotConnected"),
+            AccountError::LogoutError => write!(f, "LogoutError"),
         }
     }
 }

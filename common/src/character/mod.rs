@@ -1,4 +1,6 @@
-use diesel::{result::Error, PgConnection};
+use std::{char, error::Error, fmt::Display};
+
+use diesel::{result::Error as DieselError, PgConnection};
 use diesel_geometry::data_types::PgPoint;
 
 use crate::{
@@ -12,6 +14,7 @@ use crate::{
         },
     },
     grpc_codegen::{Coord, Location as RpcLocation},
+    MapCoord, WorldCoord,
 };
 
 use crate::grpc_codegen::Entity as RpcEntity;
@@ -45,6 +48,27 @@ impl Into<RpcEntity> for CharacterInfo {
     }
 }
 
+#[derive(Debug)]
+pub enum CharacterHandlerError {
+    DatabaseError(String),
+    NoCharacterForAccount,
+}
+
+impl Display for CharacterHandlerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            CharacterHandlerError::NoCharacterForAccount => {
+                write!(f, "This account doesn't have any character.")
+            }
+            CharacterHandlerError::DatabaseError(_) => {
+                write!(f, "DatabaseError")
+            }
+        }
+    }
+}
+
+impl Error for CharacterHandlerError {}
+
 #[derive(Clone)]
 pub struct CharacterInfo {
     pub uuid: String,
@@ -54,62 +78,64 @@ pub struct CharacterInfo {
     pub map: PgPoint,
     pub world: PgPoint,
 }
-pub struct CharacterAccountHandler {
+
+pub struct CharacterHandler {
     login: String,
-    pub entity_id: i32,
-    pub uuid: String,
+    character: Character,
+    character_name: String,
     pub connection: PgConnection,
 }
 
-impl CharacterAccountHandler {
-    pub fn new(login: &String) -> Result<Self, Error> {
+impl CharacterHandler {
+    pub fn new(login: &String) -> Result<Self, CharacterHandlerError> {
         let mut connection = Database::new().establish_connection();
-        let characters = Character::read_all_by_account_login(&mut connection, &login)?;
-
-        // For now consider user is always playing the same characters
-        let character = &characters[0];
+        let (character, character_name) = Character::read_by_account_login(&mut connection, &login)
+            .map_err(|e| CharacterHandlerError::DatabaseError(e.to_string()))?
+            .ok_or(CharacterHandlerError::NoCharacterForAccount)?;
 
         Ok(Self {
-            connection,
+            character,
+            character_name,
             login: login.clone(),
-            entity_id: character.entity_id,
-            uuid: format!("{}.{}", character.account_id, character.entity_id),
+            connection,
         })
     }
 
-    fn get_map_spawn() -> PgPoint {
-        PgPoint(5.0, 5.0)
+    pub fn entity_uuid(&self) -> String {
+        format!("{}.{}", self.character.account_id, self.character.entity_id)
     }
 
-    fn get_world_spawn() -> PgPoint {
-        PgPoint(0.0, 0.0)
-    }
-
-    pub fn get_all(&mut self) -> Result<Vec<Character>, Error> {
-        Character::read_all_by_account_login(&mut self.connection, &self.login)
-    }
-
-    pub fn get_character_info(&mut self) -> Result<CharacterInfo, Error> {
-        let chars = &self.get_all()?[0];
-        let location = Location::read(&mut self.connection, &chars.entity_id)?;
+    pub fn character_info(&mut self) -> Result<CharacterInfo, DieselError> {
+        let location = Location::read(&mut self.connection, &self.character.entity_id)?;
 
         Ok(CharacterInfo {
-            uuid: format!("{}.{}", chars.account_id, chars.entity_id),
-            name: self.login.clone(), // TODO retrieve value from entity.name
-            eid: chars.entity_id,
-            class: chars.class.clone(),
+            uuid: self.entity_uuid(),
+            name: self.character_name.clone(),
+            eid: self.character.entity_id,
+            class: self.character.class.clone(),
             map: location.map,
             world: location.world,
         })
     }
 
-    pub fn get_players_on_world(&mut self) -> Result<Vec<String>, Error> {
-        let location = Location::read(&mut self.connection, &self.entity_id)?;
+    pub fn players_on_same_world(&mut self) -> Result<Vec<String>, DieselError> {
+        // TODO: issue: groupby clause doesn't work :
+        // [941] ERROR:  could not identify an equality operator for type point at character 152
+        // [941] STATEMENT:  SELECT "entities"."name" FROM ("locations" INNER JOIN "entities" ON ("locations"."entity_id" = "entities"."id")) WHERE ("entities"."id" = $1) GROUP BY "locations"."world", "entities"."name"
+        // Character::read_all_on_same_world(&mut self.connection, self.character.entity_id)
+
+        // TODO: issue 1: the list contain the sender
+        // TODO: issue 2: the list contain monsters
+        // TODO: issue 3: the list contain several times the same entities name
+        // TODO: issue 4: (client side) the client don't check the world coord before accepting the spawn entities
+        let location = Location::read(&mut self.connection, &self.character.entity_id)?;
         Character::read_all_by_world(&mut self.connection, location.world)
     }
 
-    pub fn get_entities_on_same_world(&mut self) -> Result<Vec<(RpcEntity, Option<Coord>)>, Error> {
-        let info = self.get_character_info()?;
+    pub fn entities_on_same_world(
+        &mut self,
+    ) -> Result<Vec<(RpcEntity, Option<Coord>)>, DieselError> {
+        let info = self.character_info()?;
 
         let players =
             Character::get_all_players_by_world(&mut self.connection, &self.login, info.world)?;
@@ -162,7 +188,7 @@ impl CharacterAccountHandler {
         );
         let new_m = PgPoint(new_loc.map.unwrap().x as f64, new_loc.map.unwrap().y as f64);
 
-        if let Ok(info) = self.get_character_info() {
+        if let Ok(info) = self.character_info() {
             let ul_result = Location::update(
                 &mut self.connection,
                 &info.eid,
@@ -188,35 +214,48 @@ impl CharacterAccountHandler {
     }
 
     pub fn update_destination(&mut self, new_loc: UpdateLocationDestination) {
-        let result = Location::update_destination(&mut self.connection, &self.entity_id, new_loc);
+        let result =
+            Location::update_destination(&mut self.connection, &self.character.entity_id, new_loc);
         if let Err(err) = result {
             println!("Server: update_destination: {:?}", err);
         }
     }
 
-    pub fn create(&mut self, name: &String, class: Classes) -> Result<(), Error> {
-        // For now we authorize only one character per account
+    pub fn create_with_random_class(
+        account_login: &String,
+        name: &String,
+    ) -> Result<(), DieselError> {
+        Self::create(account_login, name, rand::random::<Classes>())
+    }
 
+    pub fn create(
+        account_login: &String,
+        name: &String,
+        class: Classes,
+    ) -> Result<(), DieselError> {
+        let mut connection = Database::new().establish_connection();
+
+        // For now we authorize only one character per account
         let entity_to_create = CreateEntity { name: name.clone() };
-        let new_entity = Entity::create(&mut self.connection, &entity_to_create)?;
+        let new_entity = Entity::create(&mut connection, &entity_to_create)?;
 
         // Create and bind character as foreign key
-        let user_account = Account::read(&mut self.connection, &self.login)?;
+        let user_account = Account::read(&mut connection, account_login)?;
         let new_item = CreateCharacter {
             account_id: user_account.id,
             entity_id: new_entity.id,
             class,
         };
-        Character::create(&mut self.connection, &new_item)?;
+        Character::create(&mut connection, &new_item)?;
 
         let new_loc = CreateLocation {
             entity_id: new_entity.id,
-            map: Self::get_map_spawn(),
-            world: Self::get_world_spawn(),
+            map: MapCoord::spawn().into(),
+            world: WorldCoord::spawn().into(),
             destination: None,
         };
 
-        Location::create(&mut self.connection, &new_loc)?;
+        Location::create(&mut connection, &new_loc)?;
         Ok(())
     }
 }

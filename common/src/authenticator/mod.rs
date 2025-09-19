@@ -126,16 +126,14 @@ impl Authenticator<'_> {
         Ok(())
     }
 
-    pub fn logout(&mut self, token: Option<String>) -> bool {
+    pub fn logout(&mut self, token: Option<String>) -> Result<(), AccountError> {
         self.connect_db();
         let _token = match token {
             Some(token) => Some(token),
             None => self.get_token(),
         };
 
-        match Account::logout(self.connection.as_mut().unwrap(), &self.login, _token) {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        Account::logout(self.connection.as_mut().unwrap(), &self.login, _token)
+            .map_err(|_| AccountError::LogoutError)
     }
 }

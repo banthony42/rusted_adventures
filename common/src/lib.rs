@@ -1,5 +1,7 @@
 use std::ops::{MulAssign, SubAssign};
 
+use diesel_geometry::data_types::PgPoint;
+
 pub mod authenticator;
 pub mod character;
 pub mod database;
@@ -93,6 +95,24 @@ pub struct WorldCoord {
     pub y: i8,
 }
 
+impl WorldCoord {
+    fn spawn() -> Self {
+        Self { x: 0, y: 0 }
+    }
+}
+
+impl Into<PgPoint> for WorldCoord {
+    fn into(self) -> PgPoint {
+        PgPoint(self.x as f64, self.y as f64)
+    }
+}
+
+impl Into<PgPoint> for MapCoord {
+    fn into(self) -> PgPoint {
+        PgPoint(self.x as f64, self.y as f64)
+    }
+}
+
 impl MapCoord {
     /// Get linear index of this Map coordinate.
     /// Then it can be use to retrieve the same pixel in an 1D array,
@@ -117,6 +137,10 @@ impl MapCoord {
 
     pub fn is_null(&self) -> bool {
         self.x == 0 && self.y == 0
+    }
+
+    pub fn spawn() -> Self {
+        Self { x: 5, y: 5 }
     }
 }
 

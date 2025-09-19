@@ -78,9 +78,9 @@ fn update_account(update_account: UpdateAccountCmd) {
         Err(e) => println!("Error updating accounts: {:?}", e),
     }
 
-    if !auth_user.logout(None) {
-        println!("Logout failed.");
-    }
+    if let Err(e) = auth_user.logout(None) {
+        println!("Logout failed: {}", e);
+    };
 }
 
 fn delete_account(delete_account: DeleteAccountCmd) {

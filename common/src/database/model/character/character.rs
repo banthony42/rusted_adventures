@@ -1,6 +1,6 @@
 use diesel::{
-    dsl::insert_into, ExpressionMethods, JoinOnDsl, QueryDsl, QueryResult, RunQueryDsl,
-    SelectableHelper,
+    allow_columns_to_appear_in_same_group_by_clause, dsl::insert_into, ExpressionMethods,
+    JoinOnDsl, QueryDsl, QueryResult, RunQueryDsl, SelectableHelper,
 };
 use diesel_geometry::{data_types::PgPoint, prelude::PgSameAsExpressionMethods};
 use uuid::Uuid;
@@ -13,6 +13,8 @@ use crate::database::{
 use super::{Character, CreateCharacter, UpdateCharacter};
 
 type Connection = diesel::pg::PgConnection;
+
+allow_columns_to_appear_in_same_group_by_clause!(entities::name, locations::world);
 
 impl Character {
     /// Create a Character in DB with the given CreateCharacter item
@@ -45,26 +47,29 @@ impl Character {
         diesel::delete(characters::table.filter(characters::id.eq(id))).execute(db)
     }
 
-    pub fn read_all_by_account_login(
+    /// Return the Character in DB for the given account login
+    pub fn read_by_account_login(
         db: &mut Connection,
         account_login: &String,
-    ) -> QueryResult<Vec<Self>> {
-        let _account_id: Uuid = accounts::table
+    ) -> QueryResult<Option<(Self, String)>> {
+        Ok(accounts::table
             .inner_join(characters::table)
+            .inner_join(entities::table.on(entities::id.eq(characters::entity_id)))
             .filter(accounts::login.eq(account_login))
-            .select(accounts::id)
-            .get_result(db)?;
+            .filter(entities::name.eq(account_login))
+            .select((Character::as_select(), entities::name))
+            .load(db)?
+            .get(0) // For now players have only one character
+            .cloned())
+    }
 
-        // get all of _account_id's characters
-        let chars = characters::table
-            .filter(accounts::id.eq(_account_id))
-            .inner_join(accounts::table)
-            .select(Character::as_select())
-            .load(db)?;
-
-        // Instead of getting all characters
-        // select with : where login = entity.name
-        Ok(chars)
+    pub fn read_all_on_same_world(db: &mut Connection, eid: i32) -> QueryResult<Vec<String>> {
+        locations::table
+            .inner_join(entities::table)
+            .group_by((locations::world, entities::name))
+            .filter(entities::id.eq(eid))
+            .select(entities::name)
+            .load(db)
     }
 
     pub fn read_all_by_world(

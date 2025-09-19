@@ -1,0 +1,181 @@
+   Compiling common v0.1.0 (/home/p1-aba/Workspace/rust/rpg/common)
+warning: unused import: `char`
+ --> common/src/character/mod.rs:1:11
+  |
+1 | use std::{char, error::Error, fmt::Display};
+  |           ^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `ValidGrouping`
+ --> common/src/database/model/entity/mod.rs:5:32
+  |
+5 |     expression::{AsExpression, ValidGrouping},
+  |                                ^^^^^^^^^^^^^
+
+warning: unused import: `expression::ValidGrouping`
+ --> common/src/database/model/location/mod.rs:2:5
+  |
+2 |     expression::ValidGrouping,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `common` (lib) generated 3 warnings (run `cargo fix --lib -p common` to apply 3 suggestions)
+   Compiling server v0.1.0 (/home/p1-aba/Workspace/rust/rpg/server)
+warning: constant `LOGOUT_USER_SUCCESS` is never used
+ --> server/src/services/mod.rs:8:15
+  |
+8 |     pub const LOGOUT_USER_SUCCESS: &str = "Server: LogoutUser: Success: ";
+  |               ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: fields `species`, `world`, and `number` are never read
+ --> server/src/world/monsters.rs:6:5
+  |
+5 | pub struct Spawner {
+  |            ------- fields in this struct
+6 |     species: Species,
+  |     ^^^^^^^
+7 |     world: WorldCoord,
+  |     ^^^^^
+8 |     number: u8,
+  |     ^^^^^^
+
+warning: `server` (bin "server") generated 2 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.86s
+     Running `/home/p1-aba/Workspace/rust/rpg/target/debug/server`
+Server: AuthenticateUser: with: AuthRequest { login: "sulfurel", password: "1234" }
+Server: AuthenticateUser: Success:  token: sulfurel-cafebab
+Server: AuthenticateUser: CreateCharacter: A character already exist for sulfurel
+Server: Authenticator: Fail to get token for: 
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: AuthenticateUser: with: AuthRequest { login: "fealhach", password: "1234" }
+Server: AuthenticateUser: Success:  token: fealhach-cafebab
+Server: AuthenticateUser: CreateCharacter: A character already exist for fealhach
+Server: Authenticator: Fail to get token for: 
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 8, y: 8 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 8, y: 8 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 12, y: 7 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 12, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 9, y: 8 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 9, y: 8 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 15, y: 7 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 13, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 14, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 15, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 0, y: 7 }) }), location_type: NewWorld }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: Error: Fail to get client stream for "Crabedoeuf"
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 5 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 0, y: 6 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 0, y: 5 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 1, y: 5 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 2, y: 5 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 3, y: 5 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 4, y: 5 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 5, y: 5 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 6, y: 5 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 5 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 5 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 9, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 9, y: 6 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 9, y: 5 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 8, y: 5 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 5 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 10 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 6 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 8 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 9 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 3, y: 7 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 6 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 6, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 5, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 4, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 3, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 0, y: 4 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 9 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 8 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 6 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 5 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 7, y: 4 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 6, y: 4 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 5, y: 4 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 4, y: 4 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 3, y: 4 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 2, y: 4 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 1, y: 4 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 0, y: 4 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 15, y: 4 }) }), location_type: NewWorld }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: Error: Fail to get client stream for "Bouftou"
+Server: player move: Error: Fail to get client stream for "Bouftou"
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 0, y: 7 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 2, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 1, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 1, y: 0 }), map: Some(Coord { x: 0, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 15, y: 7 }) }), location_type: NewWorld }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: Error: Fail to get client stream for "Bouftou"
+Server: player move: Error: Fail to get client stream for "Bouftou"
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 5, y: 10 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 15, y: 8 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 15, y: 9 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 14, y: 9 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 14, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 6, y: 10 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 13, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 15, y: 5 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 12, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 15, y: 6 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 11, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 15, y: 7 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 10, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 15, y: 8 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 9, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 15, y: 9 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 8, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 14, y: 9 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 7, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 14, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 6, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 13, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 5, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 12, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 11, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 10, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 9, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 6, y: 10 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 8, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 6, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 7, y: 10 }) }), location_type: Update }
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 6, y: 10 }) }), location_type: Update }
+Server: RpgChatService client: "fealhach" : broken pipe
+Server: RpgChatService: client: "fealhach" disconnected
+Server: entity_event_bus: "fealhach" : broken pipe
+Server: entity_event_bus: client: "fealhach" disconnected
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: player move: PlayerMove { new_location: Some(Location { world: Some(Coord { x: 0, y: 0 }), map: Some(Coord { x: 6, y: 10 }) }), location_type: NewMap }
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")
+Server: RpgChatService client: "sulfurel" : broken pipe
+Server: RpgChatService: client: "sulfurel" disconnected
+Server: entity_event_bus: "sulfurel" : broken pipe
+Server: entity_event_bus: client: "sulfurel" disconnected
+Server: player move: get_players_on_world: DatabaseError(Unknown, "could not identify an equality operator for type point")

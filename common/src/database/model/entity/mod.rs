@@ -11,7 +11,10 @@ use diesel::{
 
 pub mod entity;
 
-use crate::{database::schema::sql_types::Pgbestiary, grpc_codegen::{entity::Family, Species}};
+use crate::{
+    database::schema::sql_types::Pgbestiary,
+    grpc_codegen::{entity::Family, Species},
+};
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, Clone)]
 #[diesel(sql_type = Pgbestiary)]

@@ -1,5 +1,5 @@
 use common::{
-    character::CharacterAccountHandler,
+    character::{CharacterHandler, CharacterHandlerError},
     database::{
         db::Database,
         model::character::{Character, Classes},
@@ -19,20 +19,12 @@ pub fn handle_character(character: CharacterCommand) {
 }
 
 fn create_character(character: CreateCharacterCmd) {
-    let mut character_handler = match CharacterAccountHandler::new(&character.login) {
-        Ok(handler) => handler,
-        Err(err) => {
-            println!("Error while retrieving character: {:?}", err);
-            return;
-        }
-    };
-
     let pg_class = match character.class {
         CharacterClass::Warrior => Classes::Warrior,
         CharacterClass::Mage => Classes::Mage,
     };
 
-    if let Err(e) = character_handler.create(&character.login, pg_class) {
+    if let Err(e) = CharacterHandler::create(&character.login, &character.name, pg_class) {
         println!("Error while creating character: {:?}", e);
     }
 }

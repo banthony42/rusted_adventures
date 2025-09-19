@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::sync::Arc;
 
-use common::character::CharacterAccountHandler;
+use common::character::CharacterHandler;
 use common::database::model::account::{Account, UpdateAccount};
 use common::grpc_codegen::entity::Family;
 use common::grpc_codegen::LocationType;
@@ -48,21 +48,28 @@ async fn broadcast_player_on_world(
     sender: &String,
     event: EntityEvent,
     clients: &ArcMutexHashMapClient,
-    char_handler: &mut CharacterAccountHandler,
+    char_handler: &mut CharacterHandler,
 ) {
-    let result_players = char_handler.get_players_on_world();
+    let result_players = char_handler.players_on_same_world();
     if let Err(err) = result_players {
         println!("Server: player move: get_players_on_world: {:?}", err);
         return;
     }
+    // TODO: issue 1: the list contain the sender
+    // TODO: issue 2: the list contain monsters
+    // TODO: issue 3: the list contain several times the same entities name
+    // TODO: issue 4: (client side) the client don't check the world coord before accepting the spawn entities
     let player_list = result_players.unwrap();
 
+    println!("Server: {} broadcast with: {:?}", sender, event);
+    println!("Server: {} broadcast to: {:?}", sender, player_list);
     {
         let clts = clients.lock().await;
 
         for player in player_list.iter().filter(|name| sender.ne(*name)) {
             if let Some(client_channel) = clts.get(player) {
                 send_entity_event(client_channel, &event).await;
+                println!("Server: {} broadcast sended: {:?}", sender, player);
             }
         }
     }
@@ -77,7 +84,7 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
         }
     };
 
-    let mut character = match CharacterAccountHandler::new(&sender) {
+    let mut character = match CharacterHandler::new(&sender) {
         Ok(handler) => handler,
         Err(err) => {
             println!("Server: player move: CharacterAccountHandler : {:?}", err);
@@ -96,24 +103,23 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                 character.update_destination(new_destination);
 
                 // broadcast all clients on the same new map with EntityMove embedding the new destination
-                let uuid = character.uuid.clone();
-                let move_event = EntityEvent::movement(uuid, new_location);
+                let move_event = EntityEvent::movement(character.entity_uuid(), new_location);
                 broadcast_player_on_world(&sender, move_event, &clients, &mut character).await;
             }
         }
         LocationType::NewWorld => {
             // Player has changed map
             // Broadcast all players on last world with a despawn event
-            let despawn_event = EntityEvent::despawn(character.uuid.clone());
+            let despawn_event = EntityEvent::despawn(character.entity_uuid());
             broadcast_player_on_world(&sender, despawn_event, &clients, &mut character).await;
 
             // Update the new world and map in DB
             character.update_location(new_location);
 
-            let char_info = character.get_character_info().unwrap();
-            let sender_spawn = EntityEvent::spawn(char_info.clone().into());
+            let char_info = character.character_info().unwrap();
+            let sender_spawn = EntityEvent::spawn(char_info.into());
 
-            if let Ok(entities_on_new_world) = character.get_entities_on_same_world() {
+            if let Ok(entities_on_new_world) = character.entities_on_same_world() {
                 let clts = clients.lock().await;
                 let sender_tx = clts.get(&sender).unwrap();
 
@@ -197,7 +203,7 @@ impl RpgEntity for RpgEntityService {
         let cl = self.clients.clone();
         let stx = server_event_tx.clone();
         tokio::spawn(async move {
-            let mut char_handler = match CharacterAccountHandler::new(&login) {
+            let mut char_handler = match CharacterHandler::new(&login) {
                 Ok(handler) => handler,
                 Err(err) => {
                     println!("Server: entity_event_bus: {:?}", err);
@@ -205,7 +211,7 @@ impl RpgEntity for RpgEntityService {
                 }
             };
 
-            let char_info = match char_handler.get_character_info() {
+            let char_info = match char_handler.character_info() {
                 Ok(info) => info,
                 Err(err) => {
                     let _ = stx.send(Err(Status::not_found(err.to_string()))).await;
@@ -213,7 +219,7 @@ impl RpgEntity for RpgEntityService {
                 }
             };
 
-            let spawn_event = EntityEvent::spawn(char_info.clone().into());
+            let spawn_event = EntityEvent::spawn(char_info.into());
             broadcast_player_on_world(&login, spawn_event, &cl, &mut char_handler).await;
 
             // Loop to handle each client entity events
@@ -239,7 +245,7 @@ impl RpgEntity for RpgEntityService {
             }
 
             println!("Server: entity_event_bus: client: {:?} disconnected", login);
-            let entity_despawn = EntityEvent::despawn(char_info.uuid);
+            let entity_despawn = EntityEvent::despawn(char_handler.entity_uuid());
             broadcast_player_on_world(&login, entity_despawn, &cl, &mut char_handler).await;
             {
                 cl.lock().await.remove(&login);
@@ -273,14 +279,14 @@ impl RpgEntity for RpgEntityService {
     ) -> Result<tonic::Response<PlayerData>, tonic::Status> {
         let (metadata, _, _) = request.into_parts();
         let login = metadata.get("login").unwrap().to_str().unwrap().to_string();
-        let mut char_handler = match CharacterAccountHandler::new(&login) {
+        let mut char_handler = match CharacterHandler::new(&login) {
             Ok(handler) => handler,
             Err(err) => {
                 println!("Server: get_player: {:?}", err);
                 return Err(tonic::Status::not_found(err.to_string()));
             }
         };
-        let char_info = match char_handler.get_character_info() {
+        let char_info = match char_handler.character_info() {
             Ok(info) => info,
             Err(err) => return Err(tonic::Status::not_found(err.to_string())),
         };
@@ -296,12 +302,12 @@ impl RpgEntity for RpgEntityService {
     ) -> Result<tonic::Response<Entities>, tonic::Status> {
         let (metadata, _, _) = request.into_parts();
         let login = metadata.get("login").unwrap().to_str().unwrap().to_string();
-        let mut char_handler = match CharacterAccountHandler::new(&login) {
+        let mut char_handler = match CharacterHandler::new(&login) {
             Ok(handler) => handler,
             Err(err) => return Err(tonic::Status::not_found(err.to_string())),
         };
 
-        let entities: Vec<RpcEntity> = match char_handler.get_entities_on_same_world() {
+        let entities: Vec<RpcEntity> = match char_handler.entities_on_same_world() {
             Ok(data) => data.iter().map(|(ent, _)| ent.clone()).collect(),
             Err(err) => {
                 println!("Server: get_entities: Error : {:?}", err);

@@ -8,8 +8,12 @@ use diesel::{
     serialize::{self, IsNull, Output, ToSql},
     Selectable,
 };
+use rand::distr::{Distribution, StandardUniform};
 
-use crate::{database::schema::sql_types::Pgclass, grpc_codegen::entity::Family, grpc_codegen::Classes as RpcClasses};
+use crate::{
+    database::schema::sql_types::Pgclass, grpc_codegen::entity::Family,
+    grpc_codegen::Classes as RpcClasses,
+};
 
 pub mod character;
 
@@ -49,7 +53,16 @@ impl FromSql<Pgclass, Pg> for Classes {
     }
 }
 
-#[derive(Debug, Queryable, Selectable)]
+impl Distribution<Classes> for StandardUniform {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Classes {
+        match rng.random_range(0..=1) {
+            0 => Classes::Warrior,
+            _ => Classes::Mage,
+        }
+    }
+}
+
+#[derive(Debug, Queryable, Selectable, Clone)]
 #[diesel(table_name = crate::database::schema::characters)]
 pub struct Character {
     pub id: i32,
