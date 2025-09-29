@@ -1,0 +1,107 @@
+Enum "PGClass" {
+  "Warrior"
+  "Mage"
+}
+
+Enum "PGBestiary" {
+  "Bouftou"
+  "Crabedoeuf"
+}
+
+Enum "PGItems" {
+  "Bouftou"
+  "Crabedoeuf"
+}
+
+Table "item_library" {
+  "id" serial [pk, increment]
+  "type" PGItems [not null]
+  "name" varchar(16) [not null, unique]
+}
+
+Table "bestiary" {
+  "id" serial [pk, increment]
+  "species" PGBestiary [not null]
+  "name" varchar(16) [not null, unique]
+}
+
+Table "accounts" {
+  "id" uuid [pk, not null, default: `gen_random_uuid()`]
+  "login" VARCHAR(12) [unique, not null]
+  "password" VARCHAR(255) [not null]
+  "session_token" varchar(255)
+}
+
+// accounts - one-to-many - characters
+// Account can have many characters but characters belong to one account
+//
+// characters -one-to-one entities
+// each character has a single corresponding entity
+Table "characters" {
+  "id" serial [pk, increment]
+  "account_id" uuid [not null]
+  "entity_id" integer [not null, unique]
+  "name" varchar(16) [not null, unique]
+  "class" PGClass [not null]
+}
+
+// bestiary -one-to-many monsters
+// bestiary entries can have many instanciation within monsters table, but monster belong to one bestiary entry 
+//
+// monsters -one-to-one entities
+// each monster has a single corresponding entity
+Table "monsters" {
+  "bestiary_id" integer [not null]
+  "entity_id" integer [not null, unique]
+}
+
+// entities -one-to-one locations
+// each entity has a single corresponding location
+//
+// entities -one-to-one statistics
+// each entity has a single corresponding statistics
+Table "entities" {
+  "id" serial [pk, increment]
+  "location_id" integer [not null, unique]
+  "stats_id" integer [not null, unique]
+}
+
+Table "statistics" {
+  "id" integer [pk, increment]
+  "life" integer [not null]
+  "strenght" integer [not null]
+  "wisdom" integer [not null]
+}
+
+Table "locations" {
+  "id" integer [pk, increment]
+  "world" point [not null]
+  "map" point [not null]
+  "destination" point
+}
+
+// items_library -one-to-many- items
+// items_library entries can have many instanciation within items table, but items belong to one items_library entry 
+//
+// items -one-to-one entities
+// each items has a single corresponding entity
+Table "items" {
+  "item_library_id" integer [not null]
+  "entity_id" integer [not null, unique]
+}
+
+Ref:"accounts"."id" < "characters"."account_id" [delete: cascade]
+
+Ref:"entities"."id" < "characters"."entity_id" [delete: cascade]
+
+Ref: "locations"."id" < "entities"."location_id" [delete: cascade]
+
+Ref:"bestiary"."id" < "monsters"."bestiary_id" [delete: cascade]
+
+Ref:"entities"."id" < "monsters"."entity_id" [delete: cascade]
+
+Ref: "statistics"."id" < "entities"."stats_id" [delete: cascade]
+
+Ref: "entities"."id" < "items"."entity_id" [delete: cascade]
+
+Ref:"item_library"."id" < "items"."item_library_id" [delete: cascade]

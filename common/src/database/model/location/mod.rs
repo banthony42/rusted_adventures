@@ -10,7 +10,7 @@ pub mod location;
 #[derive(Debug, Queryable, Selectable)]
 #[diesel(table_name = crate::database::schema::locations)]
 pub struct Location {
-    pub entity_id: i32,
+    pub id: i32,
     pub world: PgPoint,
     pub map: PgPoint,
     pub destination: Option<PgPoint>,
@@ -19,7 +19,6 @@ pub struct Location {
 #[derive(Insertable)]
 #[diesel(table_name = crate::database::schema::locations)]
 pub struct CreateLocation {
-    pub entity_id: i32,
     pub world: PgPoint,
     pub map: PgPoint,
     pub destination: Option<PgPoint>,

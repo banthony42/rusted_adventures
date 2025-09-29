@@ -68,6 +68,7 @@ pub struct Character {
     pub id: i32,
     pub account_id: uuid::Uuid,
     pub entity_id: i32,
+    pub name: String,
     pub class: Classes,
 }
 
@@ -76,11 +77,13 @@ pub struct Character {
 pub struct CreateCharacter {
     pub account_id: uuid::Uuid,
     pub entity_id: i32,
+    pub name: String,
     pub class: Classes,
 }
 
 #[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = crate::database::schema::characters)]
-pub struct UpdateCharacter {
-    pub class: Classes,
+struct UpdateCharacter {
+    class: Classes,
+    name: String,
 }

@@ -1,0 +1,107 @@
+use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, QueryResult, RunQueryDsl};
+use diesel_geometry::data_types::PgPoint;
+use diesel_geometry::prelude::PgSameAsExpressionMethods;
+
+use super::{CreateMonster, Monster};
+use crate::database::model::entity::PgSpecies;
+use crate::database::model::EntityIdentifiable;
+use crate::database::schema::{bestiary, entities, locations, monsters};
+
+use crate::grpc_codegen::Entity as RpcEntity;
+use crate::grpc_codegen::Location as RpcLocation;
+
+type Connection = diesel::pg::PgConnection;
+
+type MonsterInfoData = (i32, String, PgSpecies, PgPoint, PgPoint, Option<PgPoint>);
+
+impl Into<MonsterInfo> for MonsterInfoData {
+    fn into(self) -> MonsterInfo {
+        let (id, name, species, world, map, destination) = self;
+        MonsterInfo {
+            id,
+            name: name,
+            species,
+            world,
+            map,
+            destination,
+        }
+    }
+}
+
+pub struct MonsterInfo {
+    pub id: i32,
+    pub name: String,
+    pub species: PgSpecies,
+    pub world: PgPoint,
+    pub map: PgPoint,
+    pub destination: Option<PgPoint>,
+}
+
+impl EntityIdentifiable for MonsterInfo {
+    fn get_id(&self) -> i32 {
+        self.id
+    }
+
+    fn get_name(&self) -> &String {
+        &self.name
+    }
+}
+
+impl Into<RpcEntity> for MonsterInfo {
+    fn into(self) -> RpcEntity {
+        RpcEntity {
+            uuid: self.identifier(),
+            name: self.name,
+            family: Some(self.species.into()),
+            location: Some(RpcLocation {
+                world: Some(self.world.into()),
+                map: Some(self.map.into()),
+            }),
+        }
+    }
+}
+
+impl Monster {
+    /// Create a Monster in DB with the given CreateCharacter item
+    pub fn create(db: &mut Connection, item: &CreateMonster) -> QueryResult<Self> {
+        diesel::insert_into(monsters::table)
+            .values(item)
+            .get_result(db)
+    }
+
+    /// Return the Monster in DB for the given monster id
+    pub fn read(db: &mut Connection, id: &i32) -> QueryResult<Self> {
+        monsters::table
+            .filter(monsters::id.eq(id))
+            .first::<Monster>(db)
+    }
+
+    // No Update function for now since Monster values are only constants.
+
+    /// Delete Character in DB of the given character id
+    pub fn delete(db: &mut Connection, id: &i32) -> QueryResult<usize> {
+        diesel::delete(monsters::table.filter(monsters::id.eq(id))).execute(db)
+    }
+
+    pub fn read_all_by_world(
+        db: &mut Connection,
+        world_coord: PgPoint,
+    ) -> QueryResult<Vec<MonsterInfo>> {
+        let data: Vec<MonsterInfoData> = entities::table
+            .inner_join(locations::table)
+            .inner_join(monsters::table)
+            .inner_join(bestiary::table.on(bestiary::id.eq(monsters::bestiary_id)))
+            .filter(locations::world.same_as(world_coord))
+            .select((
+                monsters::id,
+                bestiary::name,
+                bestiary::species,
+                locations::world,
+                locations::map,
+                locations::destination,
+            ))
+            .load(db)?;
+
+        Ok(data.iter().map(|data| data.to_owned().into()).collect())
+    }
+}

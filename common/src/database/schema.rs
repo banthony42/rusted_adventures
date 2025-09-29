@@ -2,12 +2,12 @@
 
 pub mod sql_types {
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "pgbestiary"))]
-    pub struct Pgbestiary;
-
-    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "pgclass"))]
     pub struct Pgclass;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "pgspecies"))]
+    pub struct Pgspecies;
 }
 
 diesel::table! {
@@ -28,12 +28,27 @@ diesel::table! {
 diesel::table! {
     use diesel::sql_types::*;
     use diesel_geometry::sql_types::*;
+    use super::sql_types::Pgspecies;
+
+    bestiary (id) {
+        id -> Int4,
+        species -> Pgspecies,
+        #[max_length = 16]
+        name -> Varchar,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use diesel_geometry::sql_types::*;
     use super::sql_types::Pgclass;
 
     characters (id) {
         id -> Int4,
         account_id -> Uuid,
         entity_id -> Int4,
+        #[max_length = 16]
+        name -> Varchar,
         class -> Pgclass,
     }
 }
@@ -44,9 +59,7 @@ diesel::table! {
 
     entities (id) {
         id -> Int4,
-        uuid -> Uuid,
-        #[max_length = 16]
-        name -> Varchar,
+        location_id -> Int4,
     }
 }
 
@@ -54,8 +67,8 @@ diesel::table! {
     use diesel::sql_types::*;
     use diesel_geometry::sql_types::*;
 
-    locations (entity_id) {
-        entity_id -> Int4,
+    locations (id) {
+        id -> Int4,
         world -> Point,
         map -> Point,
         destination -> Nullable<Point>,
@@ -65,22 +78,23 @@ diesel::table! {
 diesel::table! {
     use diesel::sql_types::*;
     use diesel_geometry::sql_types::*;
-    use super::sql_types::Pgbestiary;
 
-    monsters (id) {
+    monsters (bestiary_id, entity_id) {
         id -> Int4,
+        bestiary_id -> Int4,
         entity_id -> Int4,
-        race -> Pgbestiary,
     }
 }
 
 diesel::joinable!(characters -> accounts (account_id));
 diesel::joinable!(characters -> entities (entity_id));
-diesel::joinable!(locations -> entities (entity_id));
+diesel::joinable!(entities -> locations (location_id));
+diesel::joinable!(monsters -> bestiary (bestiary_id));
 diesel::joinable!(monsters -> entities (entity_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     accounts,
+    bestiary,
     characters,
     entities,
     locations,

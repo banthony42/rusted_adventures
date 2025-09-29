@@ -12,41 +12,41 @@ use diesel::{
 pub mod entity;
 
 use crate::{
-    database::schema::sql_types::Pgbestiary,
+    database::schema::sql_types::Pgspecies,
     grpc_codegen::{entity::Family, Species},
 };
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, Clone)]
-#[diesel(sql_type = Pgbestiary)]
-pub enum Bestiary {
+#[diesel(sql_type = Pgspecies)]
+pub enum PgSpecies {
     Bouftou,
     Crabedoeuf,
 }
 
-impl Into<Family> for Bestiary {
+impl Into<Family> for PgSpecies {
     fn into(self) -> Family {
         match self {
-            Bestiary::Bouftou => Family::Species(Species::Bouftou.into()),
-            Bestiary::Crabedoeuf => Family::Species(Species::Crabedoeuf.into()),
+            PgSpecies::Bouftou => Family::Species(Species::Bouftou.into()),
+            PgSpecies::Crabedoeuf => Family::Species(Species::Crabedoeuf.into()),
         }
     }
 }
 
-impl ToSql<Pgbestiary, Pg> for Bestiary {
+impl ToSql<Pgspecies, Pg> for PgSpecies {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
         match *self {
-            Bestiary::Crabedoeuf => out.write_all(b"Crabedoeuf")?,
-            Bestiary::Bouftou => out.write_all(b"Bouftou")?,
+            PgSpecies::Crabedoeuf => out.write_all(b"Crabedoeuf")?,
+            PgSpecies::Bouftou => out.write_all(b"Bouftou")?,
         }
         Ok(IsNull::No)
     }
 }
 
-impl FromSql<Pgbestiary, Pg> for Bestiary {
+impl FromSql<Pgspecies, Pg> for PgSpecies {
     fn from_sql(bytes: PgValue<'_>) -> deserialize::Result<Self> {
         match bytes.as_bytes() {
-            b"Bouftou" => Ok(Bestiary::Bouftou),
-            b"Crabedoeuf" => Ok(Bestiary::Crabedoeuf),
+            b"Bouftou" => Ok(PgSpecies::Bouftou),
+            b"Crabedoeuf" => Ok(PgSpecies::Crabedoeuf),
             _ => Err("Unrecognized enum variant".into()),
         }
     }
@@ -56,18 +56,17 @@ impl FromSql<Pgbestiary, Pg> for Bestiary {
 #[diesel(table_name = crate::database::schema::entities)]
 pub struct Entity {
     pub id: i32,
-    pub uuid: uuid::Uuid,
-    pub name: String,
+    pub location_id: i32,
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = crate::database::schema::entities)]
 pub struct CreateEntity {
-    pub name: String,
+    pub location_id: i32,
 }
 
 #[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = crate::database::schema::entities)]
 pub struct UpdateEntitiy {
-    pub name: String,
+    pub location_id: i32,
 }

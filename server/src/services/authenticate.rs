@@ -1,4 +1,5 @@
 use common::authenticator::Authenticator;
+use common::database::model::character::Classes;
 
 use crate::services::constants::*;
 use common::character::{CharacterHandler, CharacterHandlerError};
@@ -68,9 +69,11 @@ impl RpgAuthenticate for RpgAuthenticateService {
                 Ok(success)
             }
             Err(CharacterHandlerError::NoCharacterForAccount) => {
-                if let Err(e) =
-                    CharacterHandler::create_with_random_class(&auth_req.login, &auth_req.login)
-                {
+                if let Err(e) = CharacterHandler::create(
+                    &auth_req.login,
+                    &auth_req.login,
+                    rand::random::<Classes>(),
+                ) {
                     println!("{}failed with: {:?}", CHARACTER_CREATION, e);
                     Err(tonic::Status::internal(e.to_string()))
                 } else {

@@ -1,31 +1,111 @@
 use diesel::{
-    allow_columns_to_appear_in_same_group_by_clause, dsl::insert_into, ExpressionMethods,
-    JoinOnDsl, QueryDsl, QueryResult, RunQueryDsl, SelectableHelper,
+    allow_columns_to_appear_in_same_group_by_clause, result::Error as DieselError,
+    ExpressionMethods, JoinOnDsl, QueryDsl, QueryResult, RunQueryDsl, SelectableHelper,
 };
 use diesel_geometry::{data_types::PgPoint, prelude::PgSameAsExpressionMethods};
-use uuid::Uuid;
 
 use crate::database::{
-    model::{character::Classes, entity::Bestiary},
-    schema::{accounts, characters, entities, locations, monsters},
+    model::{character::Classes, location::Location, EntityIdentifiable},
+    schema::{accounts, characters, entities, locations},
 };
+
+use crate::grpc_codegen::Entity as RpcEntity;
+use crate::grpc_codegen::Location as RpcLocation;
 
 use super::{Character, CreateCharacter, UpdateCharacter};
 
 type Connection = diesel::pg::PgConnection;
 
-allow_columns_to_appear_in_same_group_by_clause!(entities::name, locations::world);
+allow_columns_to_appear_in_same_group_by_clause!(characters::name, locations::world);
+
+type CharacterInfoData = (i32, String, Classes, PgPoint, PgPoint, Option<PgPoint>);
+
+impl Into<CharacterInfo> for CharacterInfoData {
+    fn into(self) -> CharacterInfo {
+        let (id, name, class, world, map, destination) = self;
+        CharacterInfo {
+            id,
+            name,
+            class,
+            world,
+            map,
+            destination,
+        }
+    }
+}
+
+pub struct CharacterInfo {
+    pub id: i32,
+    pub name: String,
+    pub class: Classes,
+    pub world: PgPoint,
+    pub map: PgPoint,
+    pub destination: Option<PgPoint>,
+}
+
+impl CharacterInfo {
+    pub fn from_character(
+        db: &mut Connection,
+        character: &Character,
+    ) -> Result<CharacterInfo, DieselError> {
+        let location = Location::read(db, &character.entity_id)?;
+        Ok(CharacterInfo {
+            id: character.id,
+            name: character.name.clone(),
+            class: character.class.clone(),
+            world: location.world,
+            map: location.map,
+            destination: location.destination,
+        })
+    }
+}
+
+impl EntityIdentifiable for CharacterInfo {
+    fn get_id(&self) -> i32 {
+        self.id
+    }
+
+    fn get_name(&self) -> &String {
+        &self.name
+    }
+}
+
+impl EntityIdentifiable for Character {
+    fn get_id(&self) -> i32 {
+        self.id
+    }
+
+    fn get_name(&self) -> &String {
+        &self.name
+    }
+}
+
+impl Into<RpcEntity> for CharacterInfo {
+    fn into(self) -> RpcEntity {
+        RpcEntity {
+            uuid: self.identifier(),
+            name: self.name,
+            family: Some(self.class.into()),
+            location: Some(RpcLocation {
+                world: Some(self.world.into()),
+                map: Some(self.map.into()),
+            }),
+        }
+    }
+}
 
 impl Character {
     /// Create a Character in DB with the given CreateCharacter item
     pub fn create(db: &mut Connection, item: &CreateCharacter) -> QueryResult<Self> {
-        insert_into(characters::table).values(item).get_result(db)
+        diesel::insert_into(characters::table)
+            .values(item)
+            .get_result(db)
     }
 
     /// Return the Character in DB for the given character id
-    pub fn read(db: &mut Connection, char_id: &i32) -> QueryResult<Self> {
+    pub fn read(db: &mut Connection, id: &i32) -> QueryResult<Self> {
         characters::table
-            .filter(characters::id.eq(char_id))
+            .filter(characters::id.eq(id))
             .first::<Character>(db)
     }
 
@@ -48,95 +128,59 @@ impl Character {
     }
 
     /// Return the Character in DB for the given account login
-    pub fn read_by_account_login(
-        db: &mut Connection,
-        account_login: &String,
-    ) -> QueryResult<Option<(Self, String)>> {
+    pub fn read_by_account(db: &mut Connection, account_login: &String) -> QueryResult<Vec<Self>> {
         Ok(accounts::table
             .inner_join(characters::table)
-            .inner_join(entities::table.on(entities::id.eq(characters::entity_id)))
             .filter(accounts::login.eq(account_login))
-            .filter(entities::name.eq(account_login))
-            .select((Character::as_select(), entities::name))
-            .load(db)?
-            .get(0) // For now players have only one character
-            .cloned())
+            .select(Character::as_select())
+            .load(db)?)
     }
 
-    pub fn read_all_on_same_world(db: &mut Connection, eid: i32) -> QueryResult<Vec<String>> {
-        locations::table
+    pub fn characters_names_group_by_world(
+        db: &mut Connection,
+        eid: i32,
+    ) -> QueryResult<Vec<String>> {
+        characters::table
             .inner_join(entities::table)
-            .group_by((locations::world, entities::name))
+            .inner_join(locations::table.on(locations::id.eq(entities::location_id)))
+            .group_by((locations::world, characters::name))
             .filter(entities::id.eq(eid))
-            .select(entities::name)
+            .select(characters::name)
+            .load(db)
+    }
+
+    pub fn characters_names_at_location(
+        db: &mut Connection,
+        world_coord: PgPoint,
+        exclude: &String,
+    ) -> QueryResult<Vec<String>> {
+        characters::table
+            .inner_join(entities::table)
+            .inner_join(locations::table.on(locations::id.eq(entities::location_id)))
+            .filter(locations::world.same_as(world_coord))
+            .filter(characters::name.ne(exclude))
+            .select(characters::name)
             .load(db)
     }
 
     pub fn read_all_by_world(
         db: &mut Connection,
         world_coord: PgPoint,
-    ) -> QueryResult<Vec<String>> {
-        let entities = locations::table
-            .filter(locations::world.same_as(world_coord))
-            .inner_join(entities::table)
-            .select(entities::name)
-            .load(db)?;
-
-        Ok(entities)
-    }
-
-    pub fn get_all_monsters_by_world(
-        db: &mut Connection,
-        world_coord: PgPoint,
-    ) -> QueryResult<Vec<(i32, String, Bestiary, PgPoint, Option<PgPoint>)>> {
-        let monsters: Vec<(i32, String, Bestiary, PgPoint, Option<PgPoint>)> = entities::table
-            .inner_join(locations::table)
-            .inner_join(monsters::table)
-            .filter(locations::world.same_as(world_coord))
-            .select((
-                entities::id,
-                entities::name,
-                monsters::race,
-                locations::map,
-                locations::destination,
-            ))
-            .load(db)?;
-        Ok(monsters)
-    }
-
-    pub fn get_all_players_by_world(
-        db: &mut Connection,
-        login: &String,
-        world_coord: PgPoint,
-    ) -> QueryResult<Vec<(String, String, Classes, PgPoint, Option<PgPoint>)>> {
-        let players: Vec<(Uuid, i32, String, Classes, PgPoint, Option<PgPoint>)> = entities::table
+    ) -> QueryResult<Vec<CharacterInfo>> {
+        let data: Vec<CharacterInfoData> = entities::table
             .inner_join(locations::table)
             .inner_join(characters::table)
-            .inner_join(accounts::table.on(accounts::id.eq(characters::account_id)))
+            .filter(locations::world.same_as(world_coord))
             .select((
-                characters::account_id,
-                entities::id,
-                entities::name,
+                characters::id,
+                characters::name,
                 characters::class,
+                locations::world,
                 locations::map,
                 locations::destination,
             ))
-            .filter(accounts::session_token.is_not_null())
-            .filter(entities::name.ne(login))
-            .filter(locations::world.same_as(world_coord))
             .load(db)?;
 
-        Ok(players
-            .iter()
-            .map(|d| {
-                (
-                    format!("{}.{}", d.0, d.1),
-                    d.2.clone(),
-                    d.3.clone(),
-                    d.4,
-                    d.5,
-                )
-            })
-            .collect())
+        Ok(data.iter().map(|data| data.to_owned().into()).collect())
     }
 }

@@ -7,6 +7,7 @@ use common::grpc_codegen::{
 use common::grpc_codegen::{
     Coord as RpcCoord, Entity as RpcEntity, Location as RpcLocation, ServerEntityEvent,
 };
+
 pub trait ServerEntityEventExtension {
     fn movement(uuid: String, location: RpcLocation) -> Self;
     fn spawn(entity: RpcEntity) -> Self;
