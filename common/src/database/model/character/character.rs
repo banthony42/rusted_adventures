@@ -167,10 +167,12 @@ impl Character {
         db: &mut Connection,
         world_coord: PgPoint,
     ) -> QueryResult<Vec<CharacterInfo>> {
-        let data: Vec<CharacterInfoData> = entities::table
-            .inner_join(locations::table)
-            .inner_join(characters::table)
+        let data: Vec<CharacterInfoData> = characters::table
+            .inner_join(entities::table)
+            .inner_join(locations::table.on(locations::id.eq(entities::location_id)))
+            .inner_join(accounts::table.on(characters::account_id.eq(accounts::id)))
             .filter(locations::world.same_as(world_coord))
+            .filter(accounts::session_token.is_not_null())
             .select((
                 characters::id,
                 characters::name,
