@@ -2,7 +2,7 @@ use common::{
     character::{CharacterHandler, CharacterHandlerError},
     database::{
         db::Database,
-        model::character::{Character, Classes},
+        model::character::{Character, PgClasses},
     },
 };
 
@@ -20,8 +20,8 @@ pub fn handle_character(character: CharacterCommand) {
 
 fn create_character(character: CreateCharacterCmd) {
     let pg_class = match character.class {
-        CharacterClass::Warrior => Classes::Warrior,
-        CharacterClass::Mage => Classes::Mage,
+        CharacterClass::Warrior => PgClasses::Warrior,
+        CharacterClass::Mage => PgClasses::Mage,
     };
 
     if let Err(e) = CharacterHandler::create(&character.login, &character.name, pg_class) {

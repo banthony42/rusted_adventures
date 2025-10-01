@@ -8,7 +8,7 @@ use crate::{
         db::Database,
         model::{
             account::Account,
-            character::{character::CharacterInfo, Character, Classes, CreateCharacter},
+            character::{character::CharacterInfo, Character, CreateCharacter, PgClasses},
             entity::{CreateEntity, Entity},
             location::{CreateLocation, Location, UpdateLocation, UpdateLocationDestination},
             monster::Monster,
@@ -85,7 +85,7 @@ impl CharacterHandler {
     pub fn create(
         account_login: &String,
         name: &String,
-        class: Classes,
+        class: PgClasses,
     ) -> Result<Self, CharacterHandlerError> {
         let mut connection = Database::new().establish_connection();
 

@@ -5,7 +5,7 @@ use diesel::{
 use diesel_geometry::{data_types::PgPoint, prelude::PgSameAsExpressionMethods};
 
 use crate::database::{
-    model::{character::Classes, location::Location, EntityIdentifiable},
+    model::{character::PgClasses, location::Location, EntityIdentifiable},
     schema::{accounts, characters, entities, locations},
 };
 
@@ -18,7 +18,7 @@ type Connection = diesel::pg::PgConnection;
 
 allow_columns_to_appear_in_same_group_by_clause!(characters::name, locations::world);
 
-type CharacterInfoData = (i32, String, Classes, PgPoint, PgPoint, Option<PgPoint>);
+type CharacterInfoData = (i32, String, PgClasses, PgPoint, PgPoint, Option<PgPoint>);
 
 impl Into<CharacterInfo> for CharacterInfoData {
     fn into(self) -> CharacterInfo {
@@ -37,7 +37,7 @@ impl Into<CharacterInfo> for CharacterInfoData {
 pub struct CharacterInfo {
     pub id: i32,
     pub name: String,
-    pub class: Classes,
+    pub class: PgClasses,
     pub world: PgPoint,
     pub map: PgPoint,
     pub destination: Option<PgPoint>,

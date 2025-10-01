@@ -19,45 +19,45 @@ pub mod character;
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, Clone)]
 #[diesel(sql_type = Pgclass)]
-pub enum Classes {
+pub enum PgClasses {
     Warrior,
     Mage,
 }
 
-impl Into<Family> for Classes {
+impl Into<Family> for PgClasses {
     fn into(self) -> Family {
         match self {
-            Classes::Warrior => Family::Class(RpcClasses::Warrior.into()),
-            Classes::Mage => Family::Class(RpcClasses::Mage.into()),
+            PgClasses::Warrior => Family::Class(RpcClasses::Warrior.into()),
+            PgClasses::Mage => Family::Class(RpcClasses::Mage.into()),
         }
     }
 }
 
-impl ToSql<Pgclass, Pg> for Classes {
+impl ToSql<Pgclass, Pg> for PgClasses {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
         match *self {
-            Classes::Warrior => out.write_all(b"Warrior")?,
-            Classes::Mage => out.write_all(b"Mage")?,
+            PgClasses::Warrior => out.write_all(b"Warrior")?,
+            PgClasses::Mage => out.write_all(b"Mage")?,
         }
         Ok(IsNull::No)
     }
 }
 
-impl FromSql<Pgclass, Pg> for Classes {
+impl FromSql<Pgclass, Pg> for PgClasses {
     fn from_sql(bytes: PgValue<'_>) -> deserialize::Result<Self> {
         match bytes.as_bytes() {
-            b"Warrior" => Ok(Classes::Warrior),
-            b"Mage" => Ok(Classes::Mage),
+            b"Warrior" => Ok(PgClasses::Warrior),
+            b"Mage" => Ok(PgClasses::Mage),
             _ => Err("Unrecognized enum variant".into()),
         }
     }
 }
 
-impl Distribution<Classes> for StandardUniform {
-    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Classes {
+impl Distribution<PgClasses> for StandardUniform {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> PgClasses {
         match rng.random_range(0..=1) {
-            0 => Classes::Warrior,
-            _ => Classes::Mage,
+            0 => PgClasses::Warrior,
+            _ => PgClasses::Mage,
         }
     }
 }
@@ -69,7 +69,7 @@ pub struct Character {
     pub account_id: uuid::Uuid,
     pub entity_id: i32,
     pub name: String,
-    pub class: Classes,
+    pub class: PgClasses,
 }
 
 #[derive(Insertable)]
@@ -78,12 +78,12 @@ pub struct CreateCharacter {
     pub account_id: uuid::Uuid,
     pub entity_id: i32,
     pub name: String,
-    pub class: Classes,
+    pub class: PgClasses,
 }
 
 #[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = crate::database::schema::characters)]
 struct UpdateCharacter {
-    class: Classes,
+    class: PgClasses,
     name: String,
 }
