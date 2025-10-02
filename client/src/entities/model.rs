@@ -1,6 +1,4 @@
-use common::grpc_codegen::{
-    entity::Family, Classes as RpcClasses, LocationType, Species as RpcSpecies,
-};
+use common::grpc_codegen::LocationType;
 use common::{constants::*, MapCoord, WorldCoord};
 
 use crate::{

@@ -3,7 +3,10 @@ use std::io::ErrorKind;
 use std::sync::Arc;
 
 use common::character::CharacterHandler;
+use common::database::db::Database;
 use common::database::model::account::{Account, UpdateAccount};
+use common::database::model::character::Character;
+use common::database::model::monster::Monster;
 use common::grpc_codegen::entity::Family;
 use common::grpc_codegen::LocationType;
 use common::grpc_codegen::{
@@ -12,7 +15,7 @@ use common::grpc_codegen::{
     ServerEntityEvent as EntityEvent,
 };
 
-use tokio::sync::mpsc::{self, Sender};
+use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
@@ -23,6 +26,7 @@ use crate::generics::match_for_io_error;
 use crate::services::rpc_extensions::{
     RpcCoordExtension, RpcLocationExtension, ServerEntityEventExtension,
 };
+use crate::world::engine::{WorldEvent, WorldEventType};
 
 #[derive(Debug)]
 struct RpgEntityEvent {
@@ -161,7 +165,7 @@ pub struct RpgEntityService {
 }
 
 impl RpgEntityService {
-    pub fn new() -> Self {
+    pub fn new(mut world_rx: Receiver<WorldEvent>) -> Self {
         let (event_tx, mut event_rx) = mpsc::channel::<RpgEntityEvent>(10);
 
         let clients = Arc::new(Mutex::new(HashMap::<String, EntityEventSender>::new()));
@@ -177,6 +181,37 @@ impl RpgEntityService {
                     }
                     None => {}
                 };
+            }
+        });
+
+        let clts_ref = clients.clone();
+        tokio::spawn(async move {
+            let mut connection = Database::new().establish_connection();
+            while let Some(receive) = world_rx.recv().await {
+                match receive.event {
+                    WorldEventType::MonsterSpawn => {
+                        // Retrieve players located where the event occured
+                        let players =
+                            Character::read_all_by_world(&mut connection, receive.world.into())
+                                .unwrap();
+
+                        // Retrieve the Monster data and create Rpc EntitySpawn event
+                        let monster =
+                            Monster::read_info(&mut connection, &receive.monster_id).unwrap();
+                        let monster_spawn_rpc_event = EntityEvent::spawn(monster.into());
+
+                        {
+                            let clts = clts_ref.lock().await;
+                            // Broadcast all concerned players with the monster spawn
+                            for player in players.iter() {
+                                if let Some(client_sender) = clts.get(&player.name) {
+                                    send_entity_event(client_sender, &monster_spawn_rpc_event)
+                                        .await;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         });
         Self { clients, event_tx }

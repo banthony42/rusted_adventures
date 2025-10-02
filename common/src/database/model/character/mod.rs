@@ -83,7 +83,7 @@ pub struct CreateCharacter {
 
 #[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = crate::database::schema::characters)]
-struct UpdateCharacter {
-    class: PgClasses,
-    name: String,
+pub struct UpdateCharacter {
+    pub class: PgClasses,
+    pub name: String,
 }

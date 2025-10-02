@@ -16,7 +16,7 @@ use crate::{
         },
     },
     grpc_codegen::{Coord, Location as RpcLocation},
-    MapCoord, WorldCoord,
+    MapCoord,
 };
 
 use crate::grpc_codegen::Entity as RpcEntity;
@@ -81,6 +81,14 @@ impl CharacterHandler {
         })
     }
 
+    fn world_spawn() -> PgPoint {
+        PgPoint(0.0, 0.0)
+    }
+
+    fn map_spawn() -> PgPoint {
+        MapCoord::spawn().into()
+    }
+
     /// Create a character for the account, return an handler for it.
     pub fn create(
         account_login: &String,
@@ -92,8 +100,8 @@ impl CharacterHandler {
         let location = Location::create(
             &mut connection,
             &CreateLocation {
-                map: MapCoord::spawn().into(),
-                world: WorldCoord::spawn().into(),
+                map: Self::map_spawn(),
+                world: Self::world_spawn(),
                 destination: None,
             },
         )

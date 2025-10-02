@@ -1,8 +1,13 @@
+use std::thread;
+
 use ::common::grpc_codegen::rpg_chat_server::RpgChatServer;
 use common::{authenticator::Authenticator, grpc_codegen::rpg_entity_server::RpgEntityServer};
 use services::chat::RpgChatService;
 use services::entities::RpgEntityService;
-use tokio::runtime::{Builder, Runtime};
+use tokio::{
+    runtime::{Builder, Runtime},
+    sync::mpsc::{self, Receiver},
+};
 use tonic::{metadata::MetadataValue, transport::Server};
 
 use common::grpc_codegen::rpg_authenticate_server::RpgAuthenticateServer;
@@ -10,6 +15,8 @@ use common::grpc_codegen::rpg_authenticate_server::RpgAuthenticateServer;
 use services::authenticate::RpgAuthenticateService;
 use tonic::{Request, Status};
 use world::engine::WorldEngine;
+
+use crate::world::engine::WorldEvent;
 
 pub mod proto {
     pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
@@ -20,20 +27,20 @@ mod generics;
 mod services;
 mod world;
 
-fn run_world_engine_on_another_thread() -> Runtime {
-    let runtime = Builder::new_multi_thread()
-        .worker_threads(1)
-        .thread_name("RPG World Engine")
-        .enable_all()
-        .build()
-        .unwrap();
+fn run_world_engine_on_another_thread() -> Receiver<WorldEvent> {
+    // let runtime = Builder::new_multi_thread()
+    //     .worker_threads(1)
+    //     .thread_name("RPG World Engine")
+    //     .enable_all()
+    //     .build()
+    //     .unwrap();
 
-    let mut world_engine = WorldEngine::new();
-    runtime.spawn(async move {
+    let (mut world_engine, world_rx) = WorldEngine::new();
+    thread::spawn(move || {
         world_engine.run();
     });
 
-    return runtime;
+    return world_rx;
 }
 
 fn auth_interceptor(req: Request<()>) -> Result<Request<()>, Status> {
@@ -81,8 +88,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // But again, the goal of the project is to learn rust, and i want to avoid
     // heavy setup configuration / prerequisite.
     // In addition i already know redis, where i totally discover and learn SQL like DB.
-    let _rt = run_world_engine_on_another_thread();
+    let world_rx = run_world_engine_on_another_thread();
 
+    // TODO: pass world_rx to entity services
+    // Therefore it could listen on it and react to each world events
+    // ex: spawn monster on map ==> send SpawnEvent for each player on map
     Server::builder()
         .add_service(reflection_service)
         .add_service(RpgAuthenticateServer::new(rpg_authenticate))
@@ -91,7 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             auth_interceptor,
         ))
         .add_service(RpgEntityServer::with_interceptor(
-            RpgEntityService::new(),
+            RpgEntityService::new(world_rx),
             auth_interceptor,
         ))
         .serve(addr)

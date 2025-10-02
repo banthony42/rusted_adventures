@@ -47,19 +47,3 @@ insert into bestiary(name, species)
     values ('Bouftou', 'Bouftou'),
 ('Crabedoeuf', 'Crabedoeuf');
 
--- Populate world with hardcoded monsters for now
--- insert into locations(id, world, map)
---     values (1, point(0.0, 0.0), point(5.0, 5.0)),
--- (2, point(0.0, 0.0), point(7.0, 7.0)),
--- (3, point(1.0, 0.0), point(2.0, 2.0)),
--- (4, point(1.0, 0.0), point(6.0, 6.0));
--- insert into entities(id, location_id)
---     values (1, 1),
--- (2, 2),
--- (3, 3),
--- (4, 4);
--- insert into monsters(bestiary_id, entity_id)
---     values (1, 1),
--- (1, 2),
--- (2, 3),
--- (2, 4);

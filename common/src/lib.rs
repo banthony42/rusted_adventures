@@ -5,6 +5,7 @@ use diesel_geometry::data_types::PgPoint;
 pub mod authenticator;
 pub mod character;
 pub mod database;
+pub mod monster;
 pub mod record;
 pub mod utils;
 
@@ -95,12 +96,6 @@ pub struct WorldCoord {
     pub y: i8,
 }
 
-impl WorldCoord {
-    fn spawn() -> Self {
-        Self { x: 0, y: 0 }
-    }
-}
-
 impl Into<PgPoint> for WorldCoord {
     fn into(self) -> PgPoint {
         PgPoint(self.x as f64, self.y as f64)
@@ -141,6 +136,13 @@ impl MapCoord {
 
     pub fn spawn() -> Self {
         Self { x: 5, y: 5 }
+    }
+
+    pub fn random() -> Self {
+        Self {
+            x: rand::random_range(0..constants::TILEMAP_WIDTH as i64 - 1),
+            y: rand::random_range(0..constants::TILEMAP_HEIGHT as i64 - 1),
+        }
     }
 }
 

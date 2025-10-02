@@ -76,6 +76,24 @@ impl Monster {
             .first::<Monster>(db)
     }
 
+    pub fn read_info(db: &mut Connection, id: &i32) -> QueryResult<MonsterInfo> {
+        let monster_data: MonsterInfoData = entities::table
+            .inner_join(locations::table)
+            .inner_join(monsters::table)
+            .inner_join(bestiary::table.on(bestiary::id.eq(monsters::bestiary_id)))
+            .filter(monsters::id.eq(id))
+            .select((
+                monsters::id,
+                bestiary::name,
+                bestiary::species,
+                locations::world,
+                locations::map,
+                locations::destination,
+            ))
+            .get_result(db)?;
+
+        Ok(monster_data.into())
+    }
     // No Update function for now since Monster values are only constants.
 
     /// Delete Character in DB of the given character id
