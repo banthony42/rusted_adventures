@@ -3,6 +3,10 @@ name = "server"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "rpg-server"
+path = "src/main.rs"
+
 [dependencies]
 diesel = { version = "2.2.0", features = ["postgres"] }
 tokio = { version = "1.40.0", features = ["full"] }
