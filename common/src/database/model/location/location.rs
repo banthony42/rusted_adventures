@@ -82,6 +82,25 @@ impl Location {
             .get_result(db)
     }
 
+    /// Update a destination in Location table, for the given entity id, according to the UpdateLocationDestination item
+    pub fn update_destination_by_entity_id(
+        db: &mut Connection,
+        id: &i32,
+        item: UpdateLocationDestination,
+    ) -> QueryResult<Self> {
+        // UPDATE with JOIN seems not handled yet by diesel
+        // That's why i have to retrieve the location_id first
+        let location_id: i32 = entities::table
+            .filter(entities::id.eq(id))
+            .select(entities::location_id)
+            .first(db)?;
+
+        diesel::update(locations::table.filter(locations::id.eq(location_id)))
+            .set(item)
+            .returning(Location::as_returning())
+            .get_result(db)
+    }
+
     /// Delete Location in DB of the given entity id
     pub fn delete(db: &mut Connection, id: &i32) -> QueryResult<()> {
         diesel::delete(locations::table.filter(locations::id.eq(id))).execute(db)?;

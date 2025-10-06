@@ -4,10 +4,7 @@ use ::common::grpc_codegen::rpg_chat_server::RpgChatServer;
 use common::{authenticator::Authenticator, grpc_codegen::rpg_entity_server::RpgEntityServer};
 use services::chat::RpgChatService;
 use services::entities::RpgEntityService;
-use tokio::{
-    runtime::{Builder, Runtime},
-    sync::mpsc::{self, Receiver},
-};
+use tokio::sync::mpsc::Receiver;
 use tonic::{metadata::MetadataValue, transport::Server};
 
 use common::grpc_codegen::rpg_authenticate_server::RpgAuthenticateServer;
@@ -28,13 +25,6 @@ mod services;
 mod world;
 
 fn run_world_engine_on_another_thread() -> Receiver<WorldEvent> {
-    // let runtime = Builder::new_multi_thread()
-    //     .worker_threads(1)
-    //     .thread_name("RPG World Engine")
-    //     .enable_all()
-    //     .build()
-    //     .unwrap();
-
     let (mut world_engine, world_rx) = WorldEngine::new();
     thread::spawn(move || {
         world_engine.run();

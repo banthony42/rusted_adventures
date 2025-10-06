@@ -6,7 +6,7 @@ use common::{
 use rand::seq::IndexedRandom;
 use tokio::sync::mpsc::Sender;
 
-use crate::world::engine::{WorldEngineComponent, WorldEvent, WorldEventType};
+use crate::world::engine::{MonsterSpawn, WorldEngineComponent, WorldEvent};
 
 const LOG_PREFIX: &str = "Server: WorldEngine: Spawner: ";
 
@@ -37,11 +37,10 @@ impl SpawnOrder {
                     LOG_PREFIX, self.species, world
                 );
                 self.running = false;
-                let mob_spawn_event = WorldEvent {
-                    event: WorldEventType::MonsterSpawn,
+                let mob_spawn_event = WorldEvent::MonsterSpawn(MonsterSpawn {
                     world,
                     monster_id: monster.id,
-                };
+                });
                 if let Err(err) = tx.blocking_send(mob_spawn_event) {
                     println!(
                         "{}World transmitter send has failed sending: MonsterSpawn: {:?}",
@@ -120,16 +119,6 @@ impl WorldEngineComponent for Spawner {
         if self.update_timer > SPAWNER_UPDATE_RATE {
             self.update_timer = 0;
             self.update_spawn_orders(handler);
-            for order in self.spawn_orders.iter() {
-                if order.running {
-                    println!(
-                        "{}{:?} will spawn in {}s",
-                        LOG_PREFIX,
-                        order.species,
-                        (order.spawn_time() - order.timer) / 1000
-                    );
-                }
-            }
         } else {
             self.update_timer += delta_ts;
         }
@@ -140,6 +129,14 @@ impl WorldEngineComponent for Spawner {
                 order.spawn(handler, self.world, tx);
             } else {
                 order.timer += delta_ts;
+                if order.timer % 10000 <= 200 {
+                    println!(
+                        "{}{:?} will spawn in {}s",
+                        LOG_PREFIX,
+                        order.species,
+                        (order.spawn_time().saturating_sub(order.timer)) / 1000
+                    );
+                }
             }
         }
         // Drop all outdated orders

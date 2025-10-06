@@ -12,7 +12,7 @@ mod constants {
     pub const CHARACTER_CREATION: &str = "Server: AuthenticateUser: CreateCharacter: ";
 }
 
-mod rpc_extensions;
+pub mod rpc_extensions;
 
 pub mod authenticate;
 pub mod chat;

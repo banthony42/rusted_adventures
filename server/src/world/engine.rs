@@ -1,8 +1,12 @@
 use std::time::Duration;
 
+use crate::world::behaviour::BehaviourHandler;
+
 use super::spawner::Spawner;
 use common::{
-    database::model::bestiary::PgSpecies, monster::MonsterHandler, utils::get_timestamp, WorldCoord,
+    database::model::bestiary::PgSpecies, grpc_codegen::Coord as RpcCoord,
+    grpc_codegen::Location as RpcLocation, monster::MonsterHandler, utils::get_timestamp,
+    WorldCoord,
 };
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
@@ -10,14 +14,20 @@ pub trait WorldEngineComponent {
     fn update(&mut self, delta_ts: u128, handler: &mut MonsterHandler, tx: &Sender<WorldEvent>);
 }
 
-pub enum WorldEventType {
-    MonsterSpawn,
-}
-
-pub struct WorldEvent {
-    pub event: WorldEventType,
+pub struct MonsterSpawn {
     pub world: WorldCoord,
     pub monster_id: i32,
+}
+
+pub struct MonsterMove {
+    pub identifier: String,
+    pub destination: RpcLocation,
+    pub world: RpcCoord,
+}
+
+pub enum WorldEvent {
+    MonsterSpawn(MonsterSpawn),
+    MonsterMove(MonsterMove),
 }
 
 pub struct WorldEngine {
@@ -25,7 +35,8 @@ pub struct WorldEngine {
     monster_handler: MonsterHandler,
     wpl: Duration,
     spawners: Vec<Spawner>,
-    ts: u128,
+    behaviours: BehaviourHandler,
+    last_update_ts: u128,
 }
 
 // Limit the WorldEngine infinite loop rate
@@ -37,6 +48,7 @@ impl WorldEngine {
         let (tx, rx) = mpsc::channel::<WorldEvent>(10);
         (
             WorldEngine {
+                behaviours: BehaviourHandler::new(),
                 tx,
                 monster_handler: MonsterHandler::new(),
                 spawners: vec![
@@ -44,7 +56,7 @@ impl WorldEngine {
                     Spawner::new(vec![PgSpecies::Crabedoeuf], WorldCoord { x: 1, y: 0 }),
                 ],
                 wpl: Duration::from_millis(WAIT_PER_LOOP),
-                ts: get_timestamp(),
+                last_update_ts: get_timestamp(),
             },
             rx,
         )
@@ -53,8 +65,8 @@ impl WorldEngine {
     pub fn run(&mut self) {
         loop {
             let now = get_timestamp();
-            let delta_ts = now - self.ts;
-            self.ts = now;
+            let delta_ts = now - self.last_update_ts;
+            self.last_update_ts = now;
 
             self.update(delta_ts);
             self.wait();
@@ -65,6 +77,8 @@ impl WorldEngine {
         for spawner in self.spawners.iter_mut() {
             spawner.update(delta_ts, &mut self.monster_handler, &self.tx);
         }
+        self.behaviours
+            .update(delta_ts, &mut self.monster_handler, &self.tx);
     }
 
     pub fn wait(&mut self) {

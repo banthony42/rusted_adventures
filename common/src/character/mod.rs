@@ -187,26 +187,30 @@ impl CharacterHandler {
 
     /// Update the Character location with `new_loc`
     /// If `new_loc` match the `destination` then `destination` is reset to None
-    pub fn update_location(&mut self, new_loc: RpcLocation) {
+    pub fn update_location(&mut self, new_loc: RpcLocation) -> Result<(), DieselError> {
         let new_w = PgPoint(
             new_loc.world.unwrap().x as f64,
             new_loc.world.unwrap().y as f64,
         );
         let new_m = PgPoint(new_loc.map.unwrap().x as f64, new_loc.map.unwrap().y as f64);
 
-        let _ = Location::update_by_entity_id(
+        Location::update_by_entity_id(
             &mut self.connection,
             &self.character.entity_id,
             UpdateLocation {
                 world: new_w,
                 map: new_m,
             },
-        );
+        )?;
+        Ok(())
     }
 
     pub fn update_destination(&mut self, new_loc: UpdateLocationDestination) {
-        let _ =
-            Location::update_destination(&mut self.connection, &self.character.entity_id, new_loc)
-                .map_err(|err| println!("Server: update_destination: {:?}", err));
+        let _ = Location::update_destination_by_entity_id(
+            &mut self.connection,
+            &self.character.entity_id,
+            new_loc,
+        )
+        .map_err(|err| println!("Server: update_destination: {:?}", err));
     }
 }

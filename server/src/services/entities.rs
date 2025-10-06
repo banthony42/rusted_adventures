@@ -26,7 +26,7 @@ use crate::generics::match_for_io_error;
 use crate::services::rpc_extensions::{
     RpcCoordExtension, RpcLocationExtension, ServerEntityEventExtension,
 };
-use crate::world::engine::{WorldEvent, WorldEventType};
+use crate::world::engine::WorldEvent;
 
 #[derive(Debug)]
 struct RpgEntityEvent {
@@ -96,7 +96,7 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
 
     match move_event.location_type() {
         // Player has changed cell
-        LocationType::Update => character.update_location(new_location),
+        LocationType::Update => _ = character.update_location(new_location),
         LocationType::NewMap => {
             // Player has changed destination
             if let Some(new_destination) = new_location.into_update_destination() {
@@ -109,12 +109,18 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
         }
         LocationType::NewWorld => {
             // Player has changed map
+            // Update the new world and map in DB
+            if let Err(err) = character.update_location(new_location) {
+                println!(
+                    "Server: player move: Error : Fail to update location: {}",
+                    err
+                );
+                return;
+            }
+
             // Broadcast all players on last world with a despawn event
             let despawn_event = EntityEvent::despawn(character.identifier());
             broadcast_player_on_world(&sender, despawn_event, &clients, &mut character).await;
-
-            // Update the new world and map in DB
-            character.update_location(new_location);
 
             let Ok(entity) = character.as_rpc_entity() else {
                 println!("Server: player move: Error: Fail to get character as RpcEntity");
@@ -188,16 +194,31 @@ impl RpgEntityService {
         tokio::spawn(async move {
             let mut connection = Database::new().establish_connection();
             while let Some(receive) = world_rx.recv().await {
-                match receive.event {
-                    WorldEventType::MonsterSpawn => {
+                match receive {
+                    WorldEvent::MonsterMove(data) => {
+                        let move_event = EntityEvent::movement(data.identifier, data.destination);
+                        let players =
+                            Character::read_all_by_world(&mut connection, data.world.into())
+                                .unwrap();
+                        {
+                            let clts = clts_ref.lock().await;
+                            // Broadcast all concerned players with the monster move
+                            for player in players.iter() {
+                                if let Some(client_sender) = clts.get(&player.name) {
+                                    send_entity_event(client_sender, &move_event).await;
+                                }
+                            }
+                        }
+                    }
+                    WorldEvent::MonsterSpawn(data) => {
                         // Retrieve players located where the event occured
                         let players =
-                            Character::read_all_by_world(&mut connection, receive.world.into())
+                            Character::read_all_by_world(&mut connection, data.world.into())
                                 .unwrap();
 
                         // Retrieve the Monster data and create Rpc EntitySpawn event
                         let monster =
-                            Monster::read_info(&mut connection, &receive.monster_id).unwrap();
+                            Monster::read_info(&mut connection, &data.monster_id).unwrap();
                         let monster_spawn_rpc_event = EntityEvent::spawn(monster.into());
 
                         {

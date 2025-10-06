@@ -105,7 +105,7 @@ impl RpgAuthenticate for RpgAuthenticateService {
                 tonic::Status::internal("Logout failed")
             })
             .and_then(|_| {
-                println!("Server: LogoutUser: Success");
+                println!("{}", LOGOUT_USER_SUCCESS);
                 Ok(Response::new(EmptyReply {}))
             })
     }

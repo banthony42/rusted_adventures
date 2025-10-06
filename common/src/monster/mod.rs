@@ -1,4 +1,5 @@
 use diesel::{result::Error as DieselError, PgConnection};
+use diesel_geometry::data_types::PgPoint;
 
 use crate::{
     database::{
@@ -6,10 +7,11 @@ use crate::{
         model::{
             bestiary::{bestiary::Bestiary, BestiaryEntry, PgSpecies},
             entity::{CreateEntity, Entity},
-            location::{CreateLocation, Location},
+            location::{CreateLocation, Location, UpdateLocation},
             monster::{CreateMonster, Monster},
         },
     },
+    grpc_codegen::Location as RpcLocation,
     record::Record,
     MapCoord, WorldCoord,
 };
@@ -69,5 +71,29 @@ impl MonsterHandler {
                 entity_id: entity.id,
             },
         )
+    }
+
+    /// Update the Monster location with `new_loc`
+    /// If `new_loc` match the `destination` then `destination` is reset to None
+    pub fn update_location(
+        &mut self,
+        entity_id: i32,
+        new_loc: RpcLocation,
+    ) -> Result<(), DieselError> {
+        let new_w = PgPoint(
+            new_loc.world.unwrap().x as f64,
+            new_loc.world.unwrap().y as f64,
+        );
+        let new_m = PgPoint(new_loc.map.unwrap().x as f64, new_loc.map.unwrap().y as f64);
+
+        Location::update_by_entity_id(
+            &mut self.connection,
+            &entity_id,
+            UpdateLocation {
+                world: new_w,
+                map: new_m,
+            },
+        )?;
+        Ok(())
     }
 }

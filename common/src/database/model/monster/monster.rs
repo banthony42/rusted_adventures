@@ -12,13 +12,22 @@ use crate::grpc_codegen::Location as RpcLocation;
 
 type Connection = diesel::pg::PgConnection;
 
-type MonsterInfoData = (i32, String, PgSpecies, PgPoint, PgPoint, Option<PgPoint>);
+type MonsterInfoData = (
+    i32,
+    i32,
+    String,
+    PgSpecies,
+    PgPoint,
+    PgPoint,
+    Option<PgPoint>,
+);
 
 impl Into<MonsterInfo> for MonsterInfoData {
     fn into(self) -> MonsterInfo {
-        let (id, name, species, world, map, destination) = self;
+        let (id, entity_id, name, species, world, map, destination) = self;
         MonsterInfo {
             id,
+            entity_id,
             name: name,
             species,
             world,
@@ -30,6 +39,7 @@ impl Into<MonsterInfo> for MonsterInfoData {
 
 pub struct MonsterInfo {
     pub id: i32,
+    pub entity_id: i32,
     pub name: String,
     pub species: PgSpecies,
     pub world: PgPoint,
@@ -76,6 +86,11 @@ impl Monster {
             .first::<Monster>(db)
     }
 
+    /// Return all the Monster in DB
+    pub fn read_all(db: &mut Connection) -> QueryResult<Vec<Self>> {
+        monsters::table.load::<Monster>(db)
+    }
+
     pub fn read_info(db: &mut Connection, id: &i32) -> QueryResult<MonsterInfo> {
         let monster_data: MonsterInfoData = entities::table
             .inner_join(locations::table)
@@ -84,6 +99,7 @@ impl Monster {
             .filter(monsters::id.eq(id))
             .select((
                 monsters::id,
+                monsters::entity_id,
                 bestiary::name,
                 bestiary::species,
                 locations::world,
@@ -112,6 +128,7 @@ impl Monster {
             .filter(locations::world.same_as(world_coord))
             .select((
                 monsters::id,
+                monsters::entity_id,
                 bestiary::name,
                 bestiary::species,
                 locations::world,
