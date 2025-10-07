@@ -75,7 +75,7 @@ Table "statistics" {
 
 Table "locations" {
   "id" integer [pk, increment]
-  "world" point [not null]
+  "map" point [not null]
   "cell" point [not null]
   "destination" point
 }

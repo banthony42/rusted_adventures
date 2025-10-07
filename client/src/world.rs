@@ -6,7 +6,7 @@ use crate::{
     import::tilemap::LoadedMap,
     sprite::{Frame, Sprite},
 };
-use common::{constants::*, WorldCoord};
+use common::{constants::*, MapCoord};
 
 #[derive(Default)]
 pub struct Offset {
@@ -28,7 +28,7 @@ struct MapImport {
 }
 
 pub struct World {
-    pub world: HashMap<WorldCoord, MapData>,
+    pub world: HashMap<MapCoord, MapData>,
     margin: Size,
 }
 
@@ -36,14 +36,14 @@ impl World {
     pub fn new(window: &mut PistonWindow) -> Self {
         let __world = HashMap::from([
             (
-                WorldCoord { x: 0, y: 0 },
+                MapCoord { x: 0, y: 0 },
                 MapImport {
                     path: String::from("../assets/maps/map.0.0/sprite.json"),
                     info: String::from("Plaines"),
                 },
             ),
             (
-                WorldCoord { x: 1, y: 0 },
+                MapCoord { x: 1, y: 0 },
                 MapImport {
                     path: String::from("../assets/maps/map.1.0/sprite.json"),
                     info: String::from("Plage cliquetante"),
@@ -133,7 +133,7 @@ impl World {
         return world;
     }
 
-    pub fn render(&self, evnt: &Event, window: &mut PistonWindow, coord: &WorldCoord) {
+    pub fn render(&self, evnt: &Event, window: &mut PistonWindow, coord: &MapCoord) {
         let map_data = self.world.get(coord).unwrap();
         window.draw_2d(evnt, |ctx, gl, _device| {
             let _ = map_data.frames[map_data.f_ptr]
@@ -155,11 +155,11 @@ impl World {
         });
     }
 
-    pub fn update(&mut self, delta_ts: u128, world_coord: &WorldCoord) {
-        let map_data = self.world.get_mut(world_coord).expect(
+    pub fn update(&mut self, delta_ts: u128, coord: &MapCoord) {
+        let map_data = self.world.get_mut(coord).expect(
             format!(
                 "Client: world: update: trying to get map_data from : {:?}",
-                world_coord
+                coord
             )
             .as_str(),
         );
@@ -181,7 +181,7 @@ impl World {
         self.margin = margin.clone();
     }
 
-    fn get_map(&self, coord: &WorldCoord) -> Option<(WorldCoord, &MapData)> {
+    fn get_map(&self, coord: &MapCoord) -> Option<(MapCoord, &MapData)> {
         let map = match self.world.get(coord) {
             Some(map_data) => map_data,
             None => return None,
@@ -189,13 +189,13 @@ impl World {
         return Some((coord.clone(), map));
     }
 
-    pub fn get_east_map(&self, coord: &WorldCoord) -> Option<(WorldCoord, &MapData)> {
-        let coord_tentative = coord.clone() + WorldCoord { x: 1, y: 0 };
+    pub fn get_east_map(&self, coord: &MapCoord) -> Option<(MapCoord, &MapData)> {
+        let coord_tentative = coord.clone() + MapCoord { x: 1, y: 0 };
         self.get_map(&coord_tentative)
     }
 
-    pub fn get_west_map(&self, coord: &WorldCoord) -> Option<(WorldCoord, &MapData)> {
-        let coord_tentative = coord.clone() + WorldCoord { x: -1, y: 0 };
+    pub fn get_west_map(&self, coord: &MapCoord) -> Option<(MapCoord, &MapData)> {
+        let coord_tentative = coord.clone() + MapCoord { x: -1, y: 0 };
         self.get_map(&coord_tentative)
     }
 }

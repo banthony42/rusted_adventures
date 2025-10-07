@@ -1,5 +1,5 @@
 use common::grpc_codegen::LocationType;
-use common::{constants::*, CellCoord, WorldCoord};
+use common::{constants::*, CellCoord, MapCoord};
 
 use crate::{
     import::assets::{Animations, EntityAssets},
@@ -25,7 +25,7 @@ pub struct EntityModel {
     offset: CellCoord,
     step: f64,
     cell: CellCoord,
-    world: WorldCoord,
+    map: MapCoord,
     state: Animations,
     destination: Option<CellCoord>,
     path: Vec<CellCoord>,
@@ -41,8 +41,8 @@ pub trait IEntity: Send {
 
     fn get_species(&self) -> &Species;
 
-    fn get_world(&self) -> WorldCoord;
-    fn set_world(&mut self, world: WorldCoord);
+    fn get_map(&self) -> MapCoord;
+    fn set_map(&mut self, map: MapCoord);
 
     fn get_uuid(&self) -> &String;
 
@@ -75,7 +75,7 @@ impl EntityModel {
             uuid,
             species: race,
             offset: CellCoord::default(),
-            world: WorldCoord::default(),
+            map: MapCoord::default(),
             cell: CellCoord::default(),
             state: Animations::default(),
             destination: None,
@@ -123,12 +123,12 @@ impl IEntity for EntityModel {
         &self.name
     }
 
-    fn set_world(&mut self, world: WorldCoord) {
-        self.world = world;
+    fn set_map(&mut self, map: MapCoord) {
+        self.map = map;
     }
 
-    fn get_world(&self) -> WorldCoord {
-        self.world
+    fn get_map(&self) -> MapCoord {
+        self.map
     }
 
     fn set_cell(&mut self, cell: CellCoord) {
@@ -168,26 +168,26 @@ impl IEntity for EntityModel {
         let mut new_pos: Option<LocationType> = None;
         if self.path.is_empty() {
             self.set_state(Animations::Idle);
-            self.world = match self.next_map.take() {
+            self.map = match self.next_map.take() {
                 Some(Orientation::Est) => {
-                    if let Some(new_map) = world.get_east_map(&self.world) {
+                    if let Some(new_map) = world.get_east_map(&self.map) {
                         self.cell.x = 0;
-                        new_pos = Some(LocationType::NewWorld);
+                        new_pos = Some(LocationType::NewMap);
                         new_map.0
                     } else {
-                        self.world
+                        self.map
                     }
                 }
                 Some(Orientation::West) => {
-                    if let Some(new_map) = world.get_west_map(&self.world) {
+                    if let Some(new_map) = world.get_west_map(&self.map) {
                         self.cell.x = TILEMAP_WIDTH as i64 - 1;
-                        new_pos = Some(LocationType::NewWorld);
+                        new_pos = Some(LocationType::NewMap);
                         new_map.0
                     } else {
-                        self.world
+                        self.map
                     }
                 }
-                _ => self.world,
+                _ => self.map,
             };
         } else {
             self.set_state(Animations::Run);

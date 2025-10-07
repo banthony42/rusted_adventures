@@ -74,7 +74,7 @@ fn move_behaviour(
     .limit();
 
     let new_rpc_loc = RpcLocation {
-        world: Some(monster.world.into()),
+        map: Some(monster.map.into()),
         cell: Some(RpcCoord {
             x: new_destination.x,
             y: new_destination.y,
@@ -96,7 +96,7 @@ fn move_behaviour(
     let move_event = WorldEvent::MonsterMove(MonsterMove {
         identifier: monster.identifier(),
         destination: new_rpc_loc,
-        world: monster.world.into(),
+        map: monster.map.into(),
     });
     if let Err(err) = world_tx.blocking_send(move_event) {
         println!(

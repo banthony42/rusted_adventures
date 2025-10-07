@@ -81,7 +81,7 @@ impl CharacterHandler {
         })
     }
 
-    fn world_spawn() -> PgPoint {
+    fn map_spawn() -> PgPoint {
         PgPoint(0.0, 0.0)
     }
 
@@ -101,7 +101,7 @@ impl CharacterHandler {
             &mut connection,
             &CreateLocation {
                 cell: Self::cell_spawn(),
-                world: Self::world_spawn(),
+                map: Self::map_spawn(),
                 destination: None,
             },
         )
@@ -144,24 +144,23 @@ impl CharacterHandler {
         Ok(CharacterInfo::from_character(&mut self.connection, &self.character)?.into())
     }
 
-    pub fn players_on_same_world(&mut self) -> Result<Vec<String>, DieselError> {
+    pub fn players_on_same_map(&mut self) -> Result<Vec<String>, DieselError> {
         // TODO: issue: groupby clause doesn't work :
         // [941] ERROR:  could not identify an equality operator for type point at character 152
-        // [941] STATEMENT:  SELECT "entities"."name" FROM ("locations" INNER JOIN "entities" ON ("locations"."entity_id" = "entities"."id")) WHERE ("entities"."id" = $1) GROUP BY "locations"."world", "entities"."name"
-        // Character::characters_names_group_by_world(&mut self.connection, self.character.entity_id)
+        // [941] STATEMENT:  SELECT "entities"."name" FROM ("locations" INNER JOIN "entities" ON ("locations"."entity_id" = "entities"."id")) WHERE ("entities"."id" = $1) GROUP BY "locations"."map", "entities"."name"
 
         let location = Location::read(&mut self.connection, &self.character.entity_id)?;
-        Character::characters_names_at_location(
+        Character::read_names_by_map_exclude(
             &mut self.connection,
-            location.world,
+            location.map,
             &self.character.name,
         )
     }
 
-    pub fn entities_on_world(&mut self) -> Result<Vec<RpcEntityWithDestination>, DieselError> {
+    pub fn entities_on_map(&mut self) -> Result<Vec<RpcEntityWithDestination>, DieselError> {
         let location = Location::read(&mut self.connection, &self.character.entity_id)?;
         let mut players: Vec<RpcEntityWithDestination> =
-            Character::read_all_by_world(&mut self.connection, location.world)?
+            Character::read_all_by_map(&mut self.connection, location.map)?
                 .into_iter()
                 .filter(|e| self.character.name.ne(&e.name))
                 .map(|e| {
@@ -171,7 +170,7 @@ impl CharacterHandler {
                 .collect();
 
         let mut monsters: Vec<RpcEntityWithDestination> =
-            Monster::read_all_by_world(&mut self.connection, location.world)?
+            Monster::read_all_by_map(&mut self.connection, location.map)?
                 .into_iter()
                 .map(|e| {
                     let destination: Option<Coord> = e.destination.map(|d| d.into());
@@ -187,23 +186,14 @@ impl CharacterHandler {
 
     /// Update the Character location with `new_loc`
     /// If `new_loc` match the `destination` then `destination` is reset to None
-    pub fn update_location(&mut self, new_loc: RpcLocation) -> Result<(), DieselError> {
-        let new_w = PgPoint(
-            new_loc.world.unwrap().x as f64,
-            new_loc.world.unwrap().y as f64,
-        );
-        let new_cell = PgPoint(
-            new_loc.cell.unwrap().x as f64,
-            new_loc.cell.unwrap().y as f64,
-        );
+    pub fn update_location(&mut self, loc: RpcLocation) -> Result<(), DieselError> {
+        let map = PgPoint(loc.map.unwrap().x as f64, loc.map.unwrap().y as f64);
+        let cell = PgPoint(loc.cell.unwrap().x as f64, loc.cell.unwrap().y as f64);
 
         Location::update_by_entity_id(
             &mut self.connection,
             &self.character.entity_id,
-            UpdateLocation {
-                world: new_w,
-                cell: new_cell,
-            },
+            UpdateLocation { map, cell },
         )?;
         Ok(())
     }

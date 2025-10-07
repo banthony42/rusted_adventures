@@ -5,8 +5,7 @@ use crate::world::behaviour::BehaviourHandler;
 use super::spawner::Spawner;
 use common::{
     database::model::bestiary::PgSpecies, grpc_codegen::Coord as RpcCoord,
-    grpc_codegen::Location as RpcLocation, monster::MonsterHandler, utils::get_timestamp,
-    WorldCoord,
+    grpc_codegen::Location as RpcLocation, monster::MonsterHandler, utils::get_timestamp, MapCoord,
 };
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
@@ -15,14 +14,14 @@ pub trait WorldEngineComponent {
 }
 
 pub struct MonsterSpawn {
-    pub world: WorldCoord,
+    pub map: MapCoord,
     pub monster_id: i32,
 }
 
 pub struct MonsterMove {
     pub identifier: String,
     pub destination: RpcLocation,
-    pub world: RpcCoord,
+    pub map: RpcCoord,
 }
 
 pub enum WorldEvent {
@@ -52,8 +51,8 @@ impl WorldEngine {
                 tx,
                 monster_handler: MonsterHandler::new(),
                 spawners: vec![
-                    Spawner::new(vec![PgSpecies::Bouftou], WorldCoord { x: 0, y: 0 }),
-                    Spawner::new(vec![PgSpecies::Crabedoeuf], WorldCoord { x: 1, y: 0 }),
+                    Spawner::new(vec![PgSpecies::Bouftou], MapCoord { x: 0, y: 0 }),
+                    Spawner::new(vec![PgSpecies::Crabedoeuf], MapCoord { x: 1, y: 0 }),
                 ],
                 wpl: Duration::from_millis(WAIT_PER_LOOP),
                 last_update_ts: get_timestamp(),

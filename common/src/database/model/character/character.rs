@@ -16,18 +16,18 @@ use super::{Character, CreateCharacter, UpdateCharacter};
 
 type Connection = diesel::pg::PgConnection;
 
-allow_columns_to_appear_in_same_group_by_clause!(characters::name, locations::world);
+allow_columns_to_appear_in_same_group_by_clause!(characters::name, locations::map);
 
 type CharacterInfoData = (i32, String, PgClasses, PgPoint, PgPoint, Option<PgPoint>);
 
 impl Into<CharacterInfo> for CharacterInfoData {
     fn into(self) -> CharacterInfo {
-        let (id, name, class, world, cell, destination) = self;
+        let (id, name, class, map, cell, destination) = self;
         CharacterInfo {
             id,
             name,
             class,
-            world,
+            map,
             cell,
             destination,
         }
@@ -38,7 +38,7 @@ pub struct CharacterInfo {
     pub id: i32,
     pub name: String,
     pub class: PgClasses,
-    pub world: PgPoint,
+    pub map: PgPoint,
     pub cell: PgPoint,
     pub destination: Option<PgPoint>,
 }
@@ -53,7 +53,7 @@ impl CharacterInfo {
             id: character.id,
             name: character.name.clone(),
             class: character.class.clone(),
-            world: location.world,
+            map: location.map,
             cell: location.cell,
             destination: location.destination,
         })
@@ -87,7 +87,7 @@ impl Into<RpcEntity> for CharacterInfo {
             name: self.name,
             family: Some(self.class.into()),
             location: Some(RpcLocation {
-                world: Some(self.world.into()),
+                map: Some(self.map.into()),
                 cell: Some(self.cell.into()),
             }),
         }
@@ -136,48 +136,48 @@ impl Character {
             .load(db)?)
     }
 
-    pub fn characters_names_group_by_world(
+    pub fn characters_names_group_by_map(
         db: &mut Connection,
         eid: i32,
     ) -> QueryResult<Vec<String>> {
         characters::table
             .inner_join(entities::table)
             .inner_join(locations::table.on(locations::id.eq(entities::location_id)))
-            .group_by((locations::world, characters::name))
+            .group_by((locations::map, characters::name))
             .filter(entities::id.eq(eid))
             .select(characters::name)
             .load(db)
     }
 
-    pub fn characters_names_at_location(
+    pub fn read_names_by_map_exclude(
         db: &mut Connection,
-        world_coord: PgPoint,
+        map_coord: PgPoint,
         exclude: &String,
     ) -> QueryResult<Vec<String>> {
         characters::table
             .inner_join(entities::table)
             .inner_join(locations::table.on(locations::id.eq(entities::location_id)))
-            .filter(locations::world.same_as(world_coord))
+            .filter(locations::map.same_as(map_coord))
             .filter(characters::name.ne(exclude))
             .select(characters::name)
             .load(db)
     }
 
-    pub fn read_all_by_world(
+    pub fn read_all_by_map(
         db: &mut Connection,
-        world_coord: PgPoint,
+        map_coord: PgPoint,
     ) -> QueryResult<Vec<CharacterInfo>> {
         let data: Vec<CharacterInfoData> = characters::table
             .inner_join(entities::table)
             .inner_join(locations::table.on(locations::id.eq(entities::location_id)))
             .inner_join(accounts::table.on(characters::account_id.eq(accounts::id)))
-            .filter(locations::world.same_as(world_coord))
+            .filter(locations::map.same_as(map_coord))
             .filter(accounts::session_token.is_not_null())
             .select((
                 characters::id,
                 characters::name,
                 characters::class,
-                locations::world,
+                locations::map,
                 locations::cell,
                 locations::destination,
             ))

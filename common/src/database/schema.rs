@@ -69,7 +69,7 @@ diesel::table! {
 
     locations (id) {
         id -> Int4,
-        world -> Point,
+        map -> Point,
         cell -> Point,
         destination -> Nullable<Point>,
     }

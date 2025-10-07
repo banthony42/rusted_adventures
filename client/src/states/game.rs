@@ -89,7 +89,7 @@ impl GameState for Game {
         });
 
         self.world
-            .render(evnt, window, &self.ent_controller.player_world());
+            .render(evnt, window, &self.ent_controller.player_map());
         self.ent_controller.render(evnt, window, &mut self.font);
         self.interface.render(evnt, window, &self.hard_textures);
         self.chat_controller.render(evnt, window, &mut self.font);
@@ -97,7 +97,7 @@ impl GameState for Game {
 
     fn update(&mut self, _args: &UpdateArgs, delta_ts: u128) {
         self.world
-            .update(delta_ts, &self.ent_controller.player_world());
+            .update(delta_ts, &self.ent_controller.player_map());
         self.ent_controller.update(delta_ts, &self.world);
         self.interface.update(_args, delta_ts);
         self.chat_controller.update(delta_ts);

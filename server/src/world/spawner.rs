@@ -1,7 +1,7 @@
 use common::{
     database::model::{bestiary::PgSpecies, monster::Monster},
     monster::MonsterHandler,
-    WorldCoord,
+    MapCoord,
 };
 use rand::seq::IndexedRandom;
 use tokio::sync::mpsc::Sender;
@@ -27,18 +27,18 @@ impl SpawnOrder {
     fn spawn(
         &mut self,
         handler: &mut MonsterHandler,
-        world: WorldCoord,
+        map: MapCoord,
         tx: &Sender<WorldEvent>,
     ) -> bool {
-        match handler.create(&self.species, world) {
+        match handler.create(&self.species, map) {
             Ok(monster) => {
                 println!(
                     "{}Monster creation succeed: {:?} {:?}",
-                    LOG_PREFIX, self.species, world
+                    LOG_PREFIX, self.species, map
                 );
                 self.running = false;
                 let mob_spawn_event = WorldEvent::MonsterSpawn(MonsterSpawn {
-                    world,
+                    map,
                     monster_id: monster.id,
                 });
                 if let Err(err) = tx.blocking_send(mob_spawn_event) {
@@ -50,8 +50,8 @@ impl SpawnOrder {
                 return true;
             }
             Err(err) => println!(
-                "{}Fail to create monster: {:?} at world: {:?} err: {:?}",
-                LOG_PREFIX, self.species, world, err
+                "{}Fail to create monster: {:?} at map: {:?} err: {:?}",
+                LOG_PREFIX, self.species, map, err
             ),
         }
         false
@@ -62,18 +62,18 @@ const SPAWNER_UPDATE_RATE: u128 = 10000;
 
 pub struct Spawner {
     species: Vec<PgSpecies>,
-    world: WorldCoord,
+    map: MapCoord,
     number: usize,
     update_timer: u128,
     spawn_orders: Vec<SpawnOrder>,
 }
 
 impl Spawner {
-    pub fn new(species: Vec<PgSpecies>, world: WorldCoord) -> Self {
+    pub fn new(species: Vec<PgSpecies>, map: MapCoord) -> Self {
         assert!(species.len() > 0);
         Self {
             species,
-            world,
+            map,
             number: 3,
             update_timer: 0,
             spawn_orders: Vec::new(),
@@ -83,8 +83,7 @@ impl Spawner {
     fn update_spawn_orders(&mut self, handler: &mut MonsterHandler) {
         // Foreach missing monsters on map, that is not already tracked in spawn_orders list,
         // choose randomly a monster and add it to the spawn_orders
-        if let Ok(monsters) = Monster::read_all_by_world(&mut handler.connection, self.world.into())
-        {
+        if let Ok(monsters) = Monster::read_all_by_map(&mut handler.connection, self.map.into()) {
             let missing = self.number - monsters.len() - self.spawn_orders.len();
             // Even if several monsters are missing, only spawn one
             // to create delay between each spawn
@@ -123,10 +122,10 @@ impl WorldEngineComponent for Spawner {
             self.update_timer += delta_ts;
         }
         // Update all spawn orders timer, and, when timer is reached
-        // spawn the associated monster on the world
+        // spawn the associated monster on the map
         for order in self.spawn_orders.iter_mut() {
             if order.timer > order.spawn_time() {
-                order.spawn(handler, self.world, tx);
+                order.spawn(handler, self.map, tx);
             } else {
                 order.timer += delta_ts;
                 if order.timer % 10000 <= 200 {

@@ -61,7 +61,7 @@ pub trait RpcCoordExtension {
 impl RpcCoordExtension for RpcCoord {
     fn into_destination(&self) -> RpcLocation {
         RpcLocation {
-            world: None,
+            map: None,
             cell: Some(self.clone()),
         }
     }

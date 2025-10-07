@@ -91,12 +91,12 @@ pub struct CellCoord {
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct WorldCoord {
+pub struct MapCoord {
     pub x: i8,
     pub y: i8,
 }
 
-impl Into<PgPoint> for WorldCoord {
+impl Into<PgPoint> for MapCoord {
     fn into(self) -> PgPoint {
         PgPoint(self.x as f64, self.y as f64)
     }
@@ -197,7 +197,7 @@ impl std::ops::AddAssign for CellCoord {
     }
 }
 
-impl std::ops::Add for WorldCoord {
+impl std::ops::Add for MapCoord {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -208,7 +208,7 @@ impl std::ops::Add for WorldCoord {
     }
 }
 
-impl std::ops::AddAssign for WorldCoord {
+impl std::ops::AddAssign for MapCoord {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }

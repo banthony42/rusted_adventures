@@ -22,7 +22,7 @@ Table players {
 
 Table locations {
   player_name varchar(12) [not null, unique]
-  world point [not null]
+  map point [not null]
   cell point [not null]
 }
 

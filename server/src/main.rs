@@ -80,9 +80,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // In addition i already know redis, where i totally discover and learn SQL like DB.
     let world_rx = run_world_engine_on_another_thread();
 
-    // TODO: pass world_rx to entity services
-    // Therefore it could listen on it and react to each world events
-    // ex: spawn monster on map ==> send SpawnEvent for each player on map
     Server::builder()
         .add_service(reflection_service)
         .add_service(RpgAuthenticateServer::new(rpg_authenticate))

@@ -18,7 +18,7 @@ create table bestiary(
 
 create table locations(
     id serial primary key,
-    world point not null,
+    map point not null,
     cell point not null,
     destination point
 );

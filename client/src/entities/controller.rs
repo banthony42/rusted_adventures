@@ -27,7 +27,7 @@ use common::{
         server_entity_event::Event::{EntityDespawnEvent, EntityMoveEvent, EntitySpawnEvent},
         ClientEntityEvent, Coord, Location, LocationType, PlayerMove,
     },
-    WorldCoord,
+    MapCoord,
 };
 use tokio::runtime::{Builder, Runtime};
 use tokio::select;
@@ -132,9 +132,9 @@ impl EntityController {
                                                         let species = Species::from(new_entity.family.unwrap());
                                                         let mut instance = EntityModel::new(new_entity.name, new_entity.uuid, species);
                                                         let m = new_entity.location.unwrap().cell.unwrap();
-                                                        let w = new_entity.location.unwrap().world.unwrap();
+                                                        let w = new_entity.location.unwrap().map.unwrap();
                                                         instance.set_cell(CellCoord {x: m.x, y: m.y});
-                                                        instance.set_world(WorldCoord {x: w.x as i8, y: w.y as i8});
+                                                        instance.set_map(MapCoord {x: w.x as i8, y: w.y as i8});
                                                         instance.set_path(Vec::new(), None);
                                                         let mut entities = some_entities.lock().await;
                                                         entities.push(Box::new(instance));
@@ -175,10 +175,10 @@ impl EntityController {
         });
     }
 
-    pub fn player_world(&self) -> WorldCoord {
+    pub fn player_map(&self) -> MapCoord {
         match &self.player {
-            Some(player) => player.get_world().clone(),
-            None => WorldCoord::default(),
+            Some(player) => player.get_map().clone(),
+            None => MapCoord::default(),
         }
     }
 
@@ -202,7 +202,7 @@ impl EntityController {
 
     fn send_player_move_event(
         tx: &Option<Sender<ClientEntityEvent>>,
-        world: WorldCoord,
+        map: MapCoord,
         cell: CellCoord,
         ltype: LocationType,
     ) {
@@ -210,9 +210,9 @@ impl EntityController {
             let player_move = PlayerMove {
                 location_type: ltype.into(),
                 new_location: Some(Location {
-                    world: Some(Coord {
-                        x: world.x as i64,
-                        y: world.y as i64,
+                    map: Some(Coord {
+                        x: map.x as i64,
+                        y: map.y as i64,
                     }),
                     cell: Some(Coord {
                         x: cell.x,
@@ -238,12 +238,12 @@ impl EntityController {
             if let Some(location_type) = player.update(delta_ts, world) {
                 Self::send_player_move_event(
                     &self.tx,
-                    player.get_world(),
+                    player.get_map(),
                     player.get_cell(),
                     location_type,
                 );
 
-                if location_type == LocationType::NewWorld {
+                if location_type == LocationType::NewMap {
                     self.operations = EntityOperation::ClearEntities;
                 }
             }
@@ -265,7 +265,7 @@ impl EntityController {
                             entity.update(delta_ts, world);
                             self.view.update(delta_ts, entity);
 
-                            if let Some(map_data) = world.world.get(&player.get_world()) {
+                            if let Some(map_data) = world.world.get(&player.get_map()) {
                                 if let Some(new_destination) = entity.consume_destination() {
                                     self.path_finder.compute(
                                         entity.get_cell(),
@@ -293,7 +293,7 @@ impl EntityController {
         self.mouse_pos = args.clone();
     }
 
-    pub fn key_press(&mut self, args: &Button, world_map: &HashMap<WorldCoord, MapData>) {
+    pub fn key_press(&mut self, args: &Button, world: &HashMap<MapCoord, MapData>) {
         if let Some(player) = &mut self.player {
             if let Button::Mouse(MouseButton::Left) = args {
                 let mouse_x = (self.mouse_pos[0] - self.margin.width) as i64;
@@ -320,7 +320,7 @@ impl EntityController {
                     _ => None,
                 };
 
-                if let Some(map_data) = world_map.get(&player.get_world()) {
+                if let Some(map_data) = world.get(&player.get_map()) {
                     let path_found = self.path_finder.compute(
                         player.get_cell(),
                         destination,
@@ -330,7 +330,7 @@ impl EntityController {
                         player.set_path(self.path_finder.get_path(), next_map_x.or(next_map_y));
                         Self::send_player_move_event(
                             &self.tx,
-                            player.get_world(),
+                            player.get_map(),
                             destination,
                             LocationType::NewCell,
                         );

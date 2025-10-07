@@ -13,7 +13,7 @@ use crate::{
     },
     grpc_codegen::Location as RpcLocation,
     record::Record,
-    CellCoord, WorldCoord,
+    CellCoord, MapCoord,
 };
 
 pub struct MonsterHandler {
@@ -40,17 +40,13 @@ impl MonsterHandler {
         return Ok(entry);
     }
 
-    pub fn create(
-        &mut self,
-        species: &PgSpecies,
-        world: WorldCoord,
-    ) -> Result<Monster, DieselError> {
+    pub fn create(&mut self, species: &PgSpecies, map: MapCoord) -> Result<Monster, DieselError> {
         let location = Location::create(
             &mut self.connection,
             &CreateLocation {
                 // Impl. random (require to load each map collider grid to avoid spawning on collider)
                 cell: CellCoord::random().into(),
-                world: world.into(),
+                map: map.into(),
                 destination: None,
             },
         )?;
@@ -75,27 +71,14 @@ impl MonsterHandler {
 
     /// Update the Monster location with `new_loc`
     /// If `new_loc` match the `destination` then `destination` is reset to None
-    pub fn update_location(
-        &mut self,
-        entity_id: i32,
-        new_loc: RpcLocation,
-    ) -> Result<(), DieselError> {
-        let new_w = PgPoint(
-            new_loc.world.unwrap().x as f64,
-            new_loc.world.unwrap().y as f64,
-        );
-        let new_m = PgPoint(
-            new_loc.cell.unwrap().x as f64,
-            new_loc.cell.unwrap().y as f64,
-        );
+    pub fn update_location(&mut self, entity_id: i32, loc: RpcLocation) -> Result<(), DieselError> {
+        let map = PgPoint(loc.map.unwrap().x as f64, loc.map.unwrap().y as f64);
+        let cell = PgPoint(loc.cell.unwrap().x as f64, loc.cell.unwrap().y as f64);
 
         Location::update_by_entity_id(
             &mut self.connection,
             &entity_id,
-            UpdateLocation {
-                world: new_w,
-                cell: new_m,
-            },
+            UpdateLocation { map, cell },
         )?;
         Ok(())
     }

@@ -30,7 +30,7 @@ Table characters_entities {
 
 Table locations {
   entity_id varchar(12) [not null, unique]
-  world point [not null]
+  map point [not null]
   cell point [not null]
 }
 

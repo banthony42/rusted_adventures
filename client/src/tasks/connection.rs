@@ -5,7 +5,7 @@ use super::task::{GameData, TaskData, TaskInterface};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
 use common::grpc_codegen::rpg_entity_client::RpgEntityClient;
 use common::grpc_codegen::{AuthReply, AuthRequest, EmptyRequest, Entities, Entity, PlayerData};
-use common::{CellCoord, WorldCoord};
+use common::{CellCoord, MapCoord};
 use std::error::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -166,17 +166,17 @@ impl TryInto<EntityModel> for &Entity {
         let species = Species::from(self.family.unwrap());
         let mut entity_model = EntityModel::new(self.name.clone(), self.uuid.clone(), species);
         // For now i don't find the tonic / gRPC syntax or trick to force a field to not be an rust Option
-        // entity.proto Location.world and Location.map should be always defined
+        // entity.proto Location.map and Location.cell should be always defined
         // That's why here i use massively unwrap() for now, i want the code to fail explictly here
-        let rpc_world = self.location.unwrap().world.unwrap();
-        let rpc_map = self.location.unwrap().cell.unwrap();
-        entity_model.set_world(WorldCoord {
-            x: rpc_world.x as i8, // protobuf smallest int type is i32
-            y: rpc_world.y as i8, // protobuf smallest int type is i32
+        let map = self.location.unwrap().map.unwrap();
+        let cell = self.location.unwrap().cell.unwrap();
+        entity_model.set_map(MapCoord {
+            x: map.x as i8, // protobuf smallest int type is i32
+            y: map.y as i8, // protobuf smallest int type is i32
         });
         entity_model.set_cell(CellCoord {
-            x: rpc_map.x,
-            y: rpc_map.y,
+            x: cell.x,
+            y: cell.y,
         });
         Ok(entity_model)
     }

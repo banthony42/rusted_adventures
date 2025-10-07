@@ -19,7 +19,7 @@ message Coord {
 }
 
 message Location {
-    Coord world = 1;
+    Coord map = 1;
     Coord cell = 2;
 }
 
@@ -42,7 +42,7 @@ message Entities {
 }
 
 enum LocationType {
-    NewWorld = 0;
+    NewMap = 0;
     NewCell = 1;
     Update = 2;
 }

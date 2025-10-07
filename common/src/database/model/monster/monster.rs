@@ -24,13 +24,13 @@ type MonsterInfoData = (
 
 impl Into<MonsterInfo> for MonsterInfoData {
     fn into(self) -> MonsterInfo {
-        let (id, entity_id, name, species, world, cell, destination) = self;
+        let (id, entity_id, name, species, map, cell, destination) = self;
         MonsterInfo {
             id,
             entity_id,
             name: name,
             species,
-            world,
+            map,
             cell,
             destination,
         }
@@ -42,7 +42,7 @@ pub struct MonsterInfo {
     pub entity_id: i32,
     pub name: String,
     pub species: PgSpecies,
-    pub world: PgPoint,
+    pub map: PgPoint,
     pub cell: PgPoint,
     pub destination: Option<PgPoint>,
 }
@@ -64,7 +64,7 @@ impl Into<RpcEntity> for MonsterInfo {
             name: self.name,
             family: Some(self.species.into()),
             location: Some(RpcLocation {
-                world: Some(self.world.into()),
+                map: Some(self.map.into()),
                 cell: Some(self.cell.into()),
             }),
         }
@@ -102,7 +102,7 @@ impl Monster {
                 monsters::entity_id,
                 bestiary::name,
                 bestiary::species,
-                locations::world,
+                locations::map,
                 locations::cell,
                 locations::destination,
             ))
@@ -117,21 +117,21 @@ impl Monster {
         diesel::delete(monsters::table.filter(monsters::id.eq(id))).execute(db)
     }
 
-    pub fn read_all_by_world(
+    pub fn read_all_by_map(
         db: &mut Connection,
-        world_coord: PgPoint,
+        map_coord: PgPoint,
     ) -> QueryResult<Vec<MonsterInfo>> {
         let data: Vec<MonsterInfoData> = entities::table
             .inner_join(locations::table)
             .inner_join(monsters::table)
             .inner_join(bestiary::table.on(bestiary::id.eq(monsters::bestiary_id)))
-            .filter(locations::world.same_as(world_coord))
+            .filter(locations::map.same_as(map_coord))
             .select((
                 monsters::id,
                 monsters::entity_id,
                 bestiary::name,
                 bestiary::species,
-                locations::world,
+                locations::map,
                 locations::cell,
                 locations::destination,
             ))
