@@ -2,7 +2,7 @@ use common::{
     database::model::{monster::Monster, EntityIdentifiable},
     grpc_codegen::{Coord as RpcCoord, Location as RpcLocation},
     monster::MonsterHandler,
-    MapCoord,
+    CellCoord,
 };
 use tokio::sync::mpsc::Sender;
 
@@ -67,15 +67,15 @@ fn move_behaviour(
         .then(|| rand::random_range(-remaining_pm..remaining_pm))
         .unwrap_or(0);
 
-    let new_destination = MapCoord {
-        x: monster.map.0 as i64 + move_x,
-        y: monster.map.1 as i64 + move_y,
+    let new_destination = CellCoord {
+        x: monster.cell.0 as i64 + move_x,
+        y: monster.cell.1 as i64 + move_y,
     }
     .limit();
 
     let new_rpc_loc = RpcLocation {
         world: Some(monster.world.into()),
-        map: Some(RpcCoord {
+        cell: Some(RpcCoord {
             x: new_destination.x,
             y: new_destination.y,
         }),

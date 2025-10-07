@@ -28,7 +28,7 @@ impl Location {
         db: &mut Connection,
         location: Location,
     ) -> QueryResult<Self> {
-        if location.destination == Some(location.map) {
+        if location.destination == Some(location.cell) {
             return Self::update_destination(
                 db,
                 &location.id,

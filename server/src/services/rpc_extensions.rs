@@ -45,7 +45,7 @@ pub trait RpcLocationExtension {
 
 impl RpcLocationExtension for RpcLocation {
     fn into_update_destination(&self) -> Option<UpdateLocationDestination> {
-        if let Some(map) = self.map {
+        if let Some(map) = self.cell {
             return Some(UpdateLocationDestination {
                 destination: Some(map.into()),
             });
@@ -62,7 +62,7 @@ impl RpcCoordExtension for RpcCoord {
     fn into_destination(&self) -> RpcLocation {
         RpcLocation {
             world: None,
-            map: Some(self.clone()),
+            cell: Some(self.clone()),
         }
     }
 }

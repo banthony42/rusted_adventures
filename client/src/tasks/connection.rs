@@ -5,7 +5,7 @@ use super::task::{GameData, TaskData, TaskInterface};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
 use common::grpc_codegen::rpg_entity_client::RpgEntityClient;
 use common::grpc_codegen::{AuthReply, AuthRequest, EmptyRequest, Entities, Entity, PlayerData};
-use common::{MapCoord, WorldCoord};
+use common::{CellCoord, WorldCoord};
 use std::error::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -169,12 +169,12 @@ impl TryInto<EntityModel> for &Entity {
         // entity.proto Location.world and Location.map should be always defined
         // That's why here i use massively unwrap() for now, i want the code to fail explictly here
         let rpc_world = self.location.unwrap().world.unwrap();
-        let rpc_map = self.location.unwrap().map.unwrap();
+        let rpc_map = self.location.unwrap().cell.unwrap();
         entity_model.set_world(WorldCoord {
             x: rpc_world.x as i8, // protobuf smallest int type is i32
             y: rpc_world.y as i8, // protobuf smallest int type is i32
         });
-        entity_model.set_map(MapCoord {
+        entity_model.set_cell(CellCoord {
             x: rpc_map.x,
             y: rpc_map.y,
         });

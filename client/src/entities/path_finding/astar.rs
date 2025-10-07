@@ -1,11 +1,11 @@
-use common::MapCoord;
+use common::CellCoord;
 
 use common::constants::TILEMAP_LINEAR_SIZE;
 
 use super::PathFindingStrategy;
 
 struct Cell {
-    cell: MapCoord,
+    cell: CellCoord,
     priority: u32,
 }
 
@@ -28,20 +28,20 @@ impl PriorityQueue {
         self.0.clear();
     }
 }
-const RIGHT_NEIGHBOR: MapCoord = MapCoord { x: 1, y: 0 };
-const BOTTOM_NEIGHBOR: MapCoord = MapCoord { x: 0, y: 1 };
-const LEFT_NEIGHBOR: MapCoord = MapCoord { x: -1, y: 0 };
-const TOP_NEIGHBOR: MapCoord = MapCoord { x: 0, y: -1 };
+const RIGHT_NEIGHBOR: CellCoord = CellCoord { x: 1, y: 0 };
+const BOTTOM_NEIGHBOR: CellCoord = CellCoord { x: 0, y: 1 };
+const LEFT_NEIGHBOR: CellCoord = CellCoord { x: -1, y: 0 };
+const TOP_NEIGHBOR: CellCoord = CellCoord { x: 0, y: -1 };
 
 pub struct AStar {
     cells: PriorityQueue,
     cost: Vec<Option<u32>>,
-    predecessors: Vec<Option<MapCoord>>,
-    path_found: Vec<MapCoord>,
+    predecessors: Vec<Option<CellCoord>>,
+    path_found: Vec<CellCoord>,
 }
 
 impl AStar {
-    fn manhattan_distance_from(&self, cell: &MapCoord, destination: MapCoord) -> u32 {
+    fn manhattan_distance_from(&self, cell: &CellCoord, destination: CellCoord) -> u32 {
         ((cell.x - destination.x).abs() + (cell.y - destination.y).abs()).max(0) as u32
     }
 
@@ -52,7 +52,7 @@ impl AStar {
         self.path_found.clear();
     }
 
-    fn build_path(&mut self, destination: MapCoord) {
+    fn build_path(&mut self, destination: CellCoord) {
         let mut cursor = destination;
         self.path_found.push(destination);
 
@@ -63,7 +63,7 @@ impl AStar {
         self.path_found.pop();
     }
 
-    fn valid_neighbors(&self, map_coord: MapCoord, map: &Vec<Vec<bool>>) -> Vec<MapCoord> {
+    fn valid_neighbors(&self, map_coord: CellCoord, map: &Vec<Vec<bool>>) -> Vec<CellCoord> {
         vec![
             (map_coord + RIGHT_NEIGHBOR).limit(),
             (map_coord + LEFT_NEIGHBOR).limit(),
@@ -86,7 +86,12 @@ impl PathFindingStrategy for AStar {
         }
     }
 
-    fn compute(&mut self, start: MapCoord, destination: MapCoord, map: &Vec<Vec<bool>>) -> bool {
+    fn compute(
+        &mut self,
+        start: CellCoord,
+        destination: CellCoord,
+        collider_map: &Vec<Vec<bool>>,
+    ) -> bool {
         self.clear();
         // Initialize AStar algorithm
         self.cost[start.linear_index()] = Some(0);
@@ -101,7 +106,7 @@ impl PathFindingStrategy for AStar {
                 return true;
             }
 
-            self.valid_neighbors(current.cell, &map)
+            self.valid_neighbors(current.cell, &collider_map)
                 .iter()
                 .for_each(|nb| {
                     let current_cost = self.cost[current.cell.linear_index()]
@@ -129,7 +134,7 @@ impl PathFindingStrategy for AStar {
         false
     }
 
-    fn get_path(&self) -> Vec<MapCoord> {
+    fn get_path(&self) -> Vec<CellCoord> {
         self.path_found.clone()
     }
 }

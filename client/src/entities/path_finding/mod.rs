@@ -1,11 +1,16 @@
-use common::MapCoord;
+use common::CellCoord;
 
 pub mod astar;
 
 pub trait PathFindingStrategy {
     fn new() -> Self;
-    fn compute(&mut self, start: MapCoord, destination: MapCoord, map: &Vec<Vec<bool>>) -> bool;
-    fn get_path(&self) -> Vec<MapCoord>;
+    fn compute(
+        &mut self,
+        start: CellCoord,
+        destination: CellCoord,
+        colllider_map: &Vec<Vec<bool>>,
+    ) -> bool;
+    fn get_path(&self) -> Vec<CellCoord>;
 }
 
 pub struct PathFinder<T>
@@ -25,14 +30,14 @@ where
 
     pub fn compute(
         &mut self,
-        start: MapCoord,
-        destination: MapCoord,
-        map: &Vec<Vec<bool>>,
+        start: CellCoord,
+        destination: CellCoord,
+        collider_map: &Vec<Vec<bool>>,
     ) -> bool {
-        self.strategy.compute(start, destination, map)
+        self.strategy.compute(start, destination, collider_map)
     }
 
-    pub fn get_path(&self) -> Vec<MapCoord> {
+    pub fn get_path(&self) -> Vec<CellCoord> {
         self.strategy.get_path()
     }
 }

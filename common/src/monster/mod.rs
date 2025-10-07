@@ -13,7 +13,7 @@ use crate::{
     },
     grpc_codegen::Location as RpcLocation,
     record::Record,
-    MapCoord, WorldCoord,
+    CellCoord, WorldCoord,
 };
 
 pub struct MonsterHandler {
@@ -49,7 +49,7 @@ impl MonsterHandler {
             &mut self.connection,
             &CreateLocation {
                 // Impl. random (require to load each map collider grid to avoid spawning on collider)
-                map: MapCoord::random().into(),
+                cell: CellCoord::random().into(),
                 world: world.into(),
                 destination: None,
             },
@@ -84,14 +84,17 @@ impl MonsterHandler {
             new_loc.world.unwrap().x as f64,
             new_loc.world.unwrap().y as f64,
         );
-        let new_m = PgPoint(new_loc.map.unwrap().x as f64, new_loc.map.unwrap().y as f64);
+        let new_m = PgPoint(
+            new_loc.cell.unwrap().x as f64,
+            new_loc.cell.unwrap().y as f64,
+        );
 
         Location::update_by_entity_id(
             &mut self.connection,
             &entity_id,
             UpdateLocation {
                 world: new_w,
-                map: new_m,
+                cell: new_m,
             },
         )?;
         Ok(())

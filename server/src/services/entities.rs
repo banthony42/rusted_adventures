@@ -97,7 +97,7 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
     match move_event.location_type() {
         // Player has changed cell
         LocationType::Update => _ = character.update_location(new_location),
-        LocationType::NewMap => {
+        LocationType::NewCell => {
             // Player has changed destination
             if let Some(new_destination) = new_location.into_update_destination() {
                 character.update_destination(new_destination);

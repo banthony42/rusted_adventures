@@ -85,7 +85,7 @@ pub mod constants {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct MapCoord {
+pub struct CellCoord {
     pub x: i64,
     pub y: i64,
 }
@@ -102,13 +102,13 @@ impl Into<PgPoint> for WorldCoord {
     }
 }
 
-impl Into<PgPoint> for MapCoord {
+impl Into<PgPoint> for CellCoord {
     fn into(self) -> PgPoint {
         PgPoint(self.x as f64, self.y as f64)
     }
 }
 
-impl MapCoord {
+impl CellCoord {
     /// Get linear index of this Map coordinate.
     /// Then it can be use to retrieve the same pixel in an 1D array,
     /// where its size is TILEMAP_LINEAR_SIZE (TILEMAP_WIDTH * TILEMAP_HEIGHT)
@@ -146,7 +146,7 @@ impl MapCoord {
     }
 }
 
-impl std::ops::Mul<f64> for MapCoord {
+impl std::ops::Mul<f64> for CellCoord {
     type Output = Self;
 
     fn mul(self, rhs: f64) -> Self::Output {
@@ -157,13 +157,13 @@ impl std::ops::Mul<f64> for MapCoord {
     }
 }
 
-impl MulAssign<f64> for MapCoord {
+impl MulAssign<f64> for CellCoord {
     fn mul_assign(&mut self, rhs: f64) {
         *self = *self * rhs;
     }
 }
 
-impl std::ops::Sub for MapCoord {
+impl std::ops::Sub for CellCoord {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -174,13 +174,13 @@ impl std::ops::Sub for MapCoord {
     }
 }
 
-impl SubAssign for MapCoord {
+impl SubAssign for CellCoord {
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
 }
 
-impl std::ops::Add for MapCoord {
+impl std::ops::Add for CellCoord {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -191,7 +191,7 @@ impl std::ops::Add for MapCoord {
     }
 }
 
-impl std::ops::AddAssign for MapCoord {
+impl std::ops::AddAssign for CellCoord {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }

@@ -1,5 +1,5 @@
 use common::grpc_codegen::LocationType;
-use common::{constants::*, MapCoord, WorldCoord};
+use common::{constants::*, CellCoord, WorldCoord};
 
 use crate::{
     import::assets::{Animations, EntityAssets},
@@ -22,13 +22,13 @@ pub struct EntityModel {
     name: String,
     uuid: String,
     species: Species,
-    offset: MapCoord,
+    offset: CellCoord,
     step: f64,
-    map: MapCoord,
+    cell: CellCoord,
     world: WorldCoord,
     state: Animations,
-    destination: Option<MapCoord>,
-    path: Vec<MapCoord>,
+    destination: Option<CellCoord>,
+    path: Vec<CellCoord>,
     orientation: Orientation,
     next_map: Option<Orientation>,
     frame: u8,
@@ -46,8 +46,8 @@ pub trait IEntity: Send {
 
     fn get_uuid(&self) -> &String;
 
-    fn get_map(&self) -> MapCoord;
-    fn set_map(&mut self, map: MapCoord);
+    fn get_cell(&self) -> CellCoord;
+    fn set_cell(&mut self, cell: CellCoord);
 
     fn get_timer(&self) -> u128;
     fn set_timer(&mut self, timer: u128);
@@ -57,13 +57,13 @@ pub trait IEntity: Send {
 
     fn get_assets(&self) -> &EntityAssets;
 
-    fn set_path(&mut self, path: Vec<MapCoord>, next_map: Option<Orientation>);
+    fn set_path(&mut self, path: Vec<CellCoord>, next_map: Option<Orientation>);
 
-    fn consume_destination(&mut self) -> Option<MapCoord>;
-    fn set_destination(&mut self, destination: MapCoord);
+    fn consume_destination(&mut self) -> Option<CellCoord>;
+    fn set_destination(&mut self, destination: CellCoord);
 
     fn update(&mut self, delta_ts: u128, world: &World) -> Option<LocationType>;
-    fn get_real_pos(&self) -> MapCoord;
+    fn get_real_pos(&self) -> CellCoord;
 
     fn get_orientation(&self) -> &Orientation;
 }
@@ -74,9 +74,9 @@ impl EntityModel {
             name,
             uuid,
             species: race,
-            offset: MapCoord::default(),
+            offset: CellCoord::default(),
             world: WorldCoord::default(),
-            map: MapCoord::default(),
+            cell: CellCoord::default(),
             state: Animations::default(),
             destination: None,
             path: Vec::new(),
@@ -131,12 +131,12 @@ impl IEntity for EntityModel {
         self.world
     }
 
-    fn set_map(&mut self, map: MapCoord) {
-        self.map = map.limit();
+    fn set_cell(&mut self, cell: CellCoord) {
+        self.cell = cell.limit();
     }
 
-    fn get_map(&self) -> MapCoord {
-        self.map
+    fn get_cell(&self) -> CellCoord {
+        self.cell
     }
 
     fn get_timer(&self) -> u128 {
@@ -159,7 +159,7 @@ impl IEntity for EntityModel {
         self.get_assets()
     }
 
-    fn set_path(&mut self, path: Vec<MapCoord>, next_map: Option<Orientation>) {
+    fn set_path(&mut self, path: Vec<CellCoord>, next_map: Option<Orientation>) {
         self.path = path;
         self.next_map = next_map;
     }
@@ -171,7 +171,7 @@ impl IEntity for EntityModel {
             self.world = match self.next_map.take() {
                 Some(Orientation::Est) => {
                     if let Some(new_map) = world.get_east_map(&self.world) {
-                        self.map.x = 0;
+                        self.cell.x = 0;
                         new_pos = Some(LocationType::NewWorld);
                         new_map.0
                     } else {
@@ -180,7 +180,7 @@ impl IEntity for EntityModel {
                 }
                 Some(Orientation::West) => {
                     if let Some(new_map) = world.get_west_map(&self.world) {
-                        self.map.x = TILEMAP_WIDTH as i64 - 1;
+                        self.cell.x = TILEMAP_WIDTH as i64 - 1;
                         new_pos = Some(LocationType::NewWorld);
                         new_map.0
                     } else {
@@ -194,16 +194,16 @@ impl IEntity for EntityModel {
             let target = *self.path.last().unwrap(); //TODO: remove unwrap
 
             // Compute unit vector (x and y could be 1, -1 or 0)
-            let mut direction = target - self.map;
+            let mut direction = target - self.cell;
             if self.step > 1.0 {
-                self.map = self.path.pop().unwrap();
+                self.cell = self.path.pop().unwrap();
                 self.offset.x = 0;
                 self.offset.y = 0;
                 self.step = 0.0;
                 new_pos = Some(LocationType::Update);
             } else {
                 direction *= 64.0;
-                self.offset = MapCoord {
+                self.offset = CellCoord {
                     x: lerp(0.0, direction.x as f64, self.step) as i64,
                     y: lerp(0.0, direction.y as f64, self.step) as i64,
                 };
@@ -223,10 +223,10 @@ impl IEntity for EntityModel {
         new_pos
     }
 
-    fn get_real_pos(&self) -> MapCoord {
-        MapCoord {
-            x: self.map.x * 64 + self.offset.x,
-            y: self.map.y * 64 + self.offset.y,
+    fn get_real_pos(&self) -> CellCoord {
+        CellCoord {
+            x: self.cell.x * 64 + self.offset.x,
+            y: self.cell.y * 64 + self.offset.y,
         }
     }
 
@@ -238,11 +238,11 @@ impl IEntity for EntityModel {
         &self.uuid
     }
 
-    fn consume_destination(&mut self) -> Option<MapCoord> {
+    fn consume_destination(&mut self) -> Option<CellCoord> {
         self.destination.take()
     }
 
-    fn set_destination(&mut self, destination: MapCoord) {
+    fn set_destination(&mut self, destination: CellCoord) {
         self.destination = Some(destination);
     }
 

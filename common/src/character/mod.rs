@@ -16,7 +16,7 @@ use crate::{
         },
     },
     grpc_codegen::{Coord, Location as RpcLocation},
-    MapCoord,
+    CellCoord,
 };
 
 use crate::grpc_codegen::Entity as RpcEntity;
@@ -85,8 +85,8 @@ impl CharacterHandler {
         PgPoint(0.0, 0.0)
     }
 
-    fn map_spawn() -> PgPoint {
-        MapCoord::spawn().into()
+    fn cell_spawn() -> PgPoint {
+        CellCoord::spawn().into()
     }
 
     /// Create a character for the account, return an handler for it.
@@ -100,7 +100,7 @@ impl CharacterHandler {
         let location = Location::create(
             &mut connection,
             &CreateLocation {
-                map: Self::map_spawn(),
+                cell: Self::cell_spawn(),
                 world: Self::world_spawn(),
                 destination: None,
             },
@@ -192,14 +192,17 @@ impl CharacterHandler {
             new_loc.world.unwrap().x as f64,
             new_loc.world.unwrap().y as f64,
         );
-        let new_m = PgPoint(new_loc.map.unwrap().x as f64, new_loc.map.unwrap().y as f64);
+        let new_cell = PgPoint(
+            new_loc.cell.unwrap().x as f64,
+            new_loc.cell.unwrap().y as f64,
+        );
 
         Location::update_by_entity_id(
             &mut self.connection,
             &self.character.entity_id,
             UpdateLocation {
                 world: new_w,
-                map: new_m,
+                cell: new_cell,
             },
         )?;
         Ok(())

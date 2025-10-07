@@ -133,8 +133,8 @@ impl World {
         return world;
     }
 
-    pub fn render(&self, evnt: &Event, window: &mut PistonWindow, player_world_map: &WorldCoord) {
-        let map_data = self.world.get(player_world_map).unwrap();
+    pub fn render(&self, evnt: &Event, window: &mut PistonWindow, coord: &WorldCoord) {
+        let map_data = self.world.get(coord).unwrap();
         window.draw_2d(evnt, |ctx, gl, _device| {
             let _ = map_data.frames[map_data.f_ptr]
                 .sprites

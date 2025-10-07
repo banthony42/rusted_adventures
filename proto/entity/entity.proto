@@ -20,7 +20,7 @@ message Coord {
 
 message Location {
     Coord world = 1;
-    Coord map = 2;
+    Coord cell = 2;
 }
 
 message Entity {
@@ -43,7 +43,7 @@ message Entities {
 
 enum LocationType {
     NewWorld = 0;
-    NewMap = 1;
+    NewCell = 1;
     Update = 2;
 }
 
@@ -77,10 +77,6 @@ message ServerEntityEvent {
         EntitySpawn entity_spawn_event = 2;
         EntityDespawn entity_despawn_event = 3;
     };
-}
-
-message PlayerNewMapRequest {
-    Location new_location = 1;
 }
 
 service RPGEntity {

@@ -12,7 +12,7 @@ pub mod location;
 pub struct Location {
     pub id: i32,
     pub world: PgPoint,
-    pub map: PgPoint,
+    pub cell: PgPoint,
     pub destination: Option<PgPoint>,
 }
 
@@ -20,7 +20,7 @@ pub struct Location {
 #[diesel(table_name = crate::database::schema::locations)]
 pub struct CreateLocation {
     pub world: PgPoint,
-    pub map: PgPoint,
+    pub cell: PgPoint,
     pub destination: Option<PgPoint>,
 }
 
@@ -28,7 +28,7 @@ pub struct CreateLocation {
 #[diesel(table_name = crate::database::schema::locations)]
 pub struct UpdateLocation {
     pub world: PgPoint,
-    pub map: PgPoint,
+    pub cell: PgPoint,
 }
 
 #[derive(Debug, Insertable, AsChangeset)]

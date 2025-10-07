@@ -24,14 +24,14 @@ type MonsterInfoData = (
 
 impl Into<MonsterInfo> for MonsterInfoData {
     fn into(self) -> MonsterInfo {
-        let (id, entity_id, name, species, world, map, destination) = self;
+        let (id, entity_id, name, species, world, cell, destination) = self;
         MonsterInfo {
             id,
             entity_id,
             name: name,
             species,
             world,
-            map,
+            cell,
             destination,
         }
     }
@@ -43,7 +43,7 @@ pub struct MonsterInfo {
     pub name: String,
     pub species: PgSpecies,
     pub world: PgPoint,
-    pub map: PgPoint,
+    pub cell: PgPoint,
     pub destination: Option<PgPoint>,
 }
 
@@ -65,7 +65,7 @@ impl Into<RpcEntity> for MonsterInfo {
             family: Some(self.species.into()),
             location: Some(RpcLocation {
                 world: Some(self.world.into()),
-                map: Some(self.map.into()),
+                cell: Some(self.cell.into()),
             }),
         }
     }
@@ -103,7 +103,7 @@ impl Monster {
                 bestiary::name,
                 bestiary::species,
                 locations::world,
-                locations::map,
+                locations::cell,
                 locations::destination,
             ))
             .get_result(db)?;
@@ -132,7 +132,7 @@ impl Monster {
                 bestiary::name,
                 bestiary::species,
                 locations::world,
-                locations::map,
+                locations::cell,
                 locations::destination,
             ))
             .load(db)?;

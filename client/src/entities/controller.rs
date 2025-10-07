@@ -20,7 +20,7 @@ use super::{
     view::EntityView,
 };
 
-use common::{constants::*, MapCoord};
+use common::{constants::*, CellCoord};
 use common::{
     grpc_codegen::{
         client_entity_event::Event::PlayerMoveEvent,
@@ -119,8 +119,8 @@ impl EntityController {
                                                         // Set a new destination therefore the new path will be compute at the next update call
                                                         .map(|entity| {
                                                             if let Some(location) = entity_move.new_location {
-                                                                if let Some(map) = location.map {
-                                                                    entity.set_destination(MapCoord { x: map.x, y: map.y });
+                                                                if let Some(map) = location.cell {
+                                                                    entity.set_destination(CellCoord { x: map.x, y: map.y });
                                                                 }
                                                             }
                                                         })
@@ -131,9 +131,9 @@ impl EntityController {
                                                     if let Some(new_entity) = entity_spawn.new_entity {
                                                         let species = Species::from(new_entity.family.unwrap());
                                                         let mut instance = EntityModel::new(new_entity.name, new_entity.uuid, species);
-                                                        let m = new_entity.location.unwrap().map.unwrap();
+                                                        let m = new_entity.location.unwrap().cell.unwrap();
                                                         let w = new_entity.location.unwrap().world.unwrap();
-                                                        instance.set_map(MapCoord {x: m.x, y: m.y});
+                                                        instance.set_cell(CellCoord {x: m.x, y: m.y});
                                                         instance.set_world(WorldCoord {x: w.x as i8, y: w.y as i8});
                                                         instance.set_path(Vec::new(), None);
                                                         let mut entities = some_entities.lock().await;
@@ -203,7 +203,7 @@ impl EntityController {
     fn send_player_move_event(
         tx: &Option<Sender<ClientEntityEvent>>,
         world: WorldCoord,
-        map: MapCoord,
+        cell: CellCoord,
         ltype: LocationType,
     ) {
         if let Some(tx) = tx {
@@ -214,7 +214,10 @@ impl EntityController {
                         x: world.x as i64,
                         y: world.y as i64,
                     }),
-                    map: Some(Coord { x: map.x, y: map.y }),
+                    cell: Some(Coord {
+                        x: cell.x,
+                        y: cell.y,
+                    }),
                 }),
             };
             let event = ClientEntityEvent {
@@ -236,7 +239,7 @@ impl EntityController {
                 Self::send_player_move_event(
                     &self.tx,
                     player.get_world(),
-                    player.get_map(),
+                    player.get_cell(),
                     location_type,
                 );
 
@@ -265,7 +268,7 @@ impl EntityController {
                             if let Some(map_data) = world.world.get(&player.get_world()) {
                                 if let Some(new_destination) = entity.consume_destination() {
                                     self.path_finder.compute(
-                                        entity.get_map(),
+                                        entity.get_cell(),
                                         new_destination,
                                         &map_data.colliders,
                                     );
@@ -300,7 +303,7 @@ impl EntityController {
                     return;
                 }
 
-                let destination = MapCoord {
+                let destination = CellCoord {
                     x: mouse_x / 64,
                     y: mouse_y / 64,
                 }
@@ -319,7 +322,7 @@ impl EntityController {
 
                 if let Some(map_data) = world_map.get(&player.get_world()) {
                     let path_found = self.path_finder.compute(
-                        player.get_map(),
+                        player.get_cell(),
                         destination,
                         &map_data.colliders,
                     );
@@ -329,7 +332,7 @@ impl EntityController {
                             &self.tx,
                             player.get_world(),
                             destination,
-                            LocationType::NewMap,
+                            LocationType::NewCell,
                         );
                     }
                 }

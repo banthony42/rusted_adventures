@@ -22,13 +22,13 @@ type CharacterInfoData = (i32, String, PgClasses, PgPoint, PgPoint, Option<PgPoi
 
 impl Into<CharacterInfo> for CharacterInfoData {
     fn into(self) -> CharacterInfo {
-        let (id, name, class, world, map, destination) = self;
+        let (id, name, class, world, cell, destination) = self;
         CharacterInfo {
             id,
             name,
             class,
             world,
-            map,
+            cell,
             destination,
         }
     }
@@ -39,7 +39,7 @@ pub struct CharacterInfo {
     pub name: String,
     pub class: PgClasses,
     pub world: PgPoint,
-    pub map: PgPoint,
+    pub cell: PgPoint,
     pub destination: Option<PgPoint>,
 }
 
@@ -54,7 +54,7 @@ impl CharacterInfo {
             name: character.name.clone(),
             class: character.class.clone(),
             world: location.world,
-            map: location.map,
+            cell: location.cell,
             destination: location.destination,
         })
     }
@@ -88,7 +88,7 @@ impl Into<RpcEntity> for CharacterInfo {
             family: Some(self.class.into()),
             location: Some(RpcLocation {
                 world: Some(self.world.into()),
-                map: Some(self.map.into()),
+                cell: Some(self.cell.into()),
             }),
         }
     }
@@ -178,7 +178,7 @@ impl Character {
                 characters::name,
                 characters::class,
                 locations::world,
-                locations::map,
+                locations::cell,
                 locations::destination,
             ))
             .load(db)?;
