@@ -5,7 +5,6 @@
 
 <h4 align="center">A minimal multiplayer role playing game <span style="font-weight: 750">draft</span> build with <a href="https://www.rust-lang.org/fr" target="_blank" rel="noopener noreferrer">Rust</a> and drawn with <a href="https://www.aseprite.org/" target="_blank" rel="noopener noreferrer">Aseprite</a>.</h4>
 
-
 <p align="center">
   <a href="https://www.rust-lang.org/fr" target="_blank" rel="noopener noreferrer">
     <img src="https://img.shields.io/badge/Rust-black?style=for-the-badge&logo=rust&logoColor=White"
@@ -33,6 +32,7 @@
 ![demo](images/demo.gif)
 
 ## Introduction
+
 **First goal of this project is to learn !**<br>
 All technologies were chosen for the sole purpose of **learning** them.<br>
 
@@ -40,12 +40,14 @@ Goal is not to develop following the video games state of the art.<br>
 Neither to create a real game.
 
 ## Description
+
 Welcome to PROJECT_NAME !
 A minimal multiplayer role playing game, humbly inspired by [Dofus](https://www.dofus.com/fr/mmorpg/decouvrir). <br>
 Here you won't spend hours killing monsters, collecting rare loot or delves perilous dungeons.<br>
 Instead you can observe a passionate trying to implement it.<br>
 
 I set myself the goal of creating the minimum of an RPG:
+
 - [x] Game world with several maps
 - [x] Player account
 - [x] Player movements
@@ -63,19 +65,27 @@ I set myself the goal of creating the minimum of an RPG:
 I have deliberately forget quests. :kissing_smiling_eyes:
 
 ## Architecture
+
 This project is split in four part :
 
-* Client<br>
+- Client<br>
   Displays the game state and transmits the player's actions to the server.
+
 ---
-* Server<br>
+
+- Server<br>
   Handle all events in the game. (entities lifecycle, players input, etc ...)
+
 ---
-* Database<br>
+
+- Database<br>
   Save accounts and players data.
+
 ---
-* Command Line Interface<br>
-  Also known as **CLI**, to replace the game web site and allow us to register  player accounts and manage it.
+
+- Command Line Interface<br>
+  Also known as **CLI**, to replace the game web site and allow us to register player accounts and manage it.
+
 ---
 
 <p>
@@ -135,6 +145,7 @@ cargo install diesel_cli --no-default-features --features postgres
 ```
 
 ### Setup
+
 ```sh
 docker pull postgres
 docker run --name my_db_name -p 4242:5432 -e POSTGRES_USER=username -e POSTGRES_PASSWORD=password -d postgres
@@ -176,18 +187,35 @@ Enjoy !
 
 ## Known Issues
 
+All known issues, and tasks are tracked here : [Trello Board](https://trello.com/b/SlS6G8vq/rpg)
+
 ## Credits
+
+#### Rust :
+
+- [Steve Klabnik - The Rust Programming Language](https://steveklabnik.com/)
+- [Luca Palmieri - Zero To Production In Rust](https://www.zero2prod.com/index.html?country=France&discount_code=VAT20&country_code=FR)
+- [Akanoa - La Forge](https://lafor.ge/)
+  <br>
 - [Rust crates](https://crates.io/) : [ [serde](https://serde.rs/) - [piston](https://www.piston.rs/) - [diesel](https://diesel.rs/) - [tokio](https://tokio.rs/) - [tonic](https://github.com/hyperium/tonic) - [prost](https://crates.io/crates/prost) - [argon2](https://crates.io/crates/argon2) - [clap](https://crates.io/crates/clap) ]
 - [refactoring.guru: Rust design patterns](https://refactoring.guru/design-patterns/behavioral-patterns)
 - [zerotomastery: Rust type state pattern](https://zerotomastery.io/blog/rust-typestate-patterns/)
 - [dev.to: Khaled Hosseini: Play Microservices Auth service](https://dev.to/khaledhosseini/play-microservices-authentication-4di3)
 - [dev.to: Neeraj Sharma: Auth API in Rust using gRPC](https://dev.to/neeraj_sharma_1135657c7f6/how-to-build-an-auth-api-in-rust-grpc-57mc)
-- [Jay Butera: Game server in 150 lines of Rust]() : [sources](https://github.com/jaybutera/mmo-rust-server)
-- [Akanoa - La Forge](https://lafor.ge/)
-- [AStar algorithm](https://www.youtube.com/watch?v=JcYyO14F6KY)
-- [Owasp - Password storage cheat sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
-- [Owasp - Authentication cheat sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#authentication-cheat-sheet)
-- [Display resolution](https://en.wikipedia.org/wiki/Display_resolution)
+
+#### Pixel Art :
+
 - [AdamCYounis - PixelArt class](https://www.youtube.com/playlist?list=PLLdxW--S_0h4dlWUpl-TzBp-ulqK3NiM_)
 - [Baba Des bois - PixelArt - Tutoriels](https://www.youtube.com/playlist?list=PLeeK5VJQ55mOjXTK2kgpoEX-JqFD03brj)
 - [David Capello - export-aseprite-file](https://github.com/dacap/export-aseprite-file)
+
+#### Security :
+
+- [Owasp - Password storage cheat sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+- [Owasp - Authentication cheat sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#authentication-cheat-sheet)
+
+#### Game dev :
+
+- [Display resolution](https://en.wikipedia.org/wiki/Display_resolution)
+- [AStar algorithm](https://www.youtube.com/watch?v=JcYyO14F6KY)
+- [Jay Butera: Game server in 150 lines of Rust]() : [sources](https://github.com/jaybutera/mmo-rust-server)
