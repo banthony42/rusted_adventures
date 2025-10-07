@@ -3,6 +3,6 @@ resolver="2"
 members = [
     "client",
     "common",
-    "db_cli",
+    "rpg-cli",
     "server"
 ]

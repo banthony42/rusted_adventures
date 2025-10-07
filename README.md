@@ -172,7 +172,7 @@ cd rpg
 
 ```sh
 # Create your player account
-./target/debug/db_cli account create mylogin mypassword
+./target/debug/rpc-cli account create mylogin mypassword
 ```
 
 ```sh
