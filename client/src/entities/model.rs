@@ -1,5 +1,5 @@
 use common::grpc_codegen::LocationType;
-use common::{constants::*, CellCoord, MapCoord};
+use common::{constants::*, CellCoord, MapCoord, Orientation};
 
 use crate::{
     import::assets::{Animations, EntityAssets},
@@ -8,14 +8,6 @@ use crate::{
 
 const ENTITY_RUN_SPEED: f64 = 225.0;
 const ENTITY_RUN_STEP_DURATION: f64 = 1.0 / ENTITY_RUN_SPEED;
-
-#[derive(Debug, Clone)]
-pub enum Orientation {
-    Est,
-    West,
-    North,
-    South,
-}
 
 #[derive(Debug, Clone)]
 pub struct EntityModel {

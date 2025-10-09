@@ -4,9 +4,9 @@ use piston_window::*;
 
 use crate::import::assets::{EntityAssets, GameAsset, SpeciesLibrary};
 use crate::ui::font::Font;
-use common::constants::*;
+use common::{constants::*, Orientation};
 
-use super::model::{IEntity, Orientation};
+use super::model::IEntity;
 
 pub struct EntityView {
     pub assets: HashMap<EntityAssets, GameAsset>,

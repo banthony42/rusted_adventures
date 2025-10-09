@@ -4,10 +4,7 @@ use piston::{Button, MouseButton, Size};
 use piston_window::PistonWindow;
 
 use crate::{
-    entities::{
-        model::{EntityModel, Orientation},
-        path_finding::PathFinder,
-    },
+    entities::{model::EntityModel, path_finding::PathFinder},
     import::assets::{EntityAssets, GameAsset},
     ui::font::Font,
     world::{MapData, World},
@@ -20,7 +17,7 @@ use super::{
     view::EntityView,
 };
 
-use common::{constants::*, CellCoord};
+use common::{constants::*, CellCoord, Orientation};
 use common::{
     grpc_codegen::{
         client_entity_event::Event::PlayerMoveEvent,

@@ -1,6 +1,7 @@
 use std::ops::{MulAssign, SubAssign};
 
 use diesel_geometry::data_types::PgPoint;
+use rand::distr::{Distribution, StandardUniform};
 
 pub mod authenticator;
 pub mod character;
@@ -211,5 +212,43 @@ impl std::ops::Add for MapCoord {
 impl std::ops::AddAssign for MapCoord {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Copy)]
+pub enum Orientation {
+    Est,
+    West,
+    North,
+    South,
+}
+
+impl Orientation {
+    /// Return the opposite Orientation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let north = Orientation::North;
+    /// assert_eq!(Orientation::South, north.invert());
+    /// ```
+    pub fn invert(&self) -> Self {
+        match self {
+            Orientation::North => Orientation::South,
+            Orientation::Est => Orientation::West,
+            Orientation::West => Orientation::Est,
+            Orientation::South => Orientation::North,
+        }
+    }
+}
+
+impl Distribution<Orientation> for StandardUniform {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Orientation {
+        match rng.random_range(0..=3) {
+            0 => Orientation::North,
+            1 => Orientation::West,
+            2 => Orientation::Est,
+            _ => Orientation::South,
+        }
     }
 }
