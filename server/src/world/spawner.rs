@@ -32,10 +32,6 @@ impl SpawnOrder {
     ) -> bool {
         match handler.create(&self.species, map) {
             Ok(monster) => {
-                println!(
-                    "{}Monster creation succeed: {:?} {:?}",
-                    LOG_PREFIX, self.species, map
-                );
                 self.running = false;
                 let mob_spawn_event = WorldEvent::MonsterSpawn(MonsterSpawn {
                     map,
@@ -95,11 +91,18 @@ impl Spawner {
                     monsters.len()
                 );
                 if let Some(species) = self.species.choose(&mut rand::rng()) {
-                    self.spawn_orders.push(SpawnOrder {
+                    let order = SpawnOrder {
                         species: species.clone(),
                         timer: 0,
                         running: true,
-                    });
+                    };
+                    println!(
+                        "{}{:?} will spawn in {}s",
+                        LOG_PREFIX,
+                        order.species,
+                        order.spawn_time() / 1000
+                    );
+                    self.spawn_orders.push(order);
                 } else {
                     println!("{}update: Failed to randomly choose species.", LOG_PREFIX);
                 }
@@ -128,14 +131,6 @@ impl WorldEngineComponent for Spawner {
                 order.spawn(handler, self.map, tx);
             } else {
                 order.timer += delta_ts;
-                if order.timer % 10000 <= 200 {
-                    println!(
-                        "{}{:?} will spawn in {}s",
-                        LOG_PREFIX,
-                        order.species,
-                        (order.spawn_time().saturating_sub(order.timer)) / 1000
-                    );
-                }
             }
         }
         // Drop all outdated orders

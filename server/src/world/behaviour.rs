@@ -2,7 +2,7 @@ use common::{
     database::model::{monster::Monster, EntityIdentifiable},
     grpc_codegen::{Coord as RpcCoord, Location as RpcLocation},
     monster::MonsterHandler,
-    CellCoord,
+    CellCoord, Orientation,
 };
 use tokio::sync::mpsc::Sender;
 
@@ -14,7 +14,7 @@ type BehaviourTaskCallback =
 const LOG_PREFIX: &str = "Server: WorldEngine: Behaviour: ";
 const BEHAVIOUR_UPDATE_RATE: u128 = 10000;
 const MOVE_BEHAVIOUR_RATE: u128 = 8000;
-const MONSTER_PM: i64 = 3;
+const MONSTER_PM: i64 = 5;
 
 struct BehaviourTask {
     monster_id: i32,
@@ -60,18 +60,29 @@ fn move_behaviour(
         return false;
     };
 
-    let move_x: i64 = rand::random_range(-MONSTER_PM..MONSTER_PM);
-    let remaining_pm = MONSTER_PM - move_x.abs();
-    let move_y: i64 = remaining_pm
-        .gt(&0)
-        .then(|| rand::random_range(-remaining_pm..remaining_pm))
-        .unwrap_or(0);
+    let mut new_destination = CellCoord {
+        x: monster.cell.0 as i64,
+        y: monster.cell.1 as i64,
+    };
 
-    let new_destination = CellCoord {
-        x: monster.cell.0 as i64 + move_x,
-        y: monster.cell.1 as i64 + move_y,
+    let mut last_orientation: Option<Orientation> = None;
+    for _ in 0..MONSTER_PM {
+        let orientation = loop {
+            match rand::random::<Orientation>() {
+                pick if last_orientation.is_none() => break pick,
+                pick if last_orientation.is_some_and(|inner| inner.invert() != pick) => break pick,
+                _ => { /* pick is same from the last loop iter, retry */ }
+            }
+        };
+        last_orientation = Some(orientation);
+        match orientation {
+            Orientation::North => new_destination += CellCoord { x: 0, y: -1 },
+            Orientation::Est => new_destination += CellCoord { x: 1, y: 0 },
+            Orientation::South => new_destination += CellCoord { x: 0, y: 1 },
+            Orientation::West => new_destination += CellCoord { x: -1, y: 0 },
+        }
     }
-    .limit();
+    new_destination = new_destination.limit();
 
     let new_rpc_loc = RpcLocation {
         map: Some(monster.map.into()),
@@ -138,6 +149,11 @@ impl WorldEngineComponent for BehaviourHandler {
         // Periodically load Monsters from DB
         // Create behaviours (timer + callback) for each monster.id
         if self.timer > BEHAVIOUR_UPDATE_RATE {
+            println!(
+                "{} Behaviour tasks running: {}",
+                LOG_PREFIX,
+                self.tasks.len()
+            );
             if let Ok(monsters) = Monster::read_all(&mut handler.connection) {
                 // Drop all BehaviourTask associated to inexistant monster id in DB
                 self.tasks.retain(|task| {

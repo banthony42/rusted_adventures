@@ -217,7 +217,10 @@ impl RpgEntityService {
                         let monster =
                             Monster::read_info(&mut connection, &data.monster_id).unwrap();
                         let monster_spawn_rpc_event = EntityEvent::spawn(monster.into());
-
+                        println!(
+                            "Server: WorldEvent: monster spawn: {:?}",
+                            monster_spawn_rpc_event
+                        );
                         {
                             let clts = clts_ref.lock().await;
                             // Broadcast all concerned players with the monster spawn
