@@ -12,6 +12,8 @@ tonic = "*"
 prost = "*"
 uuid = "1.15.1"
 byteorder = "1.5.0"
+serde_json = "*"
+serde = {  version = "*", features = [ "derive" ] }
 
 [dependencies.diesel_geometry]
 git = "https://github.com/neeryapp/diesel_geometry.git"

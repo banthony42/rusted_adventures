@@ -1,32 +1,74 @@
 use piston_window::*;
 use std::collections::HashMap;
-use std::fs;
 
-use crate::{
-    import::tilemap::LoadedMap,
-    sprite::{Frame, Sprite},
+use common::{
+    constants::*,
+    world::{tilemap::LoadedMap, ColliderMap, WorldImport},
+    MapCoord,
 };
-use common::{constants::*, MapCoord};
 
-#[derive(Default)]
-pub struct Offset {
-    pub x: u64,
-    pub y: u64,
+use crate::sprite::{Frame, Offset, Sprite};
+
+pub struct Frames(Vec<Frame>);
+
+impl Frames {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn get_frame(&self, index: usize) -> &Frame {
+        &self.0[index]
+    }
+
+    pub fn from(loaded_map: &LoadedMap, tilesets: Vec<G2dTexture>) -> Self {
+        let frames: Vec<Frame> = loaded_map
+            .frames
+            .iter()
+            .enumerate()
+            .map(|(index, duration)| {
+                let sprites: Vec<Sprite> = loaded_map
+                    .sprites
+                    .iter()
+                    .filter(|lsprt| lsprt.frame == index)
+                    .map(|sprt| {
+                        Sprite::new(
+                            tilesets[sprt.tileset_id].clone(),
+                            sprt.tileset_index,
+                            Offset {
+                                x: sprt.bound_x,
+                                y: sprt.bound_y,
+                            },
+                            sprt.tile_index,
+                            sprt.collider,
+                        )
+                    })
+                    .collect();
+
+                Frame::new(sprites, *duration)
+            })
+            .collect();
+        Frames(frames)
+    }
 }
 
 pub struct MapData {
-    pub info: String,
-    pub frames: Vec<Frame>,
-    pub timer: u128,
-    pub f_ptr: usize,
-    pub colliders: Vec<Vec<bool>>,
-}
-
-struct MapImport {
-    path: String,
     info: String,
+    frames: Frames,
+    timer: u128,
+    frame_index: usize,
+    pub collider_map: ColliderMap,
 }
 
+impl MapData {
+    /// Increment frame index, reseting it when frames len is reached.
+    pub fn increment_frame_index(&mut self) {
+        if self.frame_index >= (self.frames.len() - 1) {
+            self.frame_index = 0;
+        } else {
+            self.frame_index += 1;
+        }
+    }
+}
 pub struct World {
     pub world: HashMap<MapCoord, MapData>,
     margin: Size,
@@ -34,23 +76,6 @@ pub struct World {
 
 impl World {
     pub fn new(window: &mut PistonWindow) -> Self {
-        let __world = HashMap::from([
-            (
-                MapCoord { x: 0, y: 0 },
-                MapImport {
-                    path: String::from("../assets/maps/map.0.0/sprite.json"),
-                    info: String::from("Plaines"),
-                },
-            ),
-            (
-                MapCoord { x: 1, y: 0 },
-                MapImport {
-                    path: String::from("../assets/maps/map.1.0/sprite.json"),
-                    info: String::from("Plage cliquetante"),
-                },
-            ),
-        ]);
-
         let mut world = World {
             world: HashMap::new(),
             margin: Size {
@@ -58,75 +83,32 @@ impl World {
                 height: 0.0,
             },
         };
+        let world_importer = WorldImport::new();
 
-        for (coord, map_import) in __world {
-            let raw_data: String = fs::read_to_string(&map_import.path)
-                .expect("test_map_import: Unable to read file.");
-            let loaded_map = serde_json::from_str::<LoadedMap>(&raw_data)
-                .expect(&format!("Fail to load JSON map: {}", &map_import.path));
-
-            let tilesets: Vec<G2dTexture> = loaded_map
+        for (map_info, raw_map) in world_importer.atlas {
+            let tilesets: Vec<G2dTexture> = raw_map
+                .loaded_map
                 .tilesets
                 .iter()
                 .map(|path| {
-                    match Texture::from_path(
+                    Texture::from_path(
                         &mut window.create_texture_context(),
                         &path,
                         Flip::None,
                         &TextureSettings::new(),
-                    ) {
-                        Ok(texture) => texture,
-                        Err(texture_error) => {
-                            println!("Fail to load texture (tileset PNG): {}", texture_error);
-                            std::process::exit(2);
-                        }
-                    }
-                })
-                .collect();
-
-            let mut collider_map =
-                vec![vec![false; TILEMAP_WIDTH as usize]; TILEMAP_HEIGHT as usize];
-
-            let frames: Vec<Frame> = loaded_map
-                .frames
-                .iter()
-                .enumerate()
-                .map(|(index, duration)| {
-                    let sprites: Vec<Sprite> = loaded_map
-                        .sprites
-                        .iter()
-                        .filter(|lsprt| lsprt.frame == index)
-                        .map(|sprt| {
-                            if sprt.collider {
-                                let x = sprt.tile_index as usize % TILEMAP_WIDTH;
-                                let y = sprt.tile_index as usize / TILEMAP_WIDTH;
-                                collider_map[y][x] = sprt.collider;
-                            }
-                            Sprite::new(
-                                tilesets[sprt.tileset_id].clone(),
-                                sprt.tileset_index,
-                                Offset {
-                                    x: sprt.bound_x,
-                                    y: sprt.bound_y,
-                                },
-                                sprt.tile_index,
-                                sprt.collider,
-                            )
-                        })
-                        .collect();
-
-                    Frame::new(sprites, *duration)
+                    )
+                    .expect("Fail to load texture (tileset PNG): {}")
                 })
                 .collect();
 
             world.world.insert(
-                coord,
+                map_info.coord,
                 MapData {
-                    info: map_import.info,
-                    frames: frames,
+                    info: map_info.info,
+                    frames: Frames::from(&raw_map.loaded_map, tilesets),
+                    collider_map: raw_map.collider_map,
                     timer: 0,
-                    f_ptr: 0,
-                    colliders: collider_map,
+                    frame_index: 0,
                 },
             );
         }
@@ -136,7 +118,9 @@ impl World {
     pub fn render(&self, evnt: &Event, window: &mut PistonWindow, coord: &MapCoord) {
         let map_data = self.world.get(coord).unwrap();
         window.draw_2d(evnt, |ctx, gl, _device| {
-            let _ = map_data.frames[map_data.f_ptr]
+            let _ = map_data
+                .frames
+                .get_frame(map_data.frame_index)
                 .sprites
                 .iter()
                 .map(|sprt| {
@@ -164,14 +148,10 @@ impl World {
             .as_str(),
         );
 
-        let frame = &map_data.frames[map_data.f_ptr];
+        let frame = map_data.frames.get_frame(map_data.frame_index);
         if map_data.timer >= frame.duration as u128 {
             map_data.timer = 0;
-            if map_data.f_ptr >= (map_data.frames.len() - 1) {
-                map_data.f_ptr = 0;
-            } else {
-                map_data.f_ptr += 1;
-            }
+            map_data.increment_frame_index();
         } else {
             map_data.timer += delta_ts;
         }

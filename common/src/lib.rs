@@ -9,6 +9,7 @@ pub mod database;
 pub mod monster;
 pub mod record;
 pub mod utils;
+pub mod world;
 
 pub mod grpc_codegen {
     include!("../grpc_codegen/rpg.package.rs");

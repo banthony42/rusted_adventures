@@ -267,7 +267,7 @@ impl EntityController {
                                     self.path_finder.compute(
                                         entity.get_cell(),
                                         new_destination,
-                                        &map_data.colliders,
+                                        &map_data.collider_map,
                                     );
                                     entity.set_path(self.path_finder.get_path(), None);
                                 }
@@ -321,7 +321,7 @@ impl EntityController {
                     let path_found = self.path_finder.compute(
                         player.get_cell(),
                         destination,
-                        &map_data.colliders,
+                        &map_data.collider_map,
                     );
                     if path_found {
                         player.set_path(self.path_finder.get_path(), next_map_x.or(next_map_y));

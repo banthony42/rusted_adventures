@@ -1,6 +1,11 @@
-use crate::world::Offset;
 use common::constants::*;
 use piston_window::*;
+
+#[derive(Default)]
+pub struct Offset {
+    pub x: u64,
+    pub y: u64,
+}
 
 pub struct Sprite {
     tileset: G2dTexture, // Textures

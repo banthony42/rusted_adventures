@@ -1,3 +1,4 @@
+use common::world::ColliderMap;
 use common::CellCoord;
 
 use common::constants::TILEMAP_LINEAR_SIZE;
@@ -63,7 +64,7 @@ impl AStar {
         self.path_found.pop();
     }
 
-    fn valid_neighbors(&self, map_coord: CellCoord, map: &Vec<Vec<bool>>) -> Vec<CellCoord> {
+    fn valid_neighbors(&self, map_coord: CellCoord, map: &ColliderMap) -> Vec<CellCoord> {
         vec![
             (map_coord + RIGHT_NEIGHBOR).limit(),
             (map_coord + LEFT_NEIGHBOR).limit(),
@@ -71,7 +72,7 @@ impl AStar {
             (map_coord + BOTTOM_NEIGHBOR).limit(),
         ]
         .into_iter()
-        .filter(|nb| map[nb.y as usize][nb.x as usize] == false)
+        .filter(|nb| map.is_not_collider(nb.y as usize, nb.x as usize))
         .collect()
     }
 }
@@ -90,7 +91,7 @@ impl PathFindingStrategy for AStar {
         &mut self,
         start: CellCoord,
         destination: CellCoord,
-        collider_map: &Vec<Vec<bool>>,
+        collider_map: &ColliderMap,
     ) -> bool {
         self.clear();
         // Initialize AStar algorithm
@@ -106,7 +107,7 @@ impl PathFindingStrategy for AStar {
                 return true;
             }
 
-            self.valid_neighbors(current.cell, &collider_map)
+            self.valid_neighbors(current.cell, collider_map)
                 .iter()
                 .for_each(|nb| {
                     let current_cost = self.cost[current.cell.linear_index()]
