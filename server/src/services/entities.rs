@@ -109,6 +109,10 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
         }
         LocationType::NewMap => {
             // Player has changed map
+            // Broadcast all players on last map with a despawn event
+            let despawn_event = EntityEvent::despawn(character.identifier());
+            broadcast_player_on_map(&sender, despawn_event, &clients, &mut character).await;
+
             if let Err(err) = character.update_location(new_location) {
                 println!(
                     "Server: player move: Error : Fail to update location: {}",
@@ -116,10 +120,6 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                 );
                 return;
             }
-
-            // Broadcast all players on last map with a despawn event
-            let despawn_event = EntityEvent::despawn(character.identifier());
-            broadcast_player_on_map(&sender, despawn_event, &clients, &mut character).await;
 
             let Ok(entity) = character.as_rpc_entity() else {
                 println!("Server: player move: Error: Fail to get character as RpcEntity");
