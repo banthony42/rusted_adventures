@@ -4,13 +4,23 @@ use crate::world::behaviour::BehaviourHandler;
 
 use super::spawner::Spawner;
 use common::{
-    database::model::bestiary::PgSpecies, grpc_codegen::Coord as RpcCoord,
-    grpc_codegen::Location as RpcLocation, monster::MonsterHandler, utils::get_timestamp, MapCoord,
+    database::model::bestiary::PgSpecies,
+    grpc_codegen::{Coord as RpcCoord, Location as RpcLocation},
+    monster::MonsterHandler,
+    utils::get_timestamp,
+    world::WorldImport,
+    MapCoord,
 };
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
 pub trait WorldEngineComponent {
-    fn update(&mut self, delta_ts: u128, handler: &mut MonsterHandler, tx: &Sender<WorldEvent>);
+    fn update(
+        &mut self,
+        delta_ts: u128,
+        handler: &mut MonsterHandler,
+        tx: &Sender<WorldEvent>,
+        world_importer: &WorldImport,
+    );
 }
 
 pub struct MonsterSpawn {
@@ -30,6 +40,7 @@ pub enum WorldEvent {
 }
 
 pub struct WorldEngine {
+    world_importer: WorldImport,
     tx: Sender<WorldEvent>,
     monster_handler: MonsterHandler,
     wpl: Duration,
@@ -47,6 +58,7 @@ impl WorldEngine {
         let (tx, rx) = mpsc::channel::<WorldEvent>(10);
         (
             WorldEngine {
+                world_importer: WorldImport::new(),
                 behaviours: BehaviourHandler::new(),
                 tx,
                 monster_handler: MonsterHandler::new(),
@@ -74,10 +86,19 @@ impl WorldEngine {
 
     fn update(&mut self, delta_ts: u128) {
         for spawner in self.spawners.iter_mut() {
-            spawner.update(delta_ts, &mut self.monster_handler, &self.tx);
+            spawner.update(
+                delta_ts,
+                &mut self.monster_handler,
+                &self.tx,
+                &self.world_importer,
+            );
         }
-        self.behaviours
-            .update(delta_ts, &mut self.monster_handler, &self.tx);
+        self.behaviours.update(
+            delta_ts,
+            &mut self.monster_handler,
+            &self.tx,
+            &self.world_importer,
+        );
     }
 
     pub fn wait(&mut self) {

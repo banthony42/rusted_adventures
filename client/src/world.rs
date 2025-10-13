@@ -85,7 +85,7 @@ impl World {
         };
         let world_importer = WorldImport::new();
 
-        for (map_info, raw_map) in world_importer.atlas {
+        for (map_coord, raw_map) in world_importer.atlas {
             let tilesets: Vec<G2dTexture> = raw_map
                 .loaded_map
                 .tilesets
@@ -102,9 +102,9 @@ impl World {
                 .collect();
 
             world.world.insert(
-                map_info.coord,
+                map_coord,
                 MapData {
-                    info: map_info.info,
+                    info: raw_map.info,
                     frames: Frames::from(&raw_map.loaded_map, tilesets),
                     collider_map: raw_map.collider_map,
                     timer: 0,

@@ -40,12 +40,16 @@ impl MonsterHandler {
         return Ok(entry);
     }
 
-    pub fn create(&mut self, species: &PgSpecies, map: MapCoord) -> Result<Monster, DieselError> {
+    pub fn create(
+        &mut self,
+        species: &PgSpecies,
+        map: MapCoord,
+        cell: CellCoord,
+    ) -> Result<Monster, DieselError> {
         let location = Location::create(
             &mut self.connection,
             &CreateLocation {
-                // Impl. random (require to load each map collider grid to avoid spawning on collider)
-                cell: CellCoord::random().into(),
+                cell: cell.into(),
                 map: map.into(),
                 destination: None,
             },

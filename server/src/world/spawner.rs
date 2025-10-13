@@ -1,7 +1,8 @@
 use common::{
     database::model::{bestiary::PgSpecies, monster::Monster},
     monster::MonsterHandler,
-    MapCoord,
+    world::WorldImport,
+    CellCoord, MapCoord,
 };
 use rand::seq::IndexedRandom;
 use tokio::sync::mpsc::Sender;
@@ -29,8 +30,18 @@ impl SpawnOrder {
         handler: &mut MonsterHandler,
         map: MapCoord,
         tx: &Sender<WorldEvent>,
+        world_importer: &WorldImport,
     ) -> bool {
-        match handler.create(&self.species, map) {
+        let Some(map_data) = world_importer.atlas.get(&map) else {
+            println!(
+                "{}MonsterSpawn: MapCoord not found in atlas for map: {:?}",
+                LOG_PREFIX, map
+            );
+            return false;
+        };
+
+        let cell = CellCoord::random_not_collider(&map_data.collider_map);
+        match handler.create(&self.species, map, cell) {
             Ok(monster) => {
                 self.running = false;
                 let mob_spawn_event = WorldEvent::MonsterSpawn(MonsterSpawn {
@@ -70,7 +81,7 @@ impl Spawner {
         Self {
             species,
             map,
-            number: 3,
+            number: 10,
             update_timer: 0,
             spawn_orders: Vec::new(),
         }
@@ -117,7 +128,13 @@ impl Spawner {
 }
 
 impl WorldEngineComponent for Spawner {
-    fn update(&mut self, delta_ts: u128, handler: &mut MonsterHandler, tx: &Sender<WorldEvent>) {
+    fn update(
+        &mut self,
+        delta_ts: u128,
+        handler: &mut MonsterHandler,
+        tx: &Sender<WorldEvent>,
+        world_importer: &WorldImport,
+    ) {
         if self.update_timer > SPAWNER_UPDATE_RATE {
             self.update_timer = 0;
             self.update_spawn_orders(handler);
@@ -128,7 +145,7 @@ impl WorldEngineComponent for Spawner {
         // spawn the associated monster on the map
         for order in self.spawn_orders.iter_mut() {
             if order.timer > order.spawn_time() {
-                order.spawn(handler, self.map, tx);
+                order.spawn(handler, self.map, tx, world_importer);
             } else {
                 order.timer += delta_ts;
             }

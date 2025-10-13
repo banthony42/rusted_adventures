@@ -12,18 +12,14 @@ struct MapImport {
     info: String,
 }
 
-#[derive(Eq, Hash, PartialEq)]
-pub struct MapInfo {
-    pub coord: MapCoord,
-    pub info: String,
-}
-
 pub struct RawMap {
+    pub info: String,
     pub loaded_map: LoadedMap,
     pub collider_map: ColliderMap,
 }
+
 pub struct WorldImport {
-    pub atlas: HashMap<MapInfo, RawMap>,
+    pub atlas: HashMap<MapCoord, RawMap>,
 }
 
 impl WorldImport {
@@ -49,18 +45,16 @@ impl WorldImport {
 
     pub fn new() -> Self {
         let atlas_import = Self::atlas_import();
-        let mut atlas = HashMap::<MapInfo, RawMap>::new();
+        let mut atlas = HashMap::<MapCoord, RawMap>::new();
         for (coord, map_import) in atlas_import {
             let raw_data: String = fs::read_to_string(&map_import.path)
                 .expect("test_map_import: Unable to read file.");
             let loaded_map = serde_json::from_str::<LoadedMap>(&raw_data)
                 .expect(&format!("Fail to load JSON map: {}", &map_import.path));
             atlas.insert(
-                MapInfo {
-                    coord,
-                    info: map_import.info,
-                },
+                coord,
                 RawMap {
+                    info: map_import.info,
                     collider_map: ColliderMap::from(&loaded_map),
                     loaded_map,
                 },

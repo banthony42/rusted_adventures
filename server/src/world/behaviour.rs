@@ -2,14 +2,16 @@ use common::{
     database::model::{monster::Monster, EntityIdentifiable},
     grpc_codegen::{Coord as RpcCoord, Location as RpcLocation},
     monster::MonsterHandler,
-    CellCoord, Orientation,
+    world::WorldImport,
+    CellCoord, MapCoord, Orientation,
 };
 use tokio::sync::mpsc::Sender;
 
 use crate::world::engine::{MonsterMove, WorldEngineComponent, WorldEvent};
 
-type BehaviourTaskCallback =
-    Box<dyn Fn(i32, &mut MonsterHandler, &Sender<WorldEvent>) -> bool + Send + 'static>;
+type BehaviourTaskCallback = Box<
+    dyn Fn(i32, &mut MonsterHandler, &Sender<WorldEvent>, &WorldImport) -> bool + Send + 'static,
+>;
 
 const LOG_PREFIX: &str = "Server: WorldEngine: Behaviour: ";
 const BEHAVIOUR_UPDATE_RATE: u128 = 10000;
@@ -39,8 +41,13 @@ impl BehaviourTask {
         self.timer = rand::random_range(MOVE_BEHAVIOUR_RATE / 2..MOVE_BEHAVIOUR_RATE);
     }
 
-    fn execute(&mut self, handler: &mut MonsterHandler, world_tx: &Sender<WorldEvent>) {
-        self.running = (self.callback)(self.monster_id, handler, world_tx);
+    fn execute(
+        &mut self,
+        handler: &mut MonsterHandler,
+        world_tx: &Sender<WorldEvent>,
+        world_importer: &WorldImport,
+    ) {
+        self.running = (self.callback)(self.monster_id, handler, world_tx, world_importer);
         if self.running {
             self.reset_timer();
         }
@@ -51,10 +58,22 @@ fn move_behaviour(
     monster_id: i32,
     handler: &mut MonsterHandler,
     world_tx: &Sender<WorldEvent>,
+    world_importer: &WorldImport,
 ) -> bool {
     let Ok(monster) = Monster::read_info(&mut handler.connection, &monster_id) else {
         println!(
             "{}Drop behaviour task for monster id: {}",
+            LOG_PREFIX, monster_id
+        );
+        return false;
+    };
+
+    let Some(map_data) = world_importer.atlas.get(&MapCoord {
+        x: monster.map.0 as i8,
+        y: monster.map.1 as i8,
+    }) else {
+        println!(
+            "{}MapCoord not found in atlas. Drop behaviour task for monster id: {}",
             LOG_PREFIX, monster_id
         );
         return false;
@@ -67,23 +86,35 @@ fn move_behaviour(
 
     let mut last_orientation: Option<Orientation> = None;
     for _ in 0..MONSTER_PM {
-        let orientation = loop {
-            match rand::random::<Orientation>() {
-                pick if last_orientation.is_none() => break pick,
-                pick if last_orientation.is_some_and(|inner| inner.invert() != pick) => break pick,
-                _ => { /* pick is same from the last loop iter, retry */ }
+        loop {
+            let orientation = loop {
+                match rand::random::<Orientation>() {
+                    pick if last_orientation.is_none() => break pick,
+                    pick if last_orientation.is_some_and(|inner| inner.invert() != pick) => {
+                        break pick
+                    }
+                    _ => { /* pick is same from the last loop iter, retry */ }
+                }
+            };
+            let step = match orientation {
+                Orientation::North => CellCoord { x: 0, y: -1 },
+                Orientation::Est => CellCoord { x: 1, y: 0 },
+                Orientation::South => CellCoord { x: 0, y: 1 },
+                Orientation::West => CellCoord { x: -1, y: 0 },
+            };
+            let cell = (new_destination + step).limit();
+            if map_data
+                .collider_map
+                .is_not_collider(cell.y as usize, cell.x as usize)
+            {
+                last_orientation = Some(orientation);
+                new_destination = cell;
+                break;
             }
-        };
-        last_orientation = Some(orientation);
-        match orientation {
-            Orientation::North => new_destination += CellCoord { x: 0, y: -1 },
-            Orientation::Est => new_destination += CellCoord { x: 1, y: 0 },
-            Orientation::South => new_destination += CellCoord { x: 0, y: 1 },
-            Orientation::West => new_destination += CellCoord { x: -1, y: 0 },
         }
     }
-    new_destination = new_destination.limit();
 
+    new_destination = new_destination.limit();
     let new_rpc_loc = RpcLocation {
         map: Some(monster.map.into()),
         cell: Some(RpcCoord {
@@ -145,7 +176,13 @@ impl BehaviourHandler {
 }
 
 impl WorldEngineComponent for BehaviourHandler {
-    fn update(&mut self, delta_ts: u128, handler: &mut MonsterHandler, tx: &Sender<WorldEvent>) {
+    fn update(
+        &mut self,
+        delta_ts: u128,
+        handler: &mut MonsterHandler,
+        tx: &Sender<WorldEvent>,
+        world_importer: &WorldImport,
+    ) {
         // Periodically load Monsters from DB
         // Create behaviours (timer + callback) for each monster.id
         if self.timer > BEHAVIOUR_UPDATE_RATE {
@@ -176,7 +213,7 @@ impl WorldEngineComponent for BehaviourHandler {
 
         for task in self.tasks.iter_mut() {
             if task.timer == 0 {
-                task.execute(handler, tx);
+                task.execute(handler, tx, world_importer);
             } else {
                 task.timer = task.timer.saturating_sub(delta_ts);
             }

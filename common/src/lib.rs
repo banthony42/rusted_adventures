@@ -3,6 +3,8 @@ use std::ops::{MulAssign, SubAssign};
 use diesel_geometry::data_types::PgPoint;
 use rand::distr::{Distribution, StandardUniform};
 
+use crate::world::ColliderMap;
+
 pub mod authenticator;
 pub mod character;
 pub mod database;
@@ -144,6 +146,19 @@ impl CellCoord {
         Self {
             x: rand::random_range(0..constants::TILEMAP_WIDTH as i64 - 1),
             y: rand::random_range(0..constants::TILEMAP_HEIGHT as i64 - 1),
+        }
+    }
+
+    pub fn random_not_collider(collider_map: &ColliderMap) -> Self {
+        loop {
+            let cell = Self {
+                x: rand::random_range(0..constants::TILEMAP_WIDTH as i64 - 1),
+                y: rand::random_range(0..constants::TILEMAP_HEIGHT as i64 - 1),
+            };
+
+            if collider_map.is_not_collider(cell.y as usize, cell.x as usize) {
+                break cell;
+            }
         }
     }
 }
