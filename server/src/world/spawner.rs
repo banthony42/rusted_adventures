@@ -91,7 +91,10 @@ impl Spawner {
         // Foreach missing monsters on map, that is not already tracked in spawn_orders list,
         // choose randomly a monster and add it to the spawn_orders
         if let Ok(monsters) = Monster::read_all_by_map(&mut handler.connection, self.map.into()) {
-            let missing = self.number - monsters.len() - self.spawn_orders.len();
+            let missing = self
+                .number
+                .saturating_sub(monsters.len())
+                .saturating_sub(self.spawn_orders.len());
             // Even if several monsters are missing, only spawn one
             // to create delay between each spawn
             if missing > 0 {

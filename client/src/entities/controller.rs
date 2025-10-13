@@ -109,7 +109,7 @@ impl EntityController {
                                         if let Some(se) = server_entity_event.event {
                                             match se {
                                                 EntityMoveEvent(entity_move) => {
-                                                    println!("Client: EntityController: EntityMoveEvent: {:?}", entity_move);
+                                                    // println!("Client: EntityController: EntityMoveEvent: {:?}", entity_move);
                                                         let mut entities = some_entities.lock().await;
                                                         let _ = entities.iter_mut()
                                                         .filter(|entity| entity_move.uuid.eq(entity.get_uuid()))

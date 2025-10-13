@@ -64,7 +64,7 @@ fn run_game() {
         }
 
         if let Some(args) = e.update_args() {
-            state.update(&args, get_timestamp() - ts);
+            state.update(&args, get_timestamp().saturating_sub(ts));
             ts = get_timestamp();
         }
 
