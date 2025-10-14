@@ -37,6 +37,19 @@ where
         }
     }
 
+    pub fn set_position(&mut self, x: u32, y: u32) {
+        self.initial_rect[0] = x;
+        self.initial_rect[1] = y;
+    }
+
+    pub fn set_width(&mut self, width: u32) {
+        self.initial_rect[2] = width;
+    }
+
+    pub fn set_height(&mut self, height: u32) {
+        self.initial_rect[3] = height;
+    }
+
     pub fn render(&self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
         let mut line_height = 0.0;
         let _ = self

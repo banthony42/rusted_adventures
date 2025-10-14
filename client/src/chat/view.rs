@@ -1,52 +1,85 @@
+use std::collections::HashMap;
+
 use piston_window::*;
 
-use crate::ui::{
-    font::Font,
-    input_field::InputField,
-    text_area::{TextArea, TextAreaFormat},
+use crate::{
+    entities::model::UIEntityModel,
+    import::assets::SpeciesLibrary,
+    ui::{
+        font::Font,
+        input_field::InputField,
+        text_area::{TextArea, TextAreaFormat},
+        text_window::{TextWindow, TextWindowFormat},
+    },
 };
 
 use super::model::ChatMessage;
 
-use common::constants::*;
-use common::grpc_codegen::server_chat_event::Event as SEvent;
 use common::grpc_codegen::ChatEventType;
 use common::grpc_codegen::ServerEventType;
+use common::{constants::*, utils::get_timestamp};
+use common::{grpc_codegen::server_chat_event::Event as SEvent, MapCoord};
 
 impl TextAreaFormat for ChatMessage {
     fn colored_format(&self) -> (types::Color, String) {
         match self.event() {
             SEvent::ServerEvent(s) => match ServerEventType::try_from(*s) {
-                Ok(ServerEventType::SrvInfo) => (color::hex("06cc2a"), self.format()),
-                Ok(ServerEventType::SrvWarn) => (color::YELLOW, self.format()),
-                Ok(ServerEventType::SrvDang) => (color::RED, self.format()),
+                Ok(ServerEventType::SrvInfo) => (color::hex("06cc2a"), self.chat_area_format()),
+                Ok(ServerEventType::SrvWarn) => (color::YELLOW, self.chat_area_format()),
+                Ok(ServerEventType::SrvDang) => (color::RED, self.chat_area_format()),
                 Ok(ServerEventType::SrvAck) | Ok(ServerEventType::SrvUnack) => {
-                    (color::hex("f5b01a"), self.format())
+                    (color::hex("f5b01a"), self.chat_area_format())
                 }
                 Err(_) => (color::RED, String::from("Unexpected Event !!")),
             },
             SEvent::ChatEvent(c) => match ChatEventType::try_from(*c) {
-                Ok(ChatEventType::Broadcast) => (color::BLACK, self.format()),
-                Ok(ChatEventType::Whisper) => (color::CYAN, self.format()),
+                Ok(ChatEventType::Broadcast) => (color::BLACK, self.chat_area_format()),
+                Ok(ChatEventType::Whisper) => (color::CYAN, self.chat_area_format()),
                 Err(_) => (color::RED, String::from("Unexpected Event !!")),
             },
         }
     }
 }
 
+#[derive(PartialEq)]
+struct WindowChatMessage {
+    msg: ChatMessage,
+    ui_model: UIEntityModel,
+}
+
+impl TextWindowFormat for WindowChatMessage {
+    fn format(&self) -> String {
+        self.msg.chat_window_format()
+    }
+
+    fn position(&self) -> [u32; 2] {
+        [
+            self.ui_model.real_position.x as u32,
+            self.ui_model.real_position.y as u32,
+        ]
+    }
+
+    fn offset(&self, species_lib: &SpeciesLibrary) -> [f64; 2] {
+        [0.0, species_lib.get_height_offset(&self.ui_model.species)]
+    }
+}
+
 const CHAT_FONT_SIZE: u32 = 17;
 
 pub struct ChatGraphicView {
-    input_field: InputField,
-    text_area: TextArea<ChatMessage>,
+    chat_input: InputField,
+    chat_area: TextArea<ChatMessage>,
+    chat_window: TextWindow<WindowChatMessage>,
     margin: Size,
 }
 
 impl ChatGraphicView {
     pub fn new() -> Self {
         ChatGraphicView {
-            input_field: InputField::new([16.0, 928.0], CHAT_FONT_SIZE, 416.0),
-            text_area: TextArea::new(
+            //  drop all WindowMessage with map != ui_model[WindowMessage.sender].map
+            chat_window: TextWindow::new(),
+            chat_input: InputField::new([16.0, 928.0], CHAT_FONT_SIZE, 416.0),
+            chat_area: TextArea::new(
                 CHAT_FONT_SIZE,
                 [
                     GUI_CHAT_X as u32,
@@ -63,36 +96,102 @@ impl ChatGraphicView {
     }
 
     pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
-        self.input_field.render(evnt, window, font);
-        self.text_area.render(evnt, window, font);
+        self.chat_input.render(evnt, window, font);
+        self.chat_area.render(evnt, window, font);
+        self.chat_window.render(evnt, window, font);
     }
 
-    pub fn update(&mut self, delta_ts: u128, model: Vec<ChatMessage>) {
-        self.input_field.update(delta_ts);
-        self.text_area.update(delta_ts, model);
+    /// If the given ChatMessage is a broadcast message and less than 200ms age, return true.
+    fn is_recent_broadcast(msg: &&ChatMessage) -> bool {
+        let now = get_timestamp();
+        match msg.event() {
+            SEvent::ServerEvent(_) => false,
+            SEvent::ChatEvent(c) => match ChatEventType::try_from(*c) {
+                Ok(ChatEventType::Broadcast) => (now - msg.time()) < 200,
+                _ => false,
+            },
+        }
+    }
+
+    pub fn update(
+        &mut self,
+        delta_ts: u128,
+        model: Vec<ChatMessage>,
+        ui_models: HashMap<String, UIEntityModel>,
+    ) {
+        self.chat_input.update(delta_ts);
+        self.chat_area.update(delta_ts, model.clone());
+
+        self.chat_window.retain_message(|window_msg| {
+            let Some(sender) = window_msg.msg.target() else {
+                // Not expected, since we add window_msg only if target exist.
+                // But its handled, System message don't have target
+                return false;
+            };
+            let Some(ui_model) = ui_models.get(sender.inner()) else {
+                // If no model found for this sender, just drop the window message
+                // We can't display it, we need this data
+                // It could mean that entity that send this message
+                // Is not on the map anymore
+                return false;
+            };
+            // Keep all messages comming from entities that are still on the map
+            ui_model.map == window_msg.ui_model.map
+        });
+
+        self.chat_window.update(delta_ts, |window_msg| {
+            let Some(sender) = window_msg.msg.target() else {
+                // Not expected, since we add window_msg only if target exist.
+                // But its handled, System message don't have target
+                return;
+            };
+            let Some(ui_model) = ui_models.get(sender.inner()) else {
+                // If no model found for this sender, just drop the window message
+                // We can't display it, we need this data
+                // It could mean that entity that send this message
+                // Is not on the map anymore
+                return;
+            };
+            window_msg.ui_model.real_position = ui_model.real_position;
+        });
+
+        for msg in model.iter().filter(Self::is_recent_broadcast) {
+            let Some(sender) = msg.target() else {
+                // No sender for this message skip it
+                continue;
+            };
+            let Some(ui_model) = ui_models.get(sender.inner()) else {
+                // Fail to get model ui data for sender skip it
+                continue;
+            };
+            self.chat_window.add_message(WindowChatMessage {
+                msg: msg.clone(),
+                ui_model: ui_model.clone(),
+            });
+        }
     }
 
     pub fn text_input(&mut self, args: &String, font: &mut Font) {
-        self.input_field.text_input(args, font);
+        self.chat_input.text_input(args, font);
     }
 
     pub fn mouse_cursor_args(&mut self, args: &[f64; 2]) {
-        self.input_field.mouse_cursor_args(args);
+        self.chat_input.mouse_cursor_args(args);
     }
 
     pub fn mouse_scroll_args(&mut self, args: &[f64; 2]) {
-        self.text_area.mouse_scroll_args(args);
+        self.chat_area.mouse_scroll_args(args);
     }
 
     pub fn key_press(&mut self, args: &Button, font: &mut Font) -> Option<String> {
-        self.input_field.key_press(args, font);
+        self.chat_input.key_press(args, font);
 
         if let Button::Keyboard(Key::Return) = args {
-            if self.input_field.is_focus() {
-                let user_input = self.input_field.get_content();
+            if self.chat_input.is_focus() {
+                let user_input = self.chat_input.get_content();
                 if user_input.is_empty() == false {
-                    self.input_field.clean();
-                    self.text_area.set_scroll(0.0);
+                    self.chat_input.clean();
+                    self.chat_area.set_scroll(0.0);
                     return Some(user_input);
                 }
             }
@@ -102,7 +201,8 @@ impl ChatGraphicView {
 
     pub fn resize(&mut self, margin: &Size) {
         self.margin = margin.clone();
-        self.input_field.resize(margin);
-        self.text_area.resize(margin);
+        self.chat_input.resize(margin);
+        self.chat_area.resize(margin);
+        self.chat_window.resize(margin);
     }
 }

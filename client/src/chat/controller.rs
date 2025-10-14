@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use common::record::Record;
 use common::utils::SequenceNumber;
 use piston_window::*;
@@ -12,6 +14,8 @@ use super::client::ChatClient;
 use super::model::{ChatMessage, ChatModel, Target};
 use super::view::ChatGraphicView;
 
+use crate::entities::model::UIEntityModel;
+use crate::ui;
 use crate::ui::font::Font;
 
 use common::grpc_codegen::server_chat_event::Event as SEvent;
@@ -166,8 +170,9 @@ impl ChatController {
         self.view.render(evnt, window, font);
     }
 
-    pub fn update(&mut self, delta_ts: u128) {
-        self.view.update(delta_ts, self.model.get());
+    pub fn update(&mut self, delta_ts: u128, ui_entities_model: HashMap<String, UIEntityModel>) {
+        self.view
+            .update(delta_ts, self.model.get(), ui_entities_model);
     }
 
     pub fn text_input(&mut self, args: &String, font: &mut Font) {

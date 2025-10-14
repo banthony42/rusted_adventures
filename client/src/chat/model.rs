@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use chrono::DateTime;
 use chrono::Utc;
 
 use tokio::sync::Mutex;
@@ -26,28 +27,36 @@ impl Target {
         match &self {
             Target::Inbound(tgt) => match event {
                 ChatEventType::Whisper => format!("de {}:", tgt),
-                _ => format!("{}: ", tgt),
+                ChatEventType::Broadcast => format!("{}: ", tgt),
             },
             Target::Outbound(tgt) => match event {
                 ChatEventType::Whisper => format!("à {}:", tgt),
-                _ => format!("{}: ", tgt),
+                ChatEventType::Broadcast => format!("{}: ", tgt),
             },
+        }
+    }
+
+    pub fn inner(&self) -> &String {
+        match self {
+            Target::Inbound(tgt) => tgt,
+            Target::Outbound(tgt) => tgt,
         }
     }
 }
 
 #[derive(Clone, PartialEq)]
 pub struct ChatMessage {
-    time: String,
+    time: i64,
     text: String,
     target: Option<Target>,
+    // We should always have sender information here
     event: SEvent,
 }
 
 impl ChatMessage {
     pub fn new(text: String, event: SEvent, target: Option<Target>) -> Self {
         ChatMessage {
-            time: Utc::now().format(CHAT_TIME_FORMAT).to_string(),
+            time: Utc::now().timestamp_millis(),
             text,
             event,
             target,
@@ -58,7 +67,15 @@ impl ChatMessage {
         &self.event
     }
 
-    pub fn format(&self) -> String {
+    pub fn time(&self) -> u128 {
+        self.time as u128
+    }
+
+    pub fn target(&self) -> &Option<Target> {
+        &self.target
+    }
+
+    pub fn chat_area_format(&self) -> String {
         let mut prefix = match self.event {
             SEvent::ServerEvent(s) => match ServerEventType::try_from(s) {
                 Ok(_) => "Système :".to_owned(),
@@ -78,7 +95,15 @@ impl ChatMessage {
         if !prefix.is_empty() {
             prefix.push(' ');
         }
-        format!("[{}]: {}{}", self.time, prefix, self.text)
+        let time = match DateTime::from_timestamp_millis(self.time) {
+            Some(date) => date.format(CHAT_TIME_FORMAT).to_string(),
+            None => "HH:MM:SS".to_owned(),
+        };
+        format!("[{}]: {}{}", time, prefix, self.text)
+    }
+
+    pub fn chat_window_format(&self) -> String {
+        self.text.clone()
     }
 }
 
@@ -187,6 +212,8 @@ impl ChatModel {
     pub async fn post_message(&mut self, msg: ChatMessage) {
         let mut model = self.model.lock().await;
 
+        // Reset a timer inside the rolling list of timer
+        // self.rolling_timer[idx] = 5000
         model.push(msg);
         model._trim_v2(CHAT_MAX_MSG);
     }
@@ -223,7 +250,7 @@ impl ChatModel {
             self.cache = model.clone();
         } else {
             // Interesting to see how often this append
-            dbg!("ChatModel::get : fail to obtain model lock ...");
+            dbg!("ChatModel::get : fail to obtain model lock. Chat cache not updated.");
         }
         self.cache.clone()
     }

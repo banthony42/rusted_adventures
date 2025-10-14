@@ -6,6 +6,14 @@ use crate::{
     world::World,
 };
 
+/// User Interface version of an EntityModel
+#[derive(Clone, PartialEq)]
+pub struct UIEntityModel {
+    pub real_position: CellCoord,
+    pub map: MapCoord,
+    pub species: Species,
+}
+
 const ENTITY_RUN_SPEED: f64 = 225.0;
 const ENTITY_RUN_STEP_DURATION: f64 = 1.0 / ENTITY_RUN_SPEED;
 
@@ -29,6 +37,8 @@ pub struct EntityModel {
 
 // Needed to manipulate EntityModel attributes using IEntity abstraction
 pub trait IEntity: Send {
+    fn into_ui_model(&self) -> UIEntityModel;
+
     fn get_name(&self) -> &String;
 
     fn get_species(&self) -> &Species;
@@ -111,6 +121,14 @@ impl EntityModel {
 }
 
 impl IEntity for EntityModel {
+    fn into_ui_model(&self) -> UIEntityModel {
+        UIEntityModel {
+            real_position: self.get_real_pos(),
+            map: self.get_map(),
+            species: self.get_species().clone(),
+        }
+    }
+
     fn get_name(&self) -> &String {
         &self.name
     }

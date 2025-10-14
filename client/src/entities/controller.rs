@@ -4,7 +4,10 @@ use piston::{Button, MouseButton, Size};
 use piston_window::PistonWindow;
 
 use crate::{
-    entities::{model::EntityModel, path_finding::PathFinder},
+    entities::{
+        model::{EntityModel, UIEntityModel},
+        path_finding::PathFinder,
+    },
     import::assets::{EntityAssets, GameAsset},
     ui::font::Font,
     world::{MapData, World},
@@ -179,6 +182,18 @@ impl EntityController {
         }
     }
 
+    /// Foreach entities handled in this controller, gather data for interface rendering.
+    ///
+    /// This function is best effort, if a data can't be retrieve for an entity
+    /// then it will be no entry in the HashMap for this entity.
+    pub fn ui_entities_models(&self) -> HashMap<String, UIEntityModel> {
+        // Only for player for now we will add other entities later
+        match &self.player {
+            Some(player) => HashMap::from([(player.get_name().clone(), player.into_ui_model())]),
+            None => HashMap::default(),
+        }
+    }
+
     pub fn render(&mut self, evnt: &piston::Event, window: &mut PistonWindow, font: &mut Font) {
         if let Some(player) = &self.player {
             self.view.render(evnt, window, &player, font);
@@ -222,8 +237,6 @@ impl EntityController {
             };
             if let Err(error) = tx.try_send(event) {
                 println!("Entity controller tx error: {:?}", error);
-            } else {
-                // println!("Entity controller tx: send: {:?}", event);
             }
         }
     }
@@ -233,6 +246,8 @@ impl EntityController {
             self.view.update(delta_ts, player);
 
             if let Some(location_type) = player.update(delta_ts, world) {
+                // Send a LocationType::NewMap to the server
+                // Server will reply with all new entities present on new map (EntitySpawnEvent)
                 Self::send_player_move_event(
                     &self.tx,
                     player.get_map(),
