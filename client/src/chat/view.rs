@@ -3,7 +3,7 @@ use piston_window::*;
 use crate::ui::{
     font::Font,
     input_field::InputField,
-    text_field::{TextField, TextFieldFormat},
+    text_area::{TextArea, TextAreaFormat},
 };
 
 use super::model::ChatMessage;
@@ -13,7 +13,7 @@ use common::grpc_codegen::server_chat_event::Event as SEvent;
 use common::grpc_codegen::ChatEventType;
 use common::grpc_codegen::ServerEventType;
 
-impl TextFieldFormat for ChatMessage {
+impl TextAreaFormat for ChatMessage {
     fn colored_format(&self) -> (types::Color, String) {
         match self.event() {
             SEvent::ServerEvent(s) => match ServerEventType::try_from(*s) {
@@ -38,7 +38,7 @@ const CHAT_FONT_SIZE: u32 = 17;
 
 pub struct ChatGraphicView {
     input_field: InputField,
-    text_field: TextField<ChatMessage>,
+    text_area: TextArea<ChatMessage>,
     margin: Size,
 }
 
@@ -46,7 +46,7 @@ impl ChatGraphicView {
     pub fn new() -> Self {
         ChatGraphicView {
             input_field: InputField::new([16.0, 928.0], CHAT_FONT_SIZE, 416.0),
-            text_field: TextField::new(
+            text_area: TextArea::new(
                 CHAT_FONT_SIZE,
                 [
                     GUI_CHAT_X as u32,
@@ -64,12 +64,12 @@ impl ChatGraphicView {
 
     pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
         self.input_field.render(evnt, window, font);
-        self.text_field.render(evnt, window, font);
+        self.text_area.render(evnt, window, font);
     }
 
     pub fn update(&mut self, delta_ts: u128, model: Vec<ChatMessage>) {
         self.input_field.update(delta_ts);
-        self.text_field.update(delta_ts, model);
+        self.text_area.update(delta_ts, model);
     }
 
     pub fn text_input(&mut self, args: &String, font: &mut Font) {
@@ -81,7 +81,7 @@ impl ChatGraphicView {
     }
 
     pub fn mouse_scroll_args(&mut self, args: &[f64; 2]) {
-        self.text_field.mouse_scroll_args(args);
+        self.text_area.mouse_scroll_args(args);
     }
 
     pub fn key_press(&mut self, args: &Button, font: &mut Font) -> Option<String> {
@@ -92,7 +92,7 @@ impl ChatGraphicView {
                 let user_input = self.input_field.get_content();
                 if user_input.is_empty() == false {
                     self.input_field.clean();
-                    self.text_field.set_scroll(0.0);
+                    self.text_area.set_scroll(0.0);
                     return Some(user_input);
                 }
             }
@@ -103,6 +103,6 @@ impl ChatGraphicView {
     pub fn resize(&mut self, margin: &Size) {
         self.margin = margin.clone();
         self.input_field.resize(margin);
-        self.text_field.resize(margin);
+        self.text_area.resize(margin);
     }
 }

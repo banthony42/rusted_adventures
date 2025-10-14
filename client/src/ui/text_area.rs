@@ -3,9 +3,9 @@ use types::Color;
 
 use super::font::Font;
 
-pub struct TextField<T>
+pub struct TextArea<T>
 where
-    T: TextFieldFormat,
+    T: TextAreaFormat,
 {
     font_size: u32,
     initial_rect: [u32; 4],
@@ -15,16 +15,16 @@ where
     scroll: f64,
 }
 
-pub trait TextFieldFormat {
+pub trait TextAreaFormat {
     fn colored_format(&self) -> (Color, String);
 }
 
-impl<T> TextField<T>
+impl<T> TextArea<T>
 where
-    T: TextFieldFormat,
+    T: TextAreaFormat,
 {
     pub fn new(font_size: u32, size: [u32; 4]) -> Self {
-        TextField {
+        TextArea {
             font_size: font_size,
             initial_rect: size,
             rect: size,
