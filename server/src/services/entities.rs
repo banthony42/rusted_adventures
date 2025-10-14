@@ -61,8 +61,10 @@ async fn broadcast_player_on_map(
     }
     let player_list = result_players.unwrap();
 
-    println!("Server: {} broadcast with: {:?}", sender, event);
-    println!("Server: {} broadcast to: {:?}", sender, player_list);
+    println!(
+        "Server: {} broadcast with: {:?} to: {:?}",
+        sender, event, player_list
+    );
     {
         let clts = clients.lock().await;
 

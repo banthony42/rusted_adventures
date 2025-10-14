@@ -1,4 +1,5 @@
 use common::authenticator::Authenticator;
+use common::character::CharacterHandler;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::result::Result;
@@ -43,6 +44,23 @@ async fn broadcast(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
     println!("Server: RpgChatService: {:?}", chat_event);
     let (sender, event) = chat_event.into_parts();
 
+    // Get player on same map than the sender
+    // Broadcast only to that list
+    let Ok(mut handler) = CharacterHandler::new(&sender) else {
+        println!(
+            "Server: chat broadcast: Failure while getting char handler for: {}",
+            sender
+        );
+        return;
+    };
+    let Ok(player_list) = handler.players_on_same_map() else {
+        println!(
+            "Server: chat broadcast: Failure while getting players on same map for: {}",
+            sender
+        );
+        return;
+    };
+
     let new_event = ServerChatEvent {
         seq_number: 0,
         text: event.text,
@@ -50,12 +68,19 @@ async fn broadcast(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
         event: Some(Event::ChatEvent(ChatEventType::Broadcast as i32)),
     };
 
-    let clts = clients.lock().await;
-
-    // Send the event to each client filtering out the sender to avoid send him it's own event.
-    for (_, server_event_tx) in clts.iter().filter(|(name, _)| name.as_str().ne(&sender)) {
-        if let Err(err) = server_event_tx.send(Ok(new_event.clone())).await {
-            println!("Server: RpgChatService: Error: chat broadcast: {:?}", err);
+    println!(
+        "Server: {} chat broadcast with: {:?} to: {:?}",
+        sender, new_event, player_list
+    );
+    {
+        let clts = clients.lock().await;
+        // Send the event to each client filtering out the sender to avoid send him it's own event.
+        for player in player_list.iter().filter(|name| sender.ne(*name)) {
+            if let Some(client_channel) = clts.get(player) {
+                if let Err(err) = client_channel.send(Ok(new_event.clone())).await {
+                    println!("Server: RpgChatService: Error: chat broadcast: {:?}", err);
+                }
+            }
         }
     }
 }
@@ -121,14 +146,14 @@ impl RpgChatService {
             Sender<Result<ServerChatEvent, Status>>,
         >::new()));
 
-        let clts_clone = clients.clone();
+        let clts = clients.clone();
         // This task loop on the ChatEvent receive channel to handle
         // ChatEvent for all connected clients.
         tokio::spawn(async move {
             while let Some(receive) = event_rx.recv().await {
                 match receive.event.event() {
-                    ChatEventType::Broadcast => broadcast(receive, clts_clone.clone()).await,
-                    ChatEventType::Whisper => whisper(receive, clts_clone.clone()).await,
+                    ChatEventType::Broadcast => broadcast(receive, clts.clone()).await,
+                    ChatEventType::Whisper => whisper(receive, clts.clone()).await,
                 };
             }
         });
