@@ -55,6 +55,7 @@ where
         let _ = self
             .content
             .iter()
+            .rev()
             .map(|content| {
                 let (text_color, text) = content.colored_format();
 
@@ -85,7 +86,6 @@ where
     }
 
     pub fn update(&mut self, _delta_ts: u128, mut text: Vec<T>) {
-        text.reverse();
         self.content = text;
     }
 

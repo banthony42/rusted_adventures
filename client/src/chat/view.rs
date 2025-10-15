@@ -164,9 +164,12 @@ impl ChatGraphicView {
                 // Fail to get model ui data for sender skip it
                 continue;
             };
-            self.chat_window.add_message(WindowChatMessage {
+            let new_msg = WindowChatMessage {
                 msg: msg.clone(),
                 ui_model: ui_model.clone(),
+            };
+            self.chat_window.add_message(new_msg, |window_msg| {
+                window_msg.msg.target().as_ref().eq(&Some(sender))
             });
         }
     }
@@ -195,6 +198,10 @@ impl ChatGraphicView {
                     return Some(user_input);
                 }
             }
+        }
+
+        if let Button::Keyboard(Key::Tab) = args {
+            self.chat_input.set_focus(!self.chat_input.is_focus());
         }
         None
     }
