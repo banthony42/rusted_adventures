@@ -41,7 +41,6 @@ where
     }
 
     pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
-        let mut msg_raw = 0.0;
         let _ = self
             .messages
             .iter()
@@ -52,7 +51,6 @@ where
                 let window_max_width: f64 = 128.0;
                 let padding_height = 10.0;
                 let padding_width = 10.0;
-                let bg_rect_padding = 2.0;
                 let entity_name_offset = 20.0;
                 let text = msg.content.format();
                 let model_position = msg.content.position();
@@ -71,13 +69,10 @@ where
                     model_position[1] as f64 + self.margin.height
                         - msg.content.offset(&self.species_lib)[1]
                         - bg_height // Need to offset with the rectangle height, therefore we control the bottom right anchor
-                        - entity_name_offset
-                        - msg_raw,
+                        - entity_name_offset,
                     window_max_width + padding_width,
                     bg_height,
                 ];
-                let mut scissor = bg_rect.map(|v| v as u32);
-                scissor[3] += msg_raw as u32;
                 let msg_position = [
                     bg_rect[0] + (padding_width / 2.0),
                     bg_rect[1] + char_template.top() + (padding_height / 2.0),
@@ -97,9 +92,8 @@ where
                     color::BLACK,
                     msg_position,
                     window_max_width,
-                    scissor,
+                    bg_rect.map(|v| v as u32),
                 );
-                msg_raw += bg_height + bg_rect_padding;
             })
             .collect::<Vec<_>>();
     }
@@ -121,19 +115,18 @@ where
             .is_empty();
 
         if message_missing {
-            let mut agg_messages = self
+            let agg_messages = self
                 .messages
                 .iter()
                 .enumerate()
                 .filter_map(|(index, msg)| (aggregate)(&msg.content).then(|| (index, msg.timer)))
                 .collect::<Vec<_>>();
-            // Sort by timer
-            agg_messages.sort_by(|a, b| a.1.cmp(&b.1));
 
-            // If the limit is reached for this aggregation
-            // Just remove the oldest timer to make some space
-            if agg_messages.len().ge(&3) {
-                self.messages.remove(agg_messages[0].0);
+            // Overwrite the existing WindowMessage for this aggregation
+            if agg_messages.len().ge(&1) {
+                for agg_msg in agg_messages.iter() {
+                    self.messages.remove(agg_msg.0);
+                }
             }
             self.messages.push(new_msg);
         }
