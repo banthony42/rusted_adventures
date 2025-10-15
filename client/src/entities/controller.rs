@@ -188,10 +188,19 @@ impl EntityController {
     /// then it will be no entry in the HashMap for this entity.
     pub fn ui_entities_models(&self) -> HashMap<String, UIEntityModel> {
         // Only for player for now we will add other entities later
-        match &self.player {
+        let mut hashmap = match &self.player {
             Some(player) => HashMap::from([(player.get_name().clone(), player.into_ui_model())]),
             None => HashMap::default(),
+        };
+
+        if let Some(am_entities) = &self.entities {
+            if let Ok(entities) = am_entities.try_lock() {
+                for entity in entities.iter() {
+                    hashmap.insert(entity.get_name().clone(), entity.into_ui_model());
+                }
+            }
         }
+        hashmap
     }
 
     pub fn render(&mut self, evnt: &piston::Event, window: &mut PistonWindow, font: &mut Font) {

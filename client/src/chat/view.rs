@@ -15,10 +15,10 @@ use crate::{
 
 use super::model::ChatMessage;
 
+use common::grpc_codegen::server_chat_event::Event as SEvent;
 use common::grpc_codegen::ChatEventType;
 use common::grpc_codegen::ServerEventType;
 use common::{constants::*, utils::get_timestamp};
-use common::{grpc_codegen::server_chat_event::Event as SEvent, MapCoord};
 
 impl TextAreaFormat for ChatMessage {
     fn colored_format(&self) -> (types::Color, String) {

@@ -110,7 +110,7 @@ where
     {
         let new_msg = WindowMessage {
             content,
-            timer: 5000,
+            timer: 8000,
         };
 
         let message_missing = self
@@ -132,7 +132,7 @@ where
 
             // If the limit is reached for this aggregation
             // Just remove the oldest timer to make some space
-            if self.messages.len().ge(&3) {
+            if agg_messages.len().ge(&3) {
                 self.messages.remove(agg_messages[0].0);
             }
             self.messages.push(new_msg);
