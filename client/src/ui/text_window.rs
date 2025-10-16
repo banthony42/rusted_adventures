@@ -50,27 +50,29 @@ where
                 let font_size = 17;
                 let window_max_width: f64 = 128.0;
                 let padding_height = 10.0;
-                let padding_width = 10.0;
+                let padding_width = 5.0;
                 let entity_name_offset = 20.0;
                 let text = msg.content.format();
                 let model_position = msg.content.position();
 
-                let line_height =
-                    font.text_height_for_max_width(text.as_str(), font_size, window_max_width)
-                        as f64;
+                let text_height = font.text_height_for_max_width(
+                    text.as_str(),
+                    font_size,
+                    window_max_width - padding_width,
+                ) as f64;
 
                 let Ok(char_template) = font.get().character(font_size, '|') else {
                     return;
                 };
 
-                let bg_height = line_height + padding_height;
+                let bg_height = text_height + padding_height;
                 let bg_rect: [f64; 4] = [
                     model_position[0] as f64 + self.margin.width - TILE_WIDTH as f64 / 2.0,
                     model_position[1] as f64 + self.margin.height
                         - msg.content.offset(&self.species_lib)[1]
                         - bg_height // Need to offset with the rectangle height, therefore we control the bottom right anchor
                         - entity_name_offset,
-                    window_max_width + padding_width,
+                    window_max_width,
                     bg_height,
                 ];
                 let msg_position = [
@@ -91,7 +93,7 @@ where
                     window,
                     color::BLACK,
                     msg_position,
-                    window_max_width,
+                    window_max_width - padding_width,
                     bg_rect.map(|v| v as u32),
                 );
             })
