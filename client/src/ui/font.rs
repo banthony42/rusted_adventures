@@ -169,19 +169,75 @@ impl Font {
     }
 
     pub fn text_height_for_max_width(&mut self, text: &str, font_size: u32, max_width: f64) -> u32 {
-        let mut width_cursor = 0.0;
-        let mut newlines = 1;
+        self.text_split_for_max_width(text, font_size, max_width)
+            .len() as u32
+            * font_size
+    }
 
-        for char in text.chars() {
-            if let Ok(ch) = self.get().character(font_size, char) {
-                width_cursor += ch.advance_width();
-                if width_cursor > max_width {
-                    width_cursor = 0.0;
-                    newlines += 1;
+    fn text_split_for_max_width(
+        &mut self,
+        text: &str,
+        font_size: u32,
+        max_text_width: f64,
+    ) -> Vec<String> {
+        // Browse the text String char by char, computing final text width in pixel.
+        // Each time the width exceed the `max_text_width` we extract all browsed chars into a string, (with String::drain)
+        // And we store the extraction in a Vector
+        // At the end we land with Vec<String> with each string will not exceed `max_text_width` pixel
+
+        let mut row_width = 0.0;
+        let mut row = Vec::new();
+        let mut text_split: Vec<String> = Vec::new();
+        let text_by_words: Vec<&str> = text.split_whitespace().collect();
+        let space_width = self
+            .get()
+            .character(font_size, ' ')
+            .map_or(0.0, |ch| ch.advance_width());
+
+        for word in text_by_words.iter() {
+            let word_width = word.chars().fold(0.0, |mut acc, char| {
+                if let Ok(ch) = self.get().character(font_size, char) {
+                    acc = acc + ch.advance_width();
+                };
+                acc
+            }) + space_width;
+            if row_width + word_width < max_text_width {
+                row_width += word_width;
+                row.push(word.to_string());
+            } else {
+                // The row is large enough, push it and clear the row
+                text_split.push(row.join(" "));
+                row.clear();
+                row_width = 0.0;
+                // Word too large for one row, we have to split the word
+                if word_width > max_text_width {
+                    let nb_split: u8 = (word_width / max_text_width).ceil() as u8;
+                    let part_len = word.len() / nb_split as usize;
+                    let mut splitter: &str = word;
+                    for n in 0..nb_split {
+                        let (first, second) = splitter.split_at(part_len);
+                        if first.len() > 0 {
+                            text_split.push(first.to_string());
+                        }
+                        if n == nb_split - 1 && second.len() > 0 {
+                            text_split.push(second.to_string());
+                        } else {
+                            splitter = second;
+                        }
+                    }
+                } else {
+                    // The word can be added to the row, we are still under max width
+                    row.push(word.to_string());
+                    row_width = word_width;
                 }
             }
         }
-        return newlines * font_size;
+        // Don't forget to push the remaining text
+        if !row.is_empty() {
+            text_split.push(row.join(" "));
+        }
+        text_split.retain(|txt| txt.len() > 0);
+        text_split
     }
 
     pub fn render_text_max_width(
@@ -197,28 +253,7 @@ impl Font {
     ) {
         let x = pos[0];
         let y = pos[1];
-
-        let mut width_cursor = 0.0;
-        let mut final_text = text.to_string();
-        let mut text_split: Vec<String> = Vec::new();
-
-        // Browse the text String char by char, computing final text width in pixel.
-        // Each time the width exceed the `max_text_width` we extract all browsed chars into a string, (with String::drain)
-        // And we store the extraction in a Vector
-        // At the end we land with Vec<String> with each string will not exceed `max_text_width` pixel
-        for (index, char) in text.chars().enumerate() {
-            if let Ok(ch) = self.get().character(font_size, char) {
-                width_cursor += ch.advance_width();
-                if width_cursor > max_text_width {
-                    width_cursor = 0.0;
-                    text_split.push(final_text.drain(..index).collect::<String>());
-                }
-            }
-        }
-        // Don't forget to push the remaining text
-        if !final_text.is_empty() {
-            text_split.push(final_text);
-        }
+        let text_split = self.text_split_for_max_width(text, font_size, max_text_width);
 
         window.draw_2d(evnt, |ctx, gl, device| {
             let _: Vec<_> = text_split
