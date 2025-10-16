@@ -5,11 +5,6 @@ pub struct Font {
     font: Option<Glyphs>,
 }
 
-#[derive(Debug)]
-pub enum FontError {
-    CharacterPreload,
-}
-
 enum TextAlign {
     Centered,
     Left,
@@ -52,7 +47,7 @@ impl Font {
         pos: [f64; 2],
         margin: Option<&Size>,
     ) {
-        self.__render_text(
+        self.render_text(
             text,
             font_size,
             evnt,
@@ -65,7 +60,7 @@ impl Font {
     }
 
     /// Render text left aligned
-    pub fn render(
+    pub fn render_left_aligned(
         &mut self,
         text: &str,
         font_size: u32,
@@ -75,7 +70,7 @@ impl Font {
         pos: [f64; 2],
         margin: Option<&Size>,
     ) {
-        self.__render_text(
+        self.render_text(
             text,
             font_size,
             evnt,
@@ -87,7 +82,7 @@ impl Font {
         )
     }
 
-    fn __render_text(
+    fn render_text(
         &mut self,
         text: &str,
         font_size: u32,
