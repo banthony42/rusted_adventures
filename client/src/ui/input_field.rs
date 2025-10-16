@@ -95,16 +95,11 @@ impl InputField {
     }
 
     fn erase_last_char(&mut self, font: &mut Font) {
-        match self.content.pop() {
-            Some(char) => {
-                match font.get_text_render_size(self.font_size, char.to_string().as_str()) {
-                    Ok(text_size) => self.content_width -= text_size[0],
-                    Err(_) => {}
-                }
+        if let Some(char) = self.content.pop() {
+            if let Ok(text_width) = font.get().width(self.font_size, &char.to_string()) {
+                self.content_width -= text_width;
             }
-            None => {}
         }
-
         // Should never happend
         if self.content_width < 0.0 {
             self.content_width = 0.0;
@@ -112,12 +107,12 @@ impl InputField {
     }
 
     fn add_text(&mut self, text: &str, font: &mut Font) {
-        match font.get_text_render_size(self.font_size, text) {
-            Ok(text_size) => {
+        match font.get().width(self.font_size, text) {
+            Ok(text_width) => {
                 let max_content_width = self.rect_settings[2] - 4.0;
-                if self.content_width + text_size[0] < max_content_width {
+                if self.content_width + text_width < max_content_width {
                     self.content.push_str(text);
-                    self.content_width += text_size[0];
+                    self.content_width += text_width;
                 }
             }
             Err(_) => {}
@@ -160,12 +155,13 @@ impl InputField {
             true => { /* Don't render the cursor, should be hidden */ }
             false => {
                 if self.focus {
-                    if let Ok(content_size) = font
-                        .get_text_render_size(self.font_size, self.get_content_or_masked().as_str())
+                    if let Ok(text_width) = font
+                        .get()
+                        .width(self.font_size, self.get_content_or_masked().as_str())
                     {
                         if let Ok(char_template) = font.get().character(self.font_size, '|') {
                             let cursor_pos = [
-                                self.rect_settings[0] + content_size[0] - char_template.left(),
+                                self.rect_settings[0] + text_width - char_template.left(),
                                 self.rect_settings[1]
                                     + char_template.top()
                                     + (self.rect_settings[3] - self.font_size as f64) / 2.0,

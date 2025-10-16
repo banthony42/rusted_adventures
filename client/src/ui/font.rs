@@ -147,29 +147,6 @@ impl Font {
         });
     }
 
-    pub fn get_text_render_size(
-        &mut self,
-        font_size: u32,
-        text: &str,
-    ) -> Result<[f64; 2], FontError> {
-        let mut x = 0.0;
-        let mut y = 0.0;
-        for ch in text.chars() {
-            match self.get().character(font_size, ch) {
-                Ok(character) => {
-                    x += character.advance_width();
-                    if character.top() > y {
-                        y = character.top();
-                    }
-                }
-                Err(_) => {
-                    return Err(FontError::CharacterPreload);
-                }
-            }
-        }
-        Ok([x, y])
-    }
-
     fn split_into_lines(&mut self, text: &str, font_size: u32, max_text_width: f64) -> Vec<String> {
         // Browse the text String char by char, computing final text width in pixel.
         // Each time the width exceed the `max_text_width` we extract all browsed chars into a string, (with String::drain)
@@ -186,12 +163,11 @@ impl Font {
             .map_or(0.0, |ch| ch.advance_width());
 
         for word in text_by_words.iter() {
-            let word_width = word.chars().fold(0.0, |mut acc, char| {
-                if let Ok(ch) = self.get().character(font_size, char) {
-                    acc = acc + ch.advance_width();
-                };
-                acc
-            }) + space_width;
+            let Ok(mut word_width) = self.get().width(font_size, word) else {
+                // Skip the word on any font error
+                continue;
+            };
+            word_width += space_width;
             if row_width + word_width < max_text_width {
                 row_width += word_width;
                 row.push(word.to_string());
