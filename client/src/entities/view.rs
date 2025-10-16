@@ -84,9 +84,9 @@ impl EntityView {
             entity_pos.y as f64 - self.species_lib.get_height_offset(entity.get_species()),
         ];
         let text_color = self.species_lib.get_font_color(entity.get_species());
-        font.render_text_centered(
+        font.render_centered(
             entity.get_name(),
-            17,
+            GUI_ENTITY_FONT_SIZE,
             evnt,
             window,
             text_color,

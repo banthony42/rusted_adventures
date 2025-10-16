@@ -106,7 +106,7 @@ impl GameState for Login {
             rect.draw(final_position, &_ctx.draw_state, _ctx.transform, gl);
         });
 
-        self.font.render_text_centered(
+        self.font.render_centered(
             TITLE,
             TITLE_FONT_SIZE,
             evnt,
@@ -117,7 +117,7 @@ impl GameState for Login {
         );
 
         if !self.message.is_empty() {
-            self.font.render_text_centered(
+            self.font.render_centered(
                 &self.message,
                 MESSAGE_FONT_SIZE,
                 evnt,

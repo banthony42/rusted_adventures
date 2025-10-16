@@ -64,8 +64,6 @@ impl TextWindowFormat for WindowChatMessage {
     }
 }
 
-const CHAT_FONT_SIZE: u32 = 17;
-
 pub struct ChatGraphicView {
     chat_input: InputField,
     chat_area: TextArea<ChatMessage>,
@@ -75,12 +73,10 @@ pub struct ChatGraphicView {
 
 impl ChatGraphicView {
     pub fn new() -> Self {
-        let default_area_size =
-            [GUI_CHAT_X, GUI_CHAT_Y, GUI_CHAT_WIDTH, GUI_CHAT_HEIGHT].map(|v| v as f64);
         ChatGraphicView {
-            chat_window: TextWindow::new(),
-            chat_input: InputField::new([16.0, 928.0], CHAT_FONT_SIZE, 416.0),
-            chat_area: TextArea::new(CHAT_FONT_SIZE, default_area_size),
+            chat_window: TextWindow::new(CHAT_FONT_SIZE, CHAT_WINDOW_WIDTH, CHAT_WINDOW_TIMER),
+            chat_input: InputField::new(CHAT_INPUT_POSITION, CHAT_FONT_SIZE, CHAT_INPUT_WIDTH),
+            chat_area: TextArea::new(CHAT_FONT_SIZE, GUI_CHAT_SIZE),
             margin: Size {
                 width: 0.0,
                 height: 0.0,

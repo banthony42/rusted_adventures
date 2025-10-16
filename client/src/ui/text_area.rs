@@ -11,7 +11,7 @@ where
     font_size: u32,
     rect: [f64; 4],
     position: [f64; 2],
-    scissor: [u32; 4],
+    scissor: [f64; 4],
     content: Vec<T>,
     margin: Size,
     scroll: f64,
@@ -36,7 +36,7 @@ where
             },
             scroll: 0.0,
             position: [0.0; 2],
-            scissor: [0; 4],
+            scissor: size,
         }
     }
 
@@ -57,18 +57,18 @@ where
             .map(|content| {
                 let (text_color, text) = content.colored_format();
 
-                line_height += font.text_height_for_max_width(
+                line_height += font.height_with_auto_newline(
                     text.as_str(),
                     self.font_size,
                     self.width() - GUI_CHAT_PADDING_WIDTH,
-                ) as f64;
+                );
 
                 let msg_position = [
                     self.position[0],
                     self.position[1] - line_height + (self.scroll * self.font_size as f64),
                 ];
 
-                font.render_text_max_width(
+                font.render_with_auto_newline(
                     text.as_str(),
                     self.font_size,
                     evnt,
@@ -111,12 +111,9 @@ where
             self.rect[0] + self.margin.width + (GUI_CHAT_PADDING_WIDTH / 2.0),
             self.rect[1] + self.margin.height + self.height() + 10.0,
         ];
-        // Scissor start at top left of the chat rectangle area
-        self.scissor = [
-            (self.rect[0] + self.margin.width) as u32,
-            (self.rect[1] + self.margin.height) as u32,
-            self.width() as u32,
-            self.height() as u32,
-        ]
+        // Update scissor position
+        // It start at top left of the chat rectangle area
+        self.scissor[0] = self.rect[0] + self.margin.width;
+        self.scissor[1] = self.rect[1] + self.margin.height;
     }
 }

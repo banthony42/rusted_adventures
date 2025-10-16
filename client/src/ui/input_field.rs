@@ -143,7 +143,7 @@ impl InputField {
                         + char_template.top()
                         + (self.rect_settings[3] - self.font_size as f64) / 2.0,
                 ];
-                font.render_text(
+                font.render(
                     self.get_content_or_masked().as_str(),
                     self.font_size,
                     evnt,
@@ -170,7 +170,7 @@ impl InputField {
                                     + char_template.top()
                                     + (self.rect_settings[3] - self.font_size as f64) / 2.0,
                             ];
-                            font.render_text(
+                            font.render(
                                 "|",
                                 self.font_size,
                                 evnt,

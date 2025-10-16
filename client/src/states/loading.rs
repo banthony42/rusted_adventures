@@ -140,7 +140,7 @@ impl GameState for Loading {
             }
         });
 
-        self.font.render_text_centered(
+        self.font.render_centered(
             TITLE,
             TITLE_FONT_SIZE,
             evnt,

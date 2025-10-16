@@ -41,7 +41,8 @@ impl Font {
         self.font.as_mut().unwrap()
     }
 
-    pub fn render_text_centered(
+    /// Render text center aligned
+    pub fn render_centered(
         &mut self,
         text: &str,
         font_size: u32,
@@ -63,7 +64,8 @@ impl Font {
         )
     }
 
-    pub fn render_text(
+    /// Render text left aligned
+    pub fn render(
         &mut self,
         text: &str,
         font_size: u32,
@@ -168,18 +170,7 @@ impl Font {
         Ok([x, y])
     }
 
-    pub fn text_height_for_max_width(&mut self, text: &str, font_size: u32, max_width: f64) -> u32 {
-        self.text_split_for_max_width(text, font_size, max_width)
-            .len() as u32
-            * font_size
-    }
-
-    fn text_split_for_max_width(
-        &mut self,
-        text: &str,
-        font_size: u32,
-        max_text_width: f64,
-    ) -> Vec<String> {
+    fn split_into_lines(&mut self, text: &str, font_size: u32, max_text_width: f64) -> Vec<String> {
         // Browse the text String char by char, computing final text width in pixel.
         // Each time the width exceed the `max_text_width` we extract all browsed chars into a string, (with String::drain)
         // And we store the extraction in a Vector
@@ -240,7 +231,16 @@ impl Font {
         text_split
     }
 
-    pub fn render_text_max_width(
+    /// Compute the total height of lines, the text will use
+    /// to get render with ```render_with_auto_newline```
+    pub fn height_with_auto_newline(&mut self, text: &str, font_size: u32, line_width: f64) -> f64 {
+        self.split_into_lines(text, font_size, line_width).len() as f64 * font_size as f64
+    }
+
+    /// Render text with automatic jump to newline, a maximum width for the line is needed.
+    ///
+    /// ```height_with_auto_newline``` can be used to know in advance the total height of lines.
+    pub fn render_with_auto_newline(
         &mut self,
         text: &str,
         font_size: u32,
@@ -248,22 +248,22 @@ impl Font {
         window: &mut PistonWindow,
         color: [f32; 4],
         pos: [f64; 2],
-        max_text_width: f64,
-        scissor: [u32; 4],
+        line_width: f64,
+        scissor: [f64; 4],
     ) {
         let x = pos[0];
         let y = pos[1];
-        let text_split = self.text_split_for_max_width(text, font_size, max_text_width);
+        let lines = self.split_into_lines(text, font_size, line_width);
 
         window.draw_2d(evnt, |ctx, gl, device| {
-            let _: Vec<_> = text_split
+            let _: Vec<_> = lines
                 .iter()
                 .enumerate()
                 .map(|(index, text)| {
                     let _ = text::Text::new_color(color, font_size).draw(
                         text,
                         self.get(),
-                        &DrawState::default().scissor(scissor),
+                        &DrawState::default().scissor(scissor.map(|value| value as u32)),
                         ctx.transform
                             .trans(x as f64, y as f64 + (index * font_size as usize) as f64),
                         gl,

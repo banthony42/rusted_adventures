@@ -1,4 +1,7 @@
-use common::constants::{GUI_CHAT_PADDING_WIDTH, TILE_WIDTH};
+use common::constants::{
+    CHAT_WINDOW_MARGIN_BOTTOM, CHAT_WINDOW_PADDING_HEIGHT, CHAT_WINDOW_PADDING_WIDTH,
+    GUI_ENTITY_FONT_SIZE, TILE_WIDTH,
+};
 use graphics::rectangle::Shape;
 use piston_window::*;
 
@@ -20,17 +23,23 @@ pub struct TextWindow<T>
 where
     T: TextWindowFormat + PartialEq,
 {
+    font_size: u32,
+    max_width: f64,
     messages: Vec<WindowMessage<T>>,
     margin: Size,
     species_lib: SpeciesLibrary,
+    timer: u128,
 }
 
 impl<T> TextWindow<T>
 where
     T: TextWindowFormat + PartialEq,
 {
-    pub fn new() -> Self {
+    pub fn new(font_size: u32, max_width: f64, timer: u128) -> Self {
         Self {
+            font_size,
+            max_width,
+            timer,
             species_lib: SpeciesLibrary::new(),
             messages: Vec::default(),
             margin: Size {
@@ -40,6 +49,12 @@ where
         }
     }
 
+    fn get_font_height(&self, font_size: u32, font: &mut Font) -> f64 {
+        font.get()
+            .character(font_size, '|')
+            .map_or(0.0, |c| c.top())
+    }
+
     pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
         let _ = self
             .messages
@@ -47,53 +62,54 @@ where
             .rev()
             .filter(|msg| msg.timer > 0)
             .map(|msg| {
-                let font_size = 17;
-                let window_max_width: f64 = 128.0;
-                let padding_height = 10.0;
-                let entity_name_offset = 20.0;
                 let text = msg.content.format();
                 let model_position = msg.content.position();
+                let text_width = self.max_width - CHAT_WINDOW_PADDING_WIDTH;
 
-                let text_height = font.text_height_for_max_width(
-                    text.as_str(),
-                    font_size,
-                    window_max_width - GUI_CHAT_PADDING_WIDTH,
-                ) as f64;
+                let window_height =
+                    font.height_with_auto_newline(text.as_str(), self.font_size, text_width)
+                        + CHAT_WINDOW_PADDING_HEIGHT;
 
-                let Ok(char_template) = font.get().character(font_size, '|') else {
-                    return;
-                };
-
-                let bg_height = text_height + padding_height;
-                let bg_rect: [f64; 4] = [
-                    model_position[0] as f64 + self.margin.width - TILE_WIDTH as f64 / 2.0,
+                // Compute the chat window position
+                let window_position = [
+                    model_position[0] as f64 + self.margin.width - (TILE_WIDTH / 2) as f64,
                     model_position[1] as f64 + self.margin.height
                         - msg.content.offset(&self.species_lib)[1]
-                        - bg_height // Need to offset with the rectangle height, therefore we control the bottom right anchor
-                        - entity_name_offset,
-                    window_max_width,
-                    bg_height,
-                ];
-                let msg_position = [
-                    bg_rect[0] + (GUI_CHAT_PADDING_WIDTH / 2.0),
-                    bg_rect[1] + char_template.top() + (padding_height / 2.0),
+                        - window_height // Need to offset with the rectangle height, therefore we control the bottom right anchor
+                        - self.get_font_height(GUI_ENTITY_FONT_SIZE, font)
+                        - CHAT_WINDOW_MARGIN_BOTTOM,
                 ];
 
+                // Compute the message position inside the chat window
+                let msg_position = [
+                    window_position[0] + (CHAT_WINDOW_PADDING_WIDTH / 2.0),
+                    window_position[1]
+                        + self.get_font_height(self.font_size, font)
+                        + (CHAT_WINDOW_PADDING_HEIGHT / 2.0),
+                ];
+
+                // Prepare the chat window rectangle (position + size)
+                let window_box = [
+                    window_position[0],
+                    window_position[1],
+                    self.max_width,
+                    window_height,
+                ];
                 window.draw_2d(evnt, |_ctx, gl, _device| {
                     Rectangle::new([1.0; 4])
                         .color(color::alpha(0.5))
                         .shape(Shape::Round(5.0, 32))
-                        .draw(bg_rect, &_ctx.draw_state, _ctx.transform, gl);
+                        .draw(window_box, &_ctx.draw_state, _ctx.transform, gl);
                 });
-                font.render_text_max_width(
+                font.render_with_auto_newline(
                     text.as_str(),
-                    font_size,
+                    self.font_size,
                     evnt,
                     window,
                     color::BLACK,
                     msg_position,
-                    window_max_width - GUI_CHAT_PADDING_WIDTH,
-                    bg_rect.map(|v| v as u32),
+                    self.max_width - CHAT_WINDOW_PADDING_WIDTH,
+                    window_box,
                 );
             })
             .collect::<Vec<_>>();
@@ -105,7 +121,7 @@ where
     {
         let new_msg = WindowMessage {
             content,
-            timer: 8000,
+            timer: self.timer,
         };
 
         let message_missing = self
