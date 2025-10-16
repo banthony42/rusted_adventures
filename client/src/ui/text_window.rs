@@ -1,4 +1,4 @@
-use common::constants::TILE_WIDTH;
+use common::constants::{GUI_CHAT_PADDING_WIDTH, TILE_WIDTH};
 use graphics::rectangle::Shape;
 use piston_window::*;
 
@@ -50,7 +50,6 @@ where
                 let font_size = 17;
                 let window_max_width: f64 = 128.0;
                 let padding_height = 10.0;
-                let padding_width = 5.0;
                 let entity_name_offset = 20.0;
                 let text = msg.content.format();
                 let model_position = msg.content.position();
@@ -58,7 +57,7 @@ where
                 let text_height = font.text_height_for_max_width(
                     text.as_str(),
                     font_size,
-                    window_max_width - padding_width,
+                    window_max_width - GUI_CHAT_PADDING_WIDTH,
                 ) as f64;
 
                 let Ok(char_template) = font.get().character(font_size, '|') else {
@@ -76,7 +75,7 @@ where
                     bg_height,
                 ];
                 let msg_position = [
-                    bg_rect[0] + (padding_width / 2.0),
+                    bg_rect[0] + (GUI_CHAT_PADDING_WIDTH / 2.0),
                     bg_rect[1] + char_template.top() + (padding_height / 2.0),
                 ];
 
@@ -93,7 +92,7 @@ where
                     window,
                     color::BLACK,
                     msg_position,
-                    window_max_width - padding_width,
+                    window_max_width - GUI_CHAT_PADDING_WIDTH,
                     bg_rect.map(|v| v as u32),
                 );
             })

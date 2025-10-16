@@ -75,19 +75,12 @@ pub struct ChatGraphicView {
 
 impl ChatGraphicView {
     pub fn new() -> Self {
+        let default_area_size =
+            [GUI_CHAT_X, GUI_CHAT_Y, GUI_CHAT_WIDTH, GUI_CHAT_HEIGHT].map(|v| v as f64);
         ChatGraphicView {
-            //  drop all WindowMessage with map != ui_model[WindowMessage.sender].map
             chat_window: TextWindow::new(),
             chat_input: InputField::new([16.0, 928.0], CHAT_FONT_SIZE, 416.0),
-            chat_area: TextArea::new(
-                CHAT_FONT_SIZE,
-                [
-                    GUI_CHAT_X as u32,
-                    GUI_CHAT_Y as u32,
-                    GUI_CHAT_WIDTH as u32,
-                    GUI_CHAT_HEIGHT as u32,
-                ],
-            ),
+            chat_area: TextArea::new(CHAT_FONT_SIZE, default_area_size),
             margin: Size {
                 width: 0.0,
                 height: 0.0,

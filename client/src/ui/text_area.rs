@@ -1,3 +1,4 @@
+use common::constants::GUI_CHAT_PADDING_WIDTH;
 use piston_window::*;
 use types::Color;
 
@@ -8,7 +9,9 @@ where
     T: TextAreaFormat,
 {
     font_size: u32,
-    rect: [u32; 4],
+    rect: [f64; 4],
+    position: [f64; 2],
+    scissor: [u32; 4],
     content: Vec<T>,
     margin: Size,
     scroll: f64,
@@ -22,7 +25,7 @@ impl<T> TextArea<T>
 where
     T: TextAreaFormat,
 {
-    pub fn new(font_size: u32, size: [u32; 4]) -> Self {
+    pub fn new(font_size: u32, size: [f64; 4]) -> Self {
         TextArea {
             font_size: font_size,
             rect: size,
@@ -32,12 +35,21 @@ where
                 height: 0.0,
             },
             scroll: 0.0,
+            position: [0.0; 2],
+            scissor: [0; 4],
         }
+    }
+
+    fn height(&self) -> f64 {
+        self.rect[3]
+    }
+
+    fn width(&self) -> f64 {
+        self.rect[2]
     }
 
     pub fn render(&self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
         let mut line_height = 0.0;
-        let padding_width = 5.0;
         let _ = self
             .content
             .iter()
@@ -48,20 +60,12 @@ where
                 line_height += font.text_height_for_max_width(
                     text.as_str(),
                     self.font_size,
-                    self.rect[2] as f64 - padding_width,
+                    self.width() - GUI_CHAT_PADDING_WIDTH,
                 ) as f64;
 
-                let bg_rect = [
-                    self.rect[0] as f64 + self.margin.width,
-                    self.rect[1] as f64 + self.margin.height,
-                    self.rect[2] as f64,
-                    self.rect[3] as f64,
-                ];
-
                 let msg_position = [
-                    bg_rect[0] + (padding_width / 2.0),
-                    bg_rect[1] + bg_rect[3] + 10.0 - line_height
-                        + (self.scroll * self.font_size as f64),
+                    self.position[0],
+                    self.position[1] - line_height + (self.scroll * self.font_size as f64),
                 ];
 
                 font.render_text_max_width(
@@ -71,8 +75,8 @@ where
                     window,
                     text_color,
                     msg_position,
-                    bg_rect[2] as f64 - padding_width,
-                    bg_rect.map(|v| v as u32),
+                    self.width() - GUI_CHAT_PADDING_WIDTH,
+                    self.scissor,
                 );
             })
             .collect::<Vec<_>>();
@@ -98,5 +102,21 @@ where
 
     pub fn resize(&mut self, margin: &Size) {
         self.margin = margin.clone();
+        // Since we render text from the bottom to the top
+        // position should start at bottom left of the chat rectangle area
+        // we shift with (padding / 2), and text will be render with
+        // line max width = width - padding
+        // therefore it will remain (padding / 2) pixel minimum after the line
+        self.position = [
+            self.rect[0] + self.margin.width + (GUI_CHAT_PADDING_WIDTH / 2.0),
+            self.rect[1] + self.margin.height + self.height() + 10.0,
+        ];
+        // Scissor start at top left of the chat rectangle area
+        self.scissor = [
+            (self.rect[0] + self.margin.width) as u32,
+            (self.rect[1] + self.margin.height) as u32,
+            self.width() as u32,
+            self.height() as u32,
+        ]
     }
 }
