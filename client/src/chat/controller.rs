@@ -15,7 +15,6 @@ use super::model::{ChatMessage, ChatModel, Target};
 use super::view::ChatGraphicView;
 
 use crate::entities::model::UIEntityModel;
-use crate::ui;
 use crate::ui::font::Font;
 
 use common::grpc_codegen::server_chat_event::Event as SEvent;

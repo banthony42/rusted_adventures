@@ -1,7 +1,5 @@
 use serde::{de::Visitor, Deserialize, Deserializer};
 
-use crate::constants::{TILEMAP_HEIGHT, TILEMAP_WIDTH};
-
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub enum MapLayer {
     AnimatedSprites,
