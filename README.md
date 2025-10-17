@@ -1,6 +1,6 @@
 <h1 align="center">
-  <img src="images/logo.png" alt="PROJECT_NAME" width="192">
-  <div>PROJECT_NAME</div>
+  <img src="images/logo.png" alt="RPG" width="192">
+  <div>RPG</div>
 </h1>
 
 <h4 align="center">A minimal multiplayer role playing game <span style="font-weight: 750">draft</span> build with <a href="https://www.rust-lang.org/fr" target="_blank" rel="noopener noreferrer">Rust</a> and drawn with <a href="https://www.aseprite.org/" target="_blank" rel="noopener noreferrer">Aseprite</a>.</h4>
@@ -14,7 +14,7 @@
     <img src="https://img.shields.io/badge/Aseprite-583E46?style=for-the-badge&logo=aseprite&logoColor=white"
          alt="Aseprite">
   </a>
-  <a href="https://www.dofus.com/fr/mmorpg/decouvrir" target="_blank" rel="noopener noreferrer">
+  <a href="https://www.dofus-retro.com/en/mmorpg/discover" target="_blank" rel="noopener noreferrer">
     <img src="https://img.shields.io/badge/humbly_inspired_by_dofus-83af1f?style=for-the-badge&logo=egghead&logoColor=white"
          alt="Humbly inspired by Dofus">
   </a>
@@ -34,15 +34,17 @@
 ## Introduction
 
 **First goal of this project is to learn !**<br>
-All technologies were chosen for the sole purpose of **learning** them.<br>
+All technologies were chosen for the sole purpose of **learning** them, even my pixel art editor.<br>
 
 Goal is not to develop following the video games state of the art.<br>
 Neither to create a real game.
+Even if i'm passionate about heroic fantasy games such as Dofus, World of Warcraft or Skyrim,
+it's only a pretext here, to be confront to interesting problematics to develop.
 
 ## Description
 
-Welcome to PROJECT_NAME !
-A minimal multiplayer role playing game, humbly inspired by [Dofus](https://www.dofus.com/fr/mmorpg/decouvrir). <br>
+Welcome to RPG !
+A minimal multiplayer role playing game, humbly inspired by [Dofus Retro](https://www.dofus-retro.com/en/mmorpg/discover).<br>
 Here you won't spend hours killing monsters, collecting rare loot or delves perilous dungeons.<br>
 Instead you can observe a passionate trying to implement it.<br>
 
@@ -52,9 +54,11 @@ I set myself the goal of creating the minimum of an RPG:
 - [x] Player account
 - [x] Player movements
 - [x] Player persistency in the game
+- [x] Monsters spawn
 - [x] Monsters movements
 - [x] Monsters persistency in the game
-- [x] Chat
+- [x] Entities events send to each concerned players
+- [x] Chat (map channel and private messages)
 - [ ] Character classes
 - [ ] Fight
 - [ ] Levels and experience points
@@ -66,25 +70,34 @@ I have deliberately forget quests. :kissing_smiling_eyes:
 
 ## Architecture
 
-This project is split in four part :
+This project is split in several parts :
 
-- Client<br>
+- Client:
   Displays the game state and transmits the player's actions to the server.
 
 ---
 
-- Server<br>
-  Handle all events in the game. (entities lifecycle, players input, etc ...)
+- Server:
+  Composed of :
+  - gRPC services to handle all clients events in the game. (entities lifecycle, players movements...)
+  - The world engine which handle the entities behaviours, spawn ...
 
 ---
 
-- Database<br>
-  Save accounts and players data.
-
----
-
-- Command Line Interface<br>
+- Command Line Interface:
   Also known as **CLI**, to replace the game web site and allow us to register player accounts and manage it.
+  I also use it as a playground to quickly tests things.
+  For example, it help me to tests some gRPC request at the begining of the project.
+
+---
+
+- Common Library:
+  This library contain all the code shared by all other parts. (constants, database access and queries, generated gRPC code, world maps loading ...)
+
+---
+
+- Database:
+  Save accounts, players and entities data.
 
 ---
 
@@ -165,6 +178,11 @@ cd common/src/database && diesel migration run --migration-dir ./migrations
 ### Run
 
 ```sh
+# Ensure your database is running
+docker start my_db_name
+```
+
+```sh
 # Launch the server
 cd rpg
 ./target/debug/server
@@ -172,12 +190,13 @@ cd rpg
 
 ```sh
 # Create your player account
-./target/debug/rpc-cli account create mylogin mypassword
+./target/debug/rpg-cli account create mylogin mypassword
 ```
 
 ```sh
+# Launch the game client
+# Its mandatory to launch from this folder from now ...
 cd client
-# Mandatory to launch from this folder from now ...
 ../target/debug/rpg-client
 ```
 
@@ -187,7 +206,7 @@ Enjoy !
 
 ## Known Issues
 
-All known issues, and tasks are tracked here : [Trello Board](https://trello.com/b/SlS6G8vq/rpg)
+All known issues, and tasks are tracked here : [Trello Board](https://trello.com/b/SlS6G8vq)
 
 ## Credits
 
@@ -202,6 +221,7 @@ All known issues, and tasks are tracked here : [Trello Board](https://trello.com
 - [zerotomastery: Rust type state pattern](https://zerotomastery.io/blog/rust-typestate-patterns/)
 - [dev.to: Khaled Hosseini: Play Microservices Auth service](https://dev.to/khaledhosseini/play-microservices-authentication-4di3)
 - [dev.to: Neeraj Sharma: Auth API in Rust using gRPC](https://dev.to/neeraj_sharma_1135657c7f6/how-to-build-an-auth-api-in-rust-grpc-57mc)
+- [protocol buffer documentation](https://protobuf.dev/)
 
 #### Pixel Art :
 
