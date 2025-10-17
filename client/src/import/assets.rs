@@ -211,27 +211,27 @@ pub fn load_assets(window: &mut PistonWindow) -> HashMap<EntityAssets, GameAsset
         ),
         (
             EntityAssets::Character(Animations::Idle),
-            Path::new("../assets/tests/character_animation-Idle.json"),
+            Path::new("../assets/characters/character_template-Idle.json"),
         ),
         (
             EntityAssets::Character(Animations::Run),
-            Path::new("../assets/tests/character_animation-Run.json"),
+            Path::new("../assets/characters/character_template-Run.json"),
         ),
         (
             EntityAssets::Bouftou(Animations::Idle),
-            Path::new("../assets/tests/bouftou_animation-Idle.json"),
+            Path::new("../assets/monsters/bouftou_animation-Idle.json"),
         ),
         (
             EntityAssets::Bouftou(Animations::Run),
-            Path::new("../assets/tests/bouftou_animation-Run.json"),
+            Path::new("../assets/monsters/bouftou_animation-Run.json"),
         ),
         (
             EntityAssets::Crabedoeuf(Animations::Idle),
-            Path::new("../assets/tests/crabedoeuf-Idle.json"),
+            Path::new("../assets/monsters/crabedoeuf-Idle.json"),
         ),
         (
             EntityAssets::Crabedoeuf(Animations::Run),
-            Path::new("../assets/tests/crabedoeuf-Run.json"),
+            Path::new("../assets/monsters/crabedoeuf-Run.json"),
         ),
     ];
 
