@@ -75,7 +75,7 @@ Static sprite leaves here, basically sprites that are not animated and not colli
 Any exported map that doesn't respect thoose rules will result as unexpected behaviour
 if loaded by the game asset engine.
 
-# TODO_INSERT_MAP_GIF_OF_LAYERS
+![aseprite_maps_demo](../images/aseprite_maps_demo.gif)
 
 #### Export
 
@@ -92,7 +92,7 @@ The entities importer also have a rule to respect.
 - Tag name will be used in exported files names.
 - Tag name will be used in animation names in the engine.
 
-# TODO_INSERT_ENTITIES_GIF_OF_TAG
+![aseprite_maps_demo](../images/aseprite_entities_demo.gif)
 
 #### Export
 
@@ -110,3 +110,5 @@ When you are ready and your tags are correctly sets.
 You just have to click on: `File > Scripts > Tags-To-Sheets`
 Aseprite will create `.json` and `.png` files for each tagged animation.
 Files are saved at the same place of your `.aseprite` file.
+
+![aseprite_maps_demo](../images/aseprite_tag_export_demo.gif)
