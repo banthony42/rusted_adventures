@@ -80,6 +80,7 @@ if loaded by the game asset engine.
 #### Export
 
 To export the map i just run the `aseprite_convert_map.bat` script on windows.
+
 Each new map, will require to edit this scripts to add command lines with the new map file.
 
 ## Entities
@@ -91,6 +92,9 @@ The entities importer also have a rule to respect.
 - Each Animations should be tagged.
 - Tag name will be used in exported files names.
 - Tag name will be used in animation names in the engine.
+- For now the engine handle only two animations:
+  - Idle
+  - Run
 
 ![aseprite_maps_demo](../images/aseprite_entities_demo.gif)
 
@@ -109,6 +113,7 @@ When you are ready and your tags are correctly sets.
 
 You just have to click on: `File > Scripts > Tags-To-Sheets`
 Aseprite will create `.json` and `.png` files for each tagged animation.
+
 Files are saved at the same place of your `.aseprite` file.
 
 ![aseprite_maps_demo](../images/aseprite_tag_export_demo.gif)
