@@ -27,9 +27,12 @@
   <a href="#getting-started">Getting Started</a> |
   <a href="#known-issues">Known Issues</a> |
   <a href="#credits">Credits</a>
+
 </p>
 
-![demo](images/demo.gif)
+<p align="center">
+  <img src="images/demo.gif" alt="animated" />
+</p>
 
 ## Introduction
 
