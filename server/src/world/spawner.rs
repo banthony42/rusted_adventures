@@ -81,7 +81,7 @@ impl Spawner {
         Self {
             species,
             map,
-            number: 3,
+            number: 4,
             update_timer: 0,
             spawn_orders: Vec::new(),
         }
