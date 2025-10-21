@@ -94,7 +94,7 @@ impl ChatController {
                                                     }
                                                 },
                                                 Ok(_) => model.post_from(server_chat_event).await,
-                                                Err(_) => todo!(),
+                                                Err(err) => println!("Chat failed to parse server event: {:?} with: {:?}", se, err),
                                             }
                                         }
                                         else {

@@ -129,15 +129,21 @@ impl EntityController {
                                                 EntitySpawnEvent(entity_spawn) => {
                                                     println!("Client: EntityController: EntitySpawnEvent: {:?}", entity_spawn);
                                                     if let Some(new_entity) = entity_spawn.new_entity {
-                                                        let species = Species::from(new_entity.family.unwrap());
-                                                        let mut instance = EntityModel::new(new_entity.name, new_entity.uuid, species);
-                                                        let m = new_entity.location.unwrap().cell.unwrap();
-                                                        let w = new_entity.location.unwrap().map.unwrap();
-                                                        instance.set_cell(CellCoord {x: m.x, y: m.y});
-                                                        instance.set_map(MapCoord {x: w.x as i8, y: w.y as i8});
-                                                        instance.set_path(Vec::new(), None);
-                                                        let mut entities = some_entities.lock().await;
-                                                        entities.push(Box::new(instance));
+                                                        if let Some(family) = new_entity.family {
+                                                            match Species::try_from(family) {
+                                                                Ok(species) => {
+                                                                    let mut instance = EntityModel::new(new_entity.name, new_entity.uuid, species);
+                                                                    let m = new_entity.location.unwrap().cell.unwrap();
+                                                                    let w = new_entity.location.unwrap().map.unwrap();
+                                                                    instance.set_cell(CellCoord {x: m.x, y: m.y});
+                                                                    instance.set_map(MapCoord {x: w.x as i8, y: w.y as i8});
+                                                                    instance.set_path(Vec::new(), None);
+                                                                    let mut entities = some_entities.lock().await;
+                                                                    entities.push(Box::new(instance));
+                                                                },
+                                                                Err(err) => println!("Client: EntityController: EntitySpawnEvent: Failed to parse Spefies: {:?}", err),
+                                                            }
+                                                        }
                                                     }
                                                 },
                                                 EntityDespawnEvent(entity_despawn) => {

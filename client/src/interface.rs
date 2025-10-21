@@ -5,7 +5,7 @@ use std::{collections::HashMap, path::Path};
 use piston_window::*;
 use winit::window::Icon;
 
-use crate::import::assets::HardTexture;
+use crate::import::assets::UITexture;
 use common::constants::*;
 
 pub struct Interface {
@@ -13,7 +13,7 @@ pub struct Interface {
     delta_ts: u128,
 }
 
-type TextureLib = HashMap<HardTexture, G2dTexture>;
+type TextureLib = HashMap<UITexture, G2dTexture>;
 
 impl Interface {
     pub fn new() -> Self {
@@ -35,7 +35,7 @@ impl Interface {
     pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, texture_lib: &TextureLib) {
         window.draw_2d(evnt, |ctx, gl, _device| {
             self.img.draw(
-                &texture_lib[&HardTexture::Interface],
+                &texture_lib[&UITexture::Interface],
                 &DrawState::default(),
                 ctx.transform,
                 gl,

@@ -245,38 +245,29 @@ pub fn load_assets(window: &mut PistonWindow) -> HashMap<EntityAssets, GameAsset
 
 // Temporary Hard loaded textures
 
-#[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
-pub enum HardTexture {
+#[derive(Debug, Eq, Hash, PartialEq, Serialize, Deserialize, Clone)]
+pub enum UITexture {
     Interface,
 }
 
-pub fn load_hard_drown_assets(window: &mut PistonWindow) -> HashMap<HardTexture, G2dTexture> {
+pub fn load_hard_drawn_assets(window: &mut PistonWindow) -> HashMap<UITexture, G2dTexture> {
     // Load whole hard drown PNG interface
-    let assets: Vec<&str> = vec!["../assets/interface/interface_1024x192_grid16.png"];
+    let assets: Vec<(UITexture, &str)> = vec![(
+        UITexture::Interface,
+        "../assets/interface/interface_1024x192_grid16.png",
+    )];
 
-    let loaded_assets: HashMap<HardTexture, G2dTexture> = assets
+    assets
         .iter()
-        .map(|path| {
-            let text = match Texture::from_path(
+        .map(|(texture_type, path)| {
+            let texture = Texture::from_path(
                 &mut window.create_texture_context(),
                 path,
                 Flip::None,
                 &TextureSettings::new(),
-            ) {
-                Ok(texture) => texture,
-                Err(texture_error) => {
-                    println!(
-                        "Fail to load hard drown texture : {} : {}",
-                        path, texture_error
-                    );
-                    std::process::exit(2);
-                }
-            };
-            return match path.split("/").last().unwrap() {
-                "interface_1024x192_grid16.png" => (HardTexture::Interface, text),
-                _ => todo!(),
-            };
+            )
+            .expect("Failed to load hard drawn ui texture.");
+            (texture_type.clone(), texture)
         })
-        .collect();
-    return loaded_assets;
+        .collect()
 }

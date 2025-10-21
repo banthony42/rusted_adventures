@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use crate::{
     chat::controller::ChatController,
     entities::controller::EntityController,
-    import::assets::{load_assets, load_hard_drown_assets, HardTexture},
+    import::assets::{load_assets, load_hard_drawn_assets, UITexture},
     interface::Interface,
     tasks::{logout::LogoutTask, task::GameData},
     ui::font::Font,
@@ -19,7 +19,7 @@ use super::{
 };
 
 pub struct Game {
-    pub hard_textures: HashMap<HardTexture, G2dTexture>,
+    pub hard_textures: HashMap<UITexture, G2dTexture>,
     pub margin: Size,
     pub world: World,
     pub interface: Interface,
@@ -41,7 +41,7 @@ impl Game {
             token: String::default(),
             logout: false,
             font: font,
-            hard_textures: load_hard_drown_assets(window),
+            hard_textures: load_hard_drawn_assets(window),
             margin: Size {
                 width: MAP_WIDTH_CENTER as f64,
                 height: MAP_HEIGHT_CENTER as f64,

@@ -85,18 +85,22 @@ pub mod constants {
 
     use super::grpc_codegen::entity::Family;
 
-    impl From<Family> for Species {
-        fn from(value: Family) -> Self {
+    impl TryFrom<Family> for Species {
+        type Error = String;
+
+        fn try_from(value: Family) -> Result<Self, Self::Error> {
             match value {
                 Family::Species(species) => match species {
-                    val if val == grpc_codegen::Species::Bouftou as i32 => Species::Bouftou,
-                    val if val == grpc_codegen::Species::Crabedoeuf as i32 => Species::Crabedoeuf,
-                    _ => todo!(),
+                    val if val == grpc_codegen::Species::Bouftou as i32 => Ok(Species::Bouftou),
+                    val if val == grpc_codegen::Species::Crabedoeuf as i32 => {
+                        Ok(Species::Crabedoeuf)
+                    }
+                    _ => Err(format!("Family::species not found for {:?}", species)),
                 },
                 Family::Class(class) => match class {
-                    val if val == grpc_codegen::Classes::Warrior as i32 => Species::Warrior,
-                    val if val == grpc_codegen::Classes::Mage as i32 => Species::Mage,
-                    _ => todo!(),
+                    val if val == grpc_codegen::Classes::Warrior as i32 => Ok(Species::Warrior),
+                    val if val == grpc_codegen::Classes::Mage as i32 => Ok(Species::Mage),
+                    _ => Err(format!("Family::Class not found for {:?}", class)),
                 },
             }
         }
