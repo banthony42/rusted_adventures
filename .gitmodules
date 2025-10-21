@@ -1,0 +1,3 @@
+[submodule "assets/export-aseprite-file"]
+	path = assets/export-aseprite-file
+	url = https://github.com/banthony42/export-aseprite-file.git

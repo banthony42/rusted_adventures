@@ -21,10 +21,10 @@ I have write a little assets engine for the game:
 
 Store some draft or drawing tentatives.
 
-##### `scripts` folder:
+##### `export-aseprite-file` :
 
-Store dependencies scripts for Aseprite
-to export tilemaps or animated sprites.
+Github submodule, forked from [David Capello repo](https://github.com/dacap/export-aseprite-file).
+It hold some lua script used to export maps for the game engine.
 
 ##### `aseprite_convert_map.bat` :
 
@@ -79,9 +79,22 @@ if loaded by the game asset engine.
 
 #### Export
 
-To export the map i just run the `aseprite_convert_map.bat` script on windows.
+##### Prerequisite
 
-Each new map, will require to edit this scripts to add command lines with the new map file.
+`aseprite_convert_map.bat` use [export aseprite file from David Capello](https://github.com/dacap/export-aseprite-file)
+Therefore i have fork this repository and add it as submodule in the project.
+If your `assets/export-aseprite-file` folder is empty you can run:
+
+```sh
+cd assets
+git submodule update --checkout -f export-aseprite-file
+```
+
+All files needed by `aseprite_convert_map.bat` should be there now.
+
+Finally you can export the maps, by running `aseprite_convert_map.bat` script on windows.
+
+Each new map, will require to edit this script to add command lines with the new map file.
 
 ## Entities
 
@@ -102,8 +115,9 @@ The entities importer also have a rule to respect.
 
 ##### Prerequisite
 
+- Download `Tags-To-Sheets.lua` from [AdamYounis](https://github.com/adamyounis/Aseprite-Tools/tree/main)
 - Open Aseprite and click on: `File > Scipts > Open Scripts Folder`
-- Copy the `Tags-To-Sheets` script here.
+- Copy the `Tags-To-Sheets` script in the open folder.
 - You can make Aseprite detect your script without restart:
   `File > Scipts > Rescan Scripts Folder`
 
