@@ -163,10 +163,7 @@ impl Character {
             .load(db)
     }
 
-    pub fn read_all_by_map(
-        db: &mut Connection,
-        map_coord: PgPoint,
-    ) -> QueryResult<Vec<CharacterInfo>> {
+    pub fn read_by_map(db: &mut Connection, map_coord: PgPoint) -> QueryResult<Vec<CharacterInfo>> {
         let data: Vec<CharacterInfoData> = characters::table
             .inner_join(entities::table)
             .inner_join(locations::table.on(locations::id.eq(entities::location_id)))

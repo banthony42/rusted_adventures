@@ -116,27 +116,32 @@ impl World {
     }
 
     pub fn render(&self, evnt: &Event, window: &mut PistonWindow, coord: &MapCoord) {
-        let map_data = self.world.get(coord).unwrap();
-        window.draw_2d(evnt, |ctx, gl, _device| {
-            let _ = map_data
-                .frames
-                .get_frame(map_data.frame_index)
-                .sprites
-                .iter()
-                .map(|sprt| {
-                    let pos = sprt.get_tile_position();
-                    Image::new().src_rect(sprt.get_src_rect()).draw(
-                        sprt.get_texture(),
-                        &DrawState::default(),
-                        ctx.transform.trans(
-                            self.margin.width + pos[0] * TILE_WIDTH as f64 + sprt.offset.x as f64,
-                            self.margin.height + pos[1] * TILE_HEIGHT as f64 + sprt.offset.y as f64,
-                        ),
-                        gl,
-                    );
-                })
-                .collect::<Vec<_>>();
-        });
+        if let Some(map_data) = self.world.get(coord) {
+            window.draw_2d(evnt, |ctx, gl, _device| {
+                let _ = map_data
+                    .frames
+                    .get_frame(map_data.frame_index)
+                    .sprites
+                    .iter()
+                    .map(|sprt| {
+                        let pos = sprt.get_tile_position();
+                        Image::new().src_rect(sprt.get_src_rect()).draw(
+                            sprt.get_texture(),
+                            &DrawState::default(),
+                            ctx.transform.trans(
+                                self.margin.width
+                                    + pos[0] * TILE_WIDTH as f64
+                                    + sprt.offset.x as f64,
+                                self.margin.height
+                                    + pos[1] * TILE_HEIGHT as f64
+                                    + sprt.offset.y as f64,
+                            ),
+                            gl,
+                        );
+                    })
+                    .collect::<Vec<_>>();
+            });
+        }
     }
 
     pub fn update(&mut self, delta_ts: u128, coord: &MapCoord) {

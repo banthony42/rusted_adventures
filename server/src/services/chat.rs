@@ -15,6 +15,7 @@ use common::grpc_codegen::server_chat_event::Event;
 use common::grpc_codegen::{ChatEventType, ClientChatEvent, ServerChatEvent, ServerEventType};
 
 use crate::generics::match_for_io_error;
+use crate::services::utils::login_from_metadata;
 
 type ArcMutexHashMapClient = Arc<Mutex<HashMap<String, Sender<Result<ServerChatEvent, Status>>>>>;
 #[derive(Debug)]
@@ -171,7 +172,7 @@ impl RpgChat for RpgChatService {
         request: Request<Streaming<ClientChatEvent>>,
     ) -> Result<Response<Self::ChatStream>, Status> {
         let (metadata, _, mut client_stream) = request.into_parts();
-        let login = metadata.get("login").unwrap().to_str().unwrap().to_string();
+        let login = login_from_metadata(metadata)?;
 
         let (server_event_tx, server_event_rx) =
             mpsc::channel::<Result<ServerChatEvent, Status>>(10);

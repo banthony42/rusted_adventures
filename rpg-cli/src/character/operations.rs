@@ -1,5 +1,5 @@
 use common::{
-    character::{CharacterHandler, CharacterHandlerError},
+    character::CharacterHandler,
     database::{
         db::Database,
         model::character::{Character, PgClasses},

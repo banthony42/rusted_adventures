@@ -1,11 +1,11 @@
 use crate::entities::model::{EntityModel, IEntity};
 use common::constants::{Species, SERVER_ENDPOINT};
+use common::rpc_extentions::{RpcCoordExtension, RpcLocationExtension};
 
 use super::task::{GameData, TaskData, TaskInterface};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
 use common::grpc_codegen::rpg_entity_client::RpgEntityClient;
 use common::grpc_codegen::{AuthReply, AuthRequest, EmptyRequest, Entities, Entity, PlayerData};
-use common::{CellCoord, MapCoord};
 use std::error::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -99,8 +99,13 @@ impl ConnectionTask {
         token: String,
     ) -> impl Fn(tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
         return move |mut req: Request<()>| -> Result<Request<()>, Status> {
-            let login_md: MetadataValue<_> = login.parse().unwrap();
-            let token_md: MetadataValue<_> = token.parse().unwrap();
+            let login_md: MetadataValue<_> = login
+                .parse()
+                .map_err(|err| Status::invalid_argument(format!("Login: {}", err)))?;
+
+            let token_md: MetadataValue<_> = token
+                .parse()
+                .map_err(|err| Status::invalid_argument(format!("Token: {}", err)))?;
 
             req.metadata_mut().insert("login", login_md);
             req.metadata_mut().insert("authorization", token_md);
@@ -126,9 +131,8 @@ impl ConnectionTask {
         if let Some(entity) = response_player_data {
             let mut locked_task = self.data.lock().unwrap();
             locked_task.step += 1;
-            locked_task
-                .data
-                .push(GameData::Player((&entity).try_into().unwrap()));
+            let data = GameData::Player((&entity).try_into()?);
+            locked_task.data.push(data);
         }
         Ok(())
     }
@@ -149,7 +153,7 @@ impl ConnectionTask {
         let response_player_data = response.into_inner().entities;
         let entities_data: Vec<EntityModel> = response_player_data
             .iter()
-            .map(|e| e.try_into().unwrap())
+            .filter_map(|entity| entity.try_into().ok())
             .collect();
 
         let mut locked_task = self.data.lock().unwrap();
@@ -160,24 +164,27 @@ impl ConnectionTask {
 }
 
 impl TryInto<EntityModel> for &Entity {
-    type Error = &'static str;
+    type Error = String;
 
     fn try_into(self) -> Result<EntityModel, Self::Error> {
-        let species = Species::from(self.family.unwrap());
-        let mut entity_model = EntityModel::new(self.name.clone(), self.uuid.clone(), species);
-        // For now i don't find the tonic / gRPC syntax or trick to force a field to not be an rust Option
-        // entity.proto Location.map and Location.cell should be always defined
-        // That's why here i use massively unwrap() for now, i want the code to fail explictly here
-        let map = self.location.unwrap().map.unwrap();
-        let cell = self.location.unwrap().cell.unwrap();
-        entity_model.set_map(MapCoord {
-            x: map.x as i8, // protobuf smallest int type is i32
-            y: map.y as i8, // protobuf smallest int type is i32
-        });
-        entity_model.set_cell(CellCoord {
-            x: cell.x,
-            y: cell.y,
-        });
+        let family = self
+            .family
+            .ok_or_else(|| "TryInto<EntityModel> for &Entity: Failed because family is None.")?;
+
+        let mut entity_model = EntityModel::new(
+            self.name.clone(),
+            self.uuid.clone(),
+            Species::try_from(family)?,
+        );
+
+        let (cell_rpc_coord, map_rpc_coord) = self
+            .location
+            .ok_or_else(|| "TryInto<EntityModel> for &Entity: Failed because location is None.")?
+            .into_cell_map()
+            .ok_or_else(|| "TryInto<EntityModel> for &Entity: Failed because location.cell and location.map should exist is None.")?;
+
+        entity_model.set_map(map_rpc_coord.into_map());
+        entity_model.set_cell(cell_rpc_coord.into_cell());
         Ok(entity_model)
     }
 }

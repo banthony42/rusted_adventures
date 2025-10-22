@@ -16,6 +16,6 @@ impl Database {
 
     pub fn establish_connection(&self) -> PgConnection {
         PgConnection::establish(&self.url)
-            .unwrap_or_else(|_| panic!("Error connecting to {}", self.url))
+            .expect(format!("Database connection error: {}", self.url).as_str())
     }
 }

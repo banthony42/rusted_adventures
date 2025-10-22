@@ -12,7 +12,18 @@ mod constants {
     pub const CHARACTER_CREATION: &str = "Server: AuthenticateUser: CreateCharacter: ";
 }
 
-pub mod rpc_extensions;
+mod utils {
+    use tonic::{metadata::MetadataMap, Status};
+
+    pub fn login_from_metadata(metadata: MetadataMap) -> Result<String, Status> {
+        Ok(metadata
+            .get("login")
+            .ok_or_else(|| Status::unauthenticated(""))?
+            .to_str()
+            .map_err(|err| Status::unauthenticated(err.to_string()))?
+            .to_string())
+    }
+}
 
 pub mod authenticate;
 pub mod chat;

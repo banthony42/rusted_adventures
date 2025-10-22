@@ -14,7 +14,7 @@ use crate::database::model::account::Account;
 pub struct Authenticator<'a> {
     login: String,
     argon2: Argon2<'a>,
-    connection: Option<PgConnection>,
+    connection: PgConnection,
 }
 
 fn create_argon2_context() -> Params {
@@ -38,7 +38,7 @@ impl Default for Authenticator<'_> {
         Self {
             login: Default::default(),
             argon2: argon2,
-            connection: None,
+            connection: Database::new().establish_connection(),
         }
     }
 }
@@ -54,14 +54,12 @@ impl Authenticator<'_> {
         Authenticator {
             argon2: argon2,
             login: login.to_string(),
-            connection: None,
+            connection: Database::new().establish_connection(),
         }
     }
 
-    fn connect_db(&mut self) {
-        if let None = &self.connection {
-            self.connection = Some(Database::new().establish_connection());
-        };
+    pub fn get_db(&mut self) -> &mut PgConnection {
+        &mut self.connection
     }
 
     pub fn hash_password(&self, password: String) -> String {
@@ -78,9 +76,8 @@ impl Authenticator<'_> {
     }
 
     pub fn authenticate(&mut self, password: &String) -> bool {
-        self.connect_db();
         // Get the user account in DB
-        let account_to_auth = match Account::read(self.connection.as_mut().unwrap(), &self.login) {
+        let account_to_auth = match Account::read(&mut self.connection, &self.login) {
             Ok(account) => account,
             Err(_) => return false,
         };
@@ -99,8 +96,7 @@ impl Authenticator<'_> {
     }
 
     pub fn get_token(&mut self) -> Option<String> {
-        self.connect_db();
-        match Account::read(self.connection.as_mut().unwrap(), &self.login) {
+        match Account::read(&mut self.connection, &self.login) {
             Ok(account) => account.session_token,
             Err(_) => {
                 println!(
@@ -113,27 +109,24 @@ impl Authenticator<'_> {
     }
 
     pub fn set_token(&mut self, token: &String) -> Result<(), diesel::result::Error> {
-        self.connect_db();
-        match Account::set_token(self.connection.as_mut().unwrap(), &self.login, token) {
+        match Account::set_token(&mut self.connection, &self.login, token) {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }
     }
 
     pub fn is_connected(&mut self) -> Result<(), AccountError> {
-        self.connect_db();
-        Account::is_connected(self.connection.as_mut().unwrap(), &self.login)?;
+        Account::is_connected(&mut self.connection, &self.login)?;
         Ok(())
     }
 
     pub fn logout(&mut self, token: Option<String>) -> Result<(), AccountError> {
-        self.connect_db();
         let _token = match token {
             Some(token) => Some(token),
             None => self.get_token(),
         };
 
-        Account::logout(self.connection.as_mut().unwrap(), &self.login, _token)
+        Account::logout(&mut self.connection, &self.login, _token)
             .map_err(|_| AccountError::LogoutError)
     }
 }

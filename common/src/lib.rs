@@ -10,6 +10,7 @@ pub mod character;
 pub mod database;
 pub mod monster;
 pub mod record;
+pub mod rpc_extentions;
 pub mod utils;
 pub mod world;
 

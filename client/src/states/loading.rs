@@ -49,7 +49,7 @@ impl Loading {
             .worker_threads(1)
             .enable_all()
             .build()
-            .unwrap();
+            .expect("Failed to get runtime.");
 
         let amt = task.get_shared_data();
         let timeout = task.get_timeout();

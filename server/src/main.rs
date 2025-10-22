@@ -64,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let reflection_service = tonic_reflection::server::Builder::configure()
         .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
         .build_v1()
-        .unwrap();
+        .expect("Server: Fail to build tonic server reflection.");
 
     // For setup simplicity the WorldEngine coexist within the Grpc Server.
     // I insist on the term 'WorldENGINE' because it's not a server since it not handle connections or requests.

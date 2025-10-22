@@ -22,8 +22,13 @@ impl EntityClient {
         token: String,
     ) -> impl Fn(tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
         return move |mut req: Request<()>| -> Result<Request<()>, Status> {
-            let login_md: MetadataValue<_> = login.parse().unwrap();
-            let token_md: MetadataValue<_> = token.parse().unwrap();
+            let login_md: MetadataValue<_> = login
+                .parse()
+                .map_err(|err| Status::invalid_argument(format!("Login: {}", err)))?;
+
+            let token_md: MetadataValue<_> = token
+                .parse()
+                .map_err(|err| Status::invalid_argument(format!("Token: {}", err)))?;
 
             req.metadata_mut().insert("login", login_md);
             req.metadata_mut().insert("authorization", token_md);

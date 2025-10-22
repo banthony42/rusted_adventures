@@ -2,30 +2,26 @@ use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::sync::Arc;
 
-use common::character::CharacterHandler;
-use common::database::db::Database;
-use common::database::model::account::{Account, UpdateAccount};
-use common::database::model::character::Character;
-use common::database::model::monster::Monster;
-use common::grpc_codegen::entity::Family;
-use common::grpc_codegen::LocationType;
-use common::grpc_codegen::{
-    client_entity_event::Event::PlayerMoveEvent, rpg_entity_server::RpgEntity, ClientEntityEvent,
-    EmptyRequest, Entities, Entity as RpcEntity, PlayerData, PlayerMove,
-    ServerEntityEvent as EntityEvent,
-};
-
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 use tonic::{Request, Response, Status, Streaming};
 
-use crate::generics::match_for_io_error;
-
-use crate::services::rpc_extensions::{
-    RpcCoordExtension, RpcLocationExtension, ServerEntityEventExtension,
+use common::character::CharacterHandler;
+use common::database::db::Database;
+use common::database::model::account::{Account, UpdateAccount};
+use common::database::model::character::Character;
+use common::database::model::monster::Monster;
+use common::grpc_codegen::{
+    client_entity_event::Event::PlayerMoveEvent, entity::Family, rpg_entity_server::RpgEntity,
+    ClientEntityEvent, EmptyRequest, Entities, Entity as RpcEntity, LocationType, PlayerData,
+    PlayerMove, ServerEntityEvent as EntityEvent,
 };
+use common::rpc_extentions::{RpcCoordExtension, RpcLocationExtension, ServerEntityEventExtension};
+
+use crate::generics::match_for_io_error;
+use crate::services::utils::login_from_metadata;
 use crate::world::engine::WorldEvent;
 
 #[derive(Debug)]
@@ -54,21 +50,22 @@ async fn broadcast_player_on_map(
     clients: &ArcMutexHashMapClient,
     char_handler: &mut CharacterHandler,
 ) {
-    let result_players = char_handler.players_on_same_map();
-    if let Err(err) = result_players {
-        println!("Server: player move: players_on_same_map: {:?}", err);
-        return;
-    }
-    let player_list = result_players.unwrap();
+    let players = match char_handler.players_on_same_map() {
+        Ok(players) => players,
+        Err(err) => {
+            println!("Server: player move: players_on_same_map: {:?}", err);
+            return;
+        }
+    };
 
     println!(
         "Server: {} broadcast with: {:?} to: {:?}",
-        sender, event, player_list
+        sender, event, players
     );
     {
         let clts = clients.lock().await;
 
-        for player in player_list.iter().filter(|name| sender.ne(*name)) {
+        for player in players.iter().filter(|name| sender.ne(*name)) {
             if let Some(client_channel) = clts.get(player) {
                 send_entity_event(client_channel, &event).await;
                 println!("Server: {} broadcast sended: {:?}", sender, player);
@@ -98,12 +95,24 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
 
     match move_event.location_type() {
         // Player has changed cell
-        LocationType::Update => _ = character.update_location(new_location),
+        LocationType::Update => {
+            _ = character.update_location(new_location).map_err(|err| {
+                println!(
+                    "Server: player move: Error : Fail to update location: {}",
+                    err
+                )
+            })
+        }
         LocationType::NewCell => {
             // Player has changed destination
             if let Some(new_destination) = new_location.into_update_destination() {
-                character.update_destination(new_destination);
-
+                if let Err(err) = character.update_destination(new_destination) {
+                    println!(
+                        "Server: player move: Error : Fail to update destination: {}",
+                        err
+                    );
+                    return;
+                }
                 // broadcast all clients on the same new map with EntityMove embedding the new destination
                 let move_event = EntityEvent::movement(character.identifier(), new_location);
                 broadcast_player_on_map(&sender, move_event, &clients, &mut character).await;
@@ -131,7 +140,13 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
             let sender_spawn = EntityEvent::spawn(entity);
             if let Ok(entities_on_map) = character.entities_on_map() {
                 let clts = clients.lock().await;
-                let sender_tx = clts.get(&sender).unwrap();
+                let Some(sender_tx) = clts.get(&sender) else {
+                    println!(
+                        "Server: player move: Error: Fail to get {} in clients list.",
+                        sender
+                    );
+                    return;
+                };
 
                 // Parse all entities on the map (players and monsters)
                 for (entity, entity_destination) in entities_on_map.iter() {
@@ -197,9 +212,16 @@ impl RpgEntityService {
             while let Some(receive) = world_rx.recv().await {
                 match receive {
                     WorldEvent::MonsterMove(data) => {
+                        let players = match Character::read_by_map(&mut connection, data.map.into())
+                        {
+                            Ok(players) => players,
+                            Err(err) => {
+                                println!("Server: WorldEvent: monster move: Fail to get players on map: {}", err);
+                                return;
+                            }
+                        };
+
                         let move_event = EntityEvent::movement(data.identifier, data.destination);
-                        let players =
-                            Character::read_all_by_map(&mut connection, data.map.into()).unwrap();
                         {
                             let clts = clts_ref.lock().await;
                             // Broadcast all concerned players with the monster move
@@ -212,12 +234,24 @@ impl RpgEntityService {
                     }
                     WorldEvent::MonsterSpawn(data) => {
                         // Retrieve players located where the event occured
-                        let players =
-                            Character::read_all_by_map(&mut connection, data.map.into()).unwrap();
+                        let players = match Character::read_by_map(&mut connection, data.map.into())
+                        {
+                            Ok(players) => players,
+                            Err(err) => {
+                                println!("Server: WorldEvent: monster spawn: Fail to get players on map: {}", err);
+                                return;
+                            }
+                        };
 
                         // Retrieve the Monster data and create Rpc EntitySpawn event
-                        let monster =
-                            Monster::read_info(&mut connection, &data.monster_id).unwrap();
+                        let monster = match Monster::read_info(&mut connection, &data.monster_id) {
+                            Ok(info) => info,
+                            Err(err) => {
+                                println!("Server: WorldEvent: monster spawn: Fail to get monster data: {}", err);
+                                return;
+                            }
+                        };
+
                         let monster_spawn_rpc_event = EntityEvent::spawn(monster.into());
                         println!(
                             "Server: WorldEvent: monster spawn: {:?}",
@@ -250,7 +284,7 @@ impl RpgEntity for RpgEntityService {
         request: Request<Streaming<ClientEntityEvent>>,
     ) -> Result<Response<Self::EntityEventBusStream>, Status> {
         let (metadata, _, mut client_stream) = request.into_parts();
-        let login = metadata.get("login").unwrap().to_str().unwrap().to_string();
+        let login = login_from_metadata(metadata)?;
         let login_clone = login.clone();
         let (server_event_tx, server_event_rx) = mpsc::channel::<Result<EntityEvent, Status>>(10);
 
@@ -336,7 +370,8 @@ impl RpgEntity for RpgEntityService {
         request: tonic::Request<EmptyRequest>,
     ) -> Result<tonic::Response<PlayerData>, tonic::Status> {
         let (metadata, _, _) = request.into_parts();
-        let login = metadata.get("login").unwrap().to_str().unwrap().to_string();
+        let login = login_from_metadata(metadata)?;
+
         let mut char_handler = match CharacterHandler::new(&login) {
             Ok(handler) => handler,
             Err(err) => {
@@ -360,7 +395,8 @@ impl RpgEntity for RpgEntityService {
         request: tonic::Request<EmptyRequest>,
     ) -> Result<tonic::Response<Entities>, tonic::Status> {
         let (metadata, _, _) = request.into_parts();
-        let login = metadata.get("login").unwrap().to_str().unwrap().to_string();
+        let login = login_from_metadata(metadata)?;
+
         let mut char_handler = match CharacterHandler::new(&login) {
             Ok(handler) => handler,
             Err(err) => return Err(tonic::Status::not_found(err.to_string())),

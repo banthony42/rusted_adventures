@@ -18,20 +18,21 @@ pub fn handle_account(account: AccountCommand) {
 }
 
 fn create_account(create_account: CreateAccountCmd) {
-    let connection = &mut Database::new().establish_connection();
-
+    let mut authenticator = Authenticator::default();
     let mut new_account: CreateAccount = create_account.into();
 
     // Ask user to confirm new password
-    let new_password = rpassword::prompt_password("Confirm new password: ").unwrap();
+    let new_password = rpassword::prompt_password("Confirm new password: ")
+        .expect("Fail to prompt for password confirmation.");
+
     if new_account.password.ne(&new_password) {
         println!("Passwords didn't match please retry.");
         std::process::exit(1)
     }
 
-    new_account.password = Authenticator::default().hash_password(new_account.password);
+    new_account.password = authenticator.hash_password(new_account.password);
 
-    match Account::create(connection, &new_account) {
+    match Account::create(authenticator.get_db(), &new_account) {
         Ok(_) => println!("Account created."),
         Err(e) => match e {
             diesel::result::Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
@@ -46,8 +47,6 @@ fn create_account(create_account: CreateAccountCmd) {
 }
 
 fn update_account(update_account: UpdateAccountCmd) {
-    let connection = &mut Database::new().establish_connection();
-
     // ask user old password to authenticate him
     let current_password = rpassword::prompt_password("Old password: ")
         .expect("An error occured user prompt for current password.");
@@ -60,7 +59,9 @@ fn update_account(update_account: UpdateAccountCmd) {
     }
 
     // Ask user to confirm new password
-    let new_password = rpassword::prompt_password("Confirm new password: ").unwrap();
+    let new_password = rpassword::prompt_password("Confirm new password: ")
+        .expect("Fail to prompt for password confirmation.");
+
     if update_account.password.ne(&new_password) {
         println!("New passwords didn't match please retry.");
         std::process::exit(1)
@@ -73,7 +74,7 @@ fn update_account(update_account: UpdateAccountCmd) {
         session_token: None,
     };
 
-    match Account::update(connection, &update_account.login, &update_item) {
+    match Account::update(auth_user.get_db(), &update_account.login, &update_item) {
         Ok(_) => {}
         Err(e) => println!("Error updating accounts: {:?}", e),
     }

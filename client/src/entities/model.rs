@@ -201,33 +201,35 @@ impl IEntity for EntityModel {
             };
         } else {
             self.set_state(Animations::Run);
-            let target = *self.path.last().unwrap(); //TODO: remove unwrap
+            if let Some(target) = self.path.last() {
+                // Compute unit vector (x and y could be 1, -1 or 0)
+                let mut direction = *target - self.cell;
+                if self.step > 1.0 {
+                    if let Some(cell) = self.path.pop() {
+                        self.cell = cell;
+                        self.offset.x = 0;
+                        self.offset.y = 0;
+                        self.step = 0.0;
+                        new_pos = Some(LocationType::Update);
+                    }
+                } else {
+                    direction *= 64.0;
+                    self.offset = CellCoord {
+                        x: lerp(0.0, direction.x as f64, self.step) as i64,
+                        y: lerp(0.0, direction.y as f64, self.step) as i64,
+                    };
+                    self.step += delta_ts as f64 * ENTITY_RUN_STEP_DURATION;
+                }
 
-            // Compute unit vector (x and y could be 1, -1 or 0)
-            let mut direction = target - self.cell;
-            if self.step > 1.0 {
-                self.cell = self.path.pop().unwrap();
-                self.offset.x = 0;
-                self.offset.y = 0;
-                self.step = 0.0;
-                new_pos = Some(LocationType::Update);
-            } else {
-                direction *= 64.0;
-                self.offset = CellCoord {
-                    x: lerp(0.0, direction.x as f64, self.step) as i64,
-                    y: lerp(0.0, direction.y as f64, self.step) as i64,
-                };
-                self.step += delta_ts as f64 * ENTITY_RUN_STEP_DURATION;
-            }
-
-            if let Some(new_orientation) = match direction {
-                dir if dir.x > 0 => Some(Orientation::Est),
-                dir if dir.x < 0 => Some(Orientation::West),
-                dir if dir.y > 0 => Some(Orientation::South),
-                dir if dir.y < 0 => Some(Orientation::North),
-                _ => None,
-            } {
-                self.orientation = new_orientation;
+                if let Some(new_orientation) = match direction {
+                    dir if dir.x > 0 => Some(Orientation::Est),
+                    dir if dir.x < 0 => Some(Orientation::West),
+                    dir if dir.y > 0 => Some(Orientation::South),
+                    dir if dir.y < 0 => Some(Orientation::North),
+                    _ => None,
+                } {
+                    self.orientation = new_orientation;
+                }
             }
         }
         new_pos

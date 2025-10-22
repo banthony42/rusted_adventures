@@ -20,7 +20,11 @@ use super::{
     view::EntityView,
 };
 
-use common::{constants::*, CellCoord, Orientation};
+use common::{
+    constants::*,
+    rpc_extentions::{RpcCoordExtension, RpcLocationExtension},
+    CellCoord, Orientation,
+};
 use common::{
     grpc_codegen::{
         client_entity_event::Event::PlayerMoveEvent,
@@ -94,7 +98,7 @@ impl EntityController {
     pub fn init(&mut self, login: String, token: String) {
         let (controller_tx, mut controller_rx) = mpsc::channel::<ClientEntityEvent>(10);
         self.tx = Some(controller_tx);
-        let some_entities = self.entities.clone().unwrap(); // shame on me
+        let some_entities = self.entities.clone().unwrap(); // TODO: this function init is called once, always after set_entities
 
         self._runtime.spawn(async move {
             loop {
@@ -133,13 +137,15 @@ impl EntityController {
                                                             match Species::try_from(family) {
                                                                 Ok(species) => {
                                                                     let mut instance = EntityModel::new(new_entity.name, new_entity.uuid, species);
-                                                                    let m = new_entity.location.unwrap().cell.unwrap();
-                                                                    let w = new_entity.location.unwrap().map.unwrap();
-                                                                    instance.set_cell(CellCoord {x: m.x, y: m.y});
-                                                                    instance.set_map(MapCoord {x: w.x as i8, y: w.y as i8});
-                                                                    instance.set_path(Vec::new(), None);
-                                                                    let mut entities = some_entities.lock().await;
-                                                                    entities.push(Box::new(instance));
+                                                                    if let Some(location)= new_entity.location {
+                                                                        if let Some((cell_rpc_coord, map_rpc_coord)) = location.into_cell_map() {
+                                                                            instance.set_cell(cell_rpc_coord.into_cell());
+                                                                            instance.set_map(map_rpc_coord.into_map());
+                                                                            instance.set_path(Vec::new(), None);
+                                                                            let mut entities = some_entities.lock().await;
+                                                                            entities.push(Box::new(instance));
+                                                                        }
+                                                                    }
                                                                 },
                                                                 Err(err) => println!("Client: EntityController: EntitySpawnEvent: Failed to parse Spefies: {:?}", err),
                                                             }

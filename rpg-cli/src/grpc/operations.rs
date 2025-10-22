@@ -41,8 +41,13 @@ fn create_interceptor(
     token: String,
 ) -> impl Fn(tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
     return move |mut req: Request<()>| -> Result<Request<()>, Status> {
-        let login_md: MetadataValue<_> = login.parse().unwrap();
-        let token_md: MetadataValue<_> = token.parse().unwrap();
+        let login_md: MetadataValue<_> = login
+            .parse()
+            .map_err(|err| Status::invalid_argument(format!("Login: {}", err)))?;
+
+        let token_md: MetadataValue<_> = token
+            .parse()
+            .map_err(|err| Status::invalid_argument(format!("Token: {}", err)))?;
 
         req.metadata_mut().insert("login", login_md);
         req.metadata_mut().insert("authorization", token_md);
@@ -126,7 +131,8 @@ fn handle_receive_message(chat_event: Option<ServerChatEvent>) {
 
 fn run_cli_chat(chat_cmd: ChatCmd) {
     println!("Welcome to RPG Chat shell client.");
-    let password = rpassword::prompt_password("Enter your password: ").unwrap();
+    let password = rpassword::prompt_password("Enter your password: ")
+        .expect("Fail to prompt for password confirmation.");
 
     let runtime = Builder::new_multi_thread()
         .worker_threads(1)

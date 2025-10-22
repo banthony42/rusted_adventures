@@ -18,17 +18,16 @@ impl Font {
     pub fn load(&mut self, window: &mut PistonWindow) {
         let font_path = PathBuf::from("../assets/fonts/OpenSans_Condensed-SemiBold.ttf");
         self.font = Some(
-            Glyphs::new(
-                font_path,
-                window.create_texture_context(),
-                TextureSettings::new(),
-            )
-            .unwrap(),
+            window
+                .load_font(font_path)
+                .expect("Engine can't run without font."),
         );
     }
 
     pub fn get(&mut self) -> &mut Glyphs {
-        self.font.as_mut().unwrap()
+        self.font
+            .as_mut()
+            .expect("Font should be loaded (with `load` function) before accessing it.")
     }
 
     /// Render text center aligned
@@ -90,15 +89,16 @@ impl Font {
     ) {
         let mut x = pos[0];
         let y = pos[1];
-        let text_width = self.get().width(font_size, text).unwrap();
+        let Ok(text_width) = self.get().width(font_size, text) else {
+            println!("Font: render text: fail to get width.");
+            return;
+        };
 
         match alignment {
             TextAlign::Centered => x -= text_width / 2.0,
             TextAlign::Left => { /* By design */ }
         };
 
-        let mut width_cursor = 0.0;
-        let mut newline = 0;
         let text_split_by_newline: Vec<&str> = text.split("\n").collect();
 
         let final_margin = match margin {
@@ -114,20 +114,13 @@ impl Font {
                 .iter()
                 .enumerate()
                 .map(|(index, text)| {
-                    width_cursor += self.get().width(font_size, text).unwrap();
-                    if width_cursor > text_width {
-                        newline += 1;
-                    }
-
                     let _ = text::Text::new_color(color, font_size).draw(
                         text,
                         self.get(),
                         &ctx.draw_state,
                         ctx.transform.trans(
                             final_margin.width + x as f64,
-                            final_margin.height
-                                + y as f64
-                                + ((index + newline) * font_size as usize) as f64,
+                            final_margin.height + y as f64 + (index * font_size as usize) as f64,
                         ),
                         gl,
                     );
