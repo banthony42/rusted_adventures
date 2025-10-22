@@ -194,4 +194,8 @@ impl GameState for Loading {
         }
         return margin;
     }
+
+    fn get_font(&mut self) -> &mut Font {
+        &mut self.font
+    }
 }

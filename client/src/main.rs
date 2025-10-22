@@ -50,6 +50,7 @@ fn run_game() {
 
     while let Some(e) = window.next() {
         state.render(&e, &mut window);
+        state.font_flush(&e, &mut window);
 
         if let Some(args) = e.press_args() {
             state.key_press(&args);

@@ -186,4 +186,8 @@ impl GameState for Login {
         self.username.resize(&self.margin);
         self.password.resize(&self.margin);
     }
+
+    fn get_font(&mut self) -> &mut Font {
+        &mut self.font
+    }
 }

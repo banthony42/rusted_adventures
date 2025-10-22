@@ -16,11 +16,6 @@ impl Font {
     }
 
     pub fn load(&mut self, window: &mut PistonWindow) {
-        // let font_path = PathBuf::from("../assets/fonts/OpenSans-Regular.ttf");
-        // let font_path = PathBuf::from("../assets/fonts/OpenSans_Condensed-Bold.ttf");
-        // let font_path = PathBuf::from("../assets/fonts/dejavu-sans.book.ttf");
-        // let font_path = PathBuf::from("../assets/fonts/MedievalSharp-Bold.ttf");
-        // let font_path = PathBuf::from("../assets/fonts/MedievalSharp-Book.ttf");
         let font_path = PathBuf::from("../assets/fonts/OpenSans_Condensed-SemiBold.ttf");
         self.font = Some(
             Glyphs::new(
@@ -114,7 +109,7 @@ impl Font {
             },
         };
 
-        window.draw_2d(evnt, |ctx, gl, device| {
+        window.draw_2d(evnt, |ctx, gl, _| {
             let _: Vec<_> = text_split_by_newline
                 .iter()
                 .enumerate()
@@ -136,7 +131,6 @@ impl Font {
                         ),
                         gl,
                     );
-                    self.font.as_mut().unwrap().factory.encoder.flush(device);
                 })
                 .collect();
         });
@@ -226,7 +220,7 @@ impl Font {
         let y = pos[1];
         let lines = self.split_into_lines(text, font_size, line_width);
 
-        window.draw_2d(evnt, |ctx, gl, device| {
+        window.draw_2d(evnt, |ctx, gl, _| {
             let _: Vec<_> = lines
                 .iter()
                 .enumerate()
@@ -239,7 +233,6 @@ impl Font {
                             .trans(x as f64, y as f64 + (index * font_size as usize) as f64),
                         gl,
                     );
-                    self.font.as_mut().unwrap().factory.encoder.flush(device);
                 })
                 .collect();
         });

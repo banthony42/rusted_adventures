@@ -2,7 +2,10 @@ use std::marker::PhantomData;
 
 use piston_window::*;
 
-use crate::tasks::task::{GameData, TaskInterface};
+use crate::{
+    tasks::task::{GameData, TaskInterface},
+    ui::font::Font,
+};
 
 use super::{
     game::Game,
@@ -15,6 +18,24 @@ pub trait GameState {
 
     fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState>;
     fn render(&mut self, evnt: &Event, window: &mut PistonWindow);
+
+    fn get_font(&mut self) -> &mut Font;
+
+    /// Submits all text commands to be rendered.
+    /// Not calling this function may result in text rendered partially.
+    ///
+    /// Should be call once per frame. See implementation for more details.
+    fn font_flush(&mut self, evnt: &Event, window: &mut PistonWindow) {
+        window.draw_2d(evnt, |_, _, device| {
+            // This is necessary to execute each text drawing per frame
+            // flush documentation recomend to call it once per frame.
+            // That's why i have added this `font_flush` function
+            // to the GameState trait.
+            // Therefore the main loop within main.rs
+            // Handle this call once per frame, and then each state can totally forget about this detail.
+            self.get_font().get().factory.encoder.flush(device);
+        });
+    }
 
     fn handle_resize(&mut self, new_size: Size, max_width: usize, max_height: usize) -> Size {
         let mut margin: Size = Size {

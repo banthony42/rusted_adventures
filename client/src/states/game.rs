@@ -144,4 +144,8 @@ impl GameState for Game {
         self.interface.resize(&self.margin);
         self.chat_controller.resize(&self.margin);
     }
+
+    fn get_font(&mut self) -> &mut Font {
+        &mut self.font
+    }
 }
