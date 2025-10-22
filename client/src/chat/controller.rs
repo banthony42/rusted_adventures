@@ -15,6 +15,7 @@ use super::model::{ChatMessage, ChatModel, Target};
 use super::view::ChatGraphicView;
 
 use crate::entities::model::UIEntityModel;
+use crate::states::game::GameCredentials;
 use crate::ui::font::Font;
 
 use common::grpc_codegen::server_chat_event::Event as SEvent;
@@ -40,7 +41,8 @@ const CHAT_USAGE: &str = "/help Affiche ce message d'aide. /w [destinataire] [te
 const CHAT_WHISPER_USAGE: &str = "chuchotement: nécéssite un destinataire et un contenu.";
 
 impl ChatController {
-    pub fn new(login: String, token: String) -> Self {
+    pub fn new(credentials: GameCredentials) -> Self {
+        let (login, token) = credentials.into_parts();
         let (controller_tx, mut controller_rx) = mpsc::channel::<ChatMessage>(10);
         let runtime = Builder::new_multi_thread()
             .worker_threads(1)

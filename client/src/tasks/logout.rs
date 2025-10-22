@@ -1,6 +1,8 @@
 use common::constants::SERVER_ENDPOINT;
 
-use super::task::{GameData, TaskData, TaskInterface};
+use crate::states::states::GameData;
+
+use super::task::{TaskData, TaskInterface};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
 use common::grpc_codegen::LogoutRequest;
 use std::{

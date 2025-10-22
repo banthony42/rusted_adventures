@@ -1,5 +1,4 @@
 use crate::tasks::connection::ConnectionTask;
-use crate::tasks::task::GameData;
 use crate::ui::{font::Font, input_field::InputField};
 use common::constants::*;
 use piston_window::*;
@@ -15,7 +14,7 @@ pub struct Login {
     username: InputField,
     password: InputField,
     margin: Size,
-    message: String,
+    message: Option<String>,
     background: [f64; 4],
 }
 
@@ -38,10 +37,9 @@ const MESSAGE_POS: [f64; 2] = [
 ];
 
 impl Login {
-    pub fn new(window: &mut PistonWindow) -> Self {
+    pub fn new(window: &mut PistonWindow, message: Option<String>) -> Self {
         let mut font = Font::new();
         font.load(window);
-
         Login {
             login: false,
             font: font,
@@ -56,14 +54,14 @@ impl Login {
                 width: 0.0,
                 height: 0.0,
             },
-            message: String::default(),
+            message,
             background: [0.0, 0.0, WINDOW_WIDTH as f64, WINDOW_HEIGHT as f64],
         }
     }
 
     pub fn should_connect_user(&mut self) -> bool {
         if self.username.get_content().is_empty() || self.password.get_content().is_empty() {
-            self.message = String::from("Please, enter login and password to connect.");
+            self.message = Some(String::from("Please, enter login and password to connect."));
             return false;
         }
         return true;
@@ -71,16 +69,6 @@ impl Login {
 }
 
 impl GameState for Login {
-    fn pass_data(&mut self, data: Vec<GameData>) {
-        self.message = data
-            .iter()
-            .map(|e| match e {
-                GameData::Message(msg) => msg.clone() + "\n",
-                _ => String::default(),
-            })
-            .collect();
-    }
-
     fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
         if self.login {
             return StateFactory::<Loading>::new(
@@ -116,9 +104,9 @@ impl GameState for Login {
             Some(&self.margin),
         );
 
-        if !self.message.is_empty() {
+        if let Some(message) = &self.message {
             self.font.render_centered(
-                &self.message,
+                message,
                 MESSAGE_FONT_SIZE,
                 evnt,
                 window,
@@ -127,6 +115,7 @@ impl GameState for Login {
                 Some(&self.margin),
             );
         }
+
         self.username.render(evnt, window, &mut self.font);
         self.password.render(evnt, window, &mut self.font);
     }

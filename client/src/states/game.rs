@@ -4,9 +4,9 @@ use std::collections::HashMap;
 use crate::{
     chat::controller::ChatController,
     entities::controller::EntityController,
-    import::assets::{load_assets, load_hard_drawn_assets, UITexture},
+    import::assets::{load_hard_drawn_assets, UITexture},
     interface::Interface,
-    tasks::{logout::LogoutTask, task::GameData},
+    tasks::logout::LogoutTask,
     ui::font::Font,
     world::World,
     GameState,
@@ -18,6 +18,19 @@ use super::{
     states::StateFactory,
 };
 
+#[derive(Clone)]
+pub struct GameCredentials {
+    pub login: String,
+    pub token: String,
+}
+
+impl GameCredentials {
+    /// Consume self returning (login: String, token: String)
+    pub fn into_parts(self) -> (String, String) {
+        (self.login, self.token)
+    }
+}
+
 pub struct Game {
     pub hard_textures: HashMap<UITexture, G2dTexture>,
     pub margin: Size,
@@ -27,18 +40,21 @@ pub struct Game {
     pub chat_controller: ChatController,
     pub ent_controller: EntityController,
     pub logout: bool,
-    pub login: String,
-    pub token: String,
+    pub credentials: GameCredentials,
 }
 
 impl Game {
-    pub fn new(window: &mut PistonWindow) -> Self {
+    pub fn new(
+        window: &mut PistonWindow,
+        credentials: GameCredentials,
+        chat: ChatController,
+        entities: EntityController,
+    ) -> Self {
         let mut font = Font::new();
         font.load(window);
 
         return Game {
-            login: String::default(),
-            token: String::default(),
+            credentials,
             logout: false,
             font: font,
             hard_textures: load_hard_drawn_assets(window),
@@ -48,36 +64,20 @@ impl Game {
             },
             world: World::new(window),
             interface: Interface::new(),
-            // TODO: this cause tentative gRPC connection with empty login/token
-            // "Authenticator: Fail to get token for: "
-            chat_controller: ChatController::new(String::default(), String::default()),
-            ent_controller: EntityController::new(load_assets(window)),
+            chat_controller: chat,
+            ent_controller: entities,
         };
     }
 }
 
 impl GameState for Game {
-    fn pass_data(&mut self, data: Vec<GameData>) {
-        data.iter().for_each(|gd| match gd {
-            GameData::Login(login) => self.login = login.clone(),
-            GameData::Token(token) => self.token = token.clone(),
-            GameData::Message(_) => {}
-            GameData::Player(player) => self.ent_controller.set_player(player),
-            GameData::Entities(entities) => self.ent_controller.set_entities(entities),
-        });
-        println!("Client: Game: Player connected: {:?}", data);
-        self.ent_controller
-            .init(self.login.clone(), self.token.clone());
-        self.chat_controller = ChatController::new(self.login.clone(), self.token.clone());
-        self.chat_controller.resize(&self.margin);
-    }
-
     fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState> {
         if self.logout {
+            let (login, token) = self.credentials.into_parts();
             return StateFactory::<Loading>::new(
                 window,
                 LoadingNextState::Login,
-                Box::new(LogoutTask::new(self.login, self.token)),
+                Box::new(LogoutTask::new(login, token)),
             );
         }
         self

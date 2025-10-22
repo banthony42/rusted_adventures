@@ -1,9 +1,13 @@
-use std::marker::PhantomData;
+use std::{fmt::Display, marker::PhantomData};
 
 use piston_window::*;
 
 use crate::{
-    tasks::task::{GameData, TaskInterface},
+    chat::controller::ChatController,
+    entities::{controller::EntityController, model::EntityModel},
+    import::assets::load_assets,
+    states::game::GameCredentials,
+    tasks::task::TaskInterface,
     ui::font::Font,
 };
 
@@ -13,9 +17,16 @@ use super::{
     login::Login,
 };
 
-pub trait GameState {
-    fn pass_data(&mut self, _data: Vec<GameData>) {}
+#[derive(Debug, Clone)]
+pub enum GameData {
+    Login(String),
+    Token(String),
+    Message(String),
+    Player(EntityModel),
+    Entities(Vec<EntityModel>),
+}
 
+pub trait GameState {
     fn state_update(self: Box<Self>, window: &mut PistonWindow) -> Box<dyn GameState>;
     fn render(&mut self, evnt: &Event, window: &mut PistonWindow);
 
@@ -65,6 +76,42 @@ pub trait GameState {
     fn mouse_scroll_args(&mut self, _args: &[f64; 2]) {}
 }
 
+pub enum GameStateError {
+    MissingGameData,
+    MissingCredential,
+    MissingPlayerData,
+}
+
+impl Display for GameStateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GameStateError::MissingGameData => {
+                write!(f, "Can't enter Game without game data.")
+            }
+            GameStateError::MissingCredential => {
+                write!(f, "Can't enter Game without credential.")
+            }
+            GameStateError::MissingPlayerData => {
+                write!(f, "Can't enter Game without player data.")
+            }
+        }
+    }
+}
+
+pub enum StateFactoryError {
+    FailToCreateState(GameStateError),
+}
+
+impl Display for StateFactoryError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StateFactoryError::FailToCreateState(err) => {
+                write!(f, "State creation failed: {}", err)
+            }
+        }
+    }
+}
+
 pub struct StateFactory<T>
 where
     T: GameState,
@@ -86,8 +133,21 @@ where
 }
 
 impl StateFactory<Login> {
-    pub fn new(window: &mut PistonWindow) -> Box<dyn GameState> {
-        let mut new_state = Login::new(window);
+    pub fn new(window: &mut PistonWindow, game_data: Option<Vec<GameData>>) -> Box<dyn GameState> {
+        let message: Option<String> = match game_data {
+            None => None,
+            Some(gd) => Some(
+                gd.iter()
+                    .filter_map(|e| match e {
+                        GameData::Message(msg) => Some(msg.clone()),
+                        _ => None,
+                    })
+                    .collect::<Vec<String>>()
+                    .join("\n"),
+            ),
+        };
+
+        let mut new_state = Login::new(window, message);
         Self::init_state(&mut new_state, window);
         Box::new(new_state)
     }
@@ -106,9 +166,52 @@ impl StateFactory<Loading> {
 }
 
 impl StateFactory<Game> {
-    pub fn new(window: &mut PistonWindow) -> Box<dyn GameState> {
-        let mut new_state = Game::new(window);
+    pub fn new(
+        window: &mut PistonWindow,
+        game_data: Option<Vec<GameData>>,
+    ) -> Result<Box<dyn GameState>, StateFactoryError> {
+        let Some(game_data) = game_data else {
+            return Err(StateFactoryError::FailToCreateState(
+                GameStateError::MissingGameData,
+            ));
+        };
+
+        let mut login: Option<String> = None;
+        let mut token: Option<String> = None;
+        let mut player: Option<EntityModel> = None;
+        let mut entities: Option<Vec<EntityModel>> = None;
+
+        game_data.iter().for_each(|gd| match gd {
+            GameData::Login(l) => login = Some(l.to_owned()),
+            GameData::Token(t) => token = Some(t.to_owned()),
+            GameData::Player(p) => player = Some(p.to_owned()),
+            GameData::Entities(e) => entities = Some(e.to_owned()),
+            _ => {}
+        });
+
+        let (Some(login), Some(token)) = (login, token) else {
+            return Err(StateFactoryError::FailToCreateState(
+                GameStateError::MissingCredential,
+            ));
+        };
+
+        let Some(player) = player else {
+            return Err(StateFactoryError::FailToCreateState(
+                GameStateError::MissingPlayerData,
+            ));
+        };
+
+        // Allow the game state to run without entities
+        // Therefore the entities list will be populated with events receive from the server
+        let entities = entities.unwrap_or_default();
+        let mut ent_controller = EntityController::new(load_assets(window), player, entities);
+        ent_controller.init(login.clone(), token.clone());
+
+        let credentials = GameCredentials { login, token };
+        let chat_controller = ChatController::new(credentials.clone());
+
+        let mut new_state = Game::new(window, credentials, chat_controller, ent_controller);
         Self::init_state(&mut new_state, window);
-        Box::new(new_state)
+        Ok(Box::new(new_state))
     }
 }

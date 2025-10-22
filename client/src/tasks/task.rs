@@ -1,16 +1,7 @@
-use crate::entities::model::EntityModel;
+use crate::states::states::GameData;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use tonic::async_trait;
-
-#[derive(Debug, Clone)]
-pub enum GameData {
-    Login(String),
-    Token(String),
-    Message(String),
-    Player(EntityModel),
-    Entities(Vec<EntityModel>),
-}
 
 pub struct TaskData {
     pub steps: u16,

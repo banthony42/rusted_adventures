@@ -8,7 +8,7 @@ use crate::{
         model::{
             bestiary::{bestiary::Bestiary, BestiaryEntry, PgSpecies},
             entity::{CreateEntity, Entity},
-            location::{CreateLocation, Location, UpdateLocation},
+            location::{CreateLocation, Location},
             monster::{CreateMonster, Monster},
         },
     },

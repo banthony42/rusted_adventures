@@ -8,6 +8,7 @@ use tokio::runtime::{Builder, Runtime};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
+use crate::states::states::GameData;
 use crate::tasks::task::TaskData;
 use crate::tasks::task::TaskInterface;
 use crate::ui::font::Font;
@@ -92,16 +93,23 @@ impl GameState for Loading {
         }
 
         let fetch_data = self.task_data.lock().unwrap();
-        let mut new_state = match fetch_data.success {
-            true => match self.next_state {
-                LoadingNextState::Game => StateFactory::<Game>::new(window),
-                LoadingNextState::Login => StateFactory::<Login>::new(window),
-            },
-            false => StateFactory::<Login>::new(window),
-        };
+        let game_data = Some(fetch_data.data.clone());
 
-        new_state.pass_data(fetch_data.data.clone());
-        return new_state;
+        match fetch_data.success {
+            true => match self.next_state {
+                LoadingNextState::Login => StateFactory::<Login>::new(window, game_data),
+                LoadingNextState::Game => match StateFactory::<Game>::new(window, game_data) {
+                    Ok(new_state) => new_state,
+                    // On any error while creating the Game state
+                    // Fallback to Login state with an error message.
+                    Err(err) => StateFactory::<Login>::new(
+                        window,
+                        Some(vec![GameData::Message(err.to_string())]),
+                    ),
+                },
+            },
+            false => StateFactory::<Login>::new(window, game_data),
+        }
     }
 
     fn render(&mut self, evnt: &Event, window: &mut PistonWindow) {
