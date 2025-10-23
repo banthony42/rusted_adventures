@@ -73,35 +73,35 @@ impl RpcLocationExtension for RpcLocation {
 }
 
 pub trait RpcCoordExtension {
-    fn into_destination(&self) -> RpcLocation;
-    fn into_cell(&self) -> CellCoord;
-    fn into_map(&self) -> MapCoord;
-    fn into_pg_point(&self) -> PgPoint;
+    fn into_destination(self) -> RpcLocation;
+    fn into_cell(self) -> CellCoord;
+    fn into_map(self) -> MapCoord;
+    fn into_pg_point(self) -> PgPoint;
 }
 
 impl RpcCoordExtension for RpcCoord {
-    fn into_destination(&self) -> RpcLocation {
+    fn into_destination(self) -> RpcLocation {
         RpcLocation {
             map: None,
-            cell: Some(self.clone()),
+            cell: Some(self),
         }
     }
 
-    fn into_cell(&self) -> CellCoord {
+    fn into_cell(self) -> CellCoord {
         CellCoord {
             x: self.x,
             y: self.y,
         }
     }
 
-    fn into_map(&self) -> MapCoord {
+    fn into_map(self) -> MapCoord {
         MapCoord {
             x: self.x as i8, // protobuf smallest int type is i32
             y: self.y as i8,
         }
     }
 
-    fn into_pg_point(&self) -> PgPoint {
+    fn into_pg_point(self) -> PgPoint {
         PgPoint(self.x as f64, self.y as f64)
     }
 }

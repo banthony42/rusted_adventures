@@ -13,7 +13,7 @@ use crate::database::schema::sql_types::Pgspecies;
 
 pub mod bestiary;
 
-#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, Clone)]
+#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, Clone, Copy)]
 #[diesel(sql_type = Pgspecies)]
 pub enum PgSpecies {
     Bouftou,

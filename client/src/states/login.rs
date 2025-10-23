@@ -101,7 +101,7 @@ impl GameState for Login {
             window,
             color::WHITE,
             [LOGIN_TITLE_POS[0], LOGIN_TITLE_POS[1]],
-            Some(&self.margin),
+            &self.margin,
         );
 
         if let Some(message) = &self.message {
@@ -112,7 +112,7 @@ impl GameState for Login {
                 window,
                 color::YELLOW,
                 [MESSAGE_POS[0], MESSAGE_POS[1]],
-                Some(&self.margin),
+                &self.margin,
             );
         }
 

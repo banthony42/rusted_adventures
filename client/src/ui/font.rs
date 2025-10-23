@@ -39,7 +39,7 @@ impl Font {
         window: &mut PistonWindow,
         color: [f32; 4],
         pos: [f64; 2],
-        margin: Option<&Size>,
+        margin: &Size,
     ) {
         self.render_text(
             text,
@@ -62,7 +62,7 @@ impl Font {
         window: &mut PistonWindow,
         color: [f32; 4],
         pos: [f64; 2],
-        margin: Option<&Size>,
+        margin: &Size,
     ) {
         self.render_text(
             text,
@@ -84,7 +84,7 @@ impl Font {
         window: &mut PistonWindow,
         color: [f32; 4],
         pos: [f64; 2],
-        margin: Option<&Size>,
+        margin: &Size,
         alignment: TextAlign,
     ) {
         let mut x = pos[0];
@@ -101,14 +101,6 @@ impl Font {
 
         let text_split_by_newline: Vec<&str> = text.split("\n").collect();
 
-        let final_margin = match margin {
-            Some(m) => m.clone(),
-            None => Size {
-                width: 0.0,
-                height: 0.0,
-            },
-        };
-
         window.draw_2d(evnt, |ctx, gl, _| {
             text_split_by_newline
                 .iter()
@@ -119,8 +111,8 @@ impl Font {
                         self.get(),
                         &ctx.draw_state,
                         ctx.transform.trans(
-                            final_margin.width + x as f64,
-                            final_margin.height + y as f64 + (index * font_size as usize) as f64,
+                            margin.width + x as f64,
+                            margin.height + y as f64 + (index * font_size as usize) as f64,
                         ),
                         gl,
                     );

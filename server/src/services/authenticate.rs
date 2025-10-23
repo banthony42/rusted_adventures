@@ -99,7 +99,7 @@ impl RpgAuthenticate for RpgAuthenticateService {
         println!("{}{:?}", LOGOUT_USER_WITH, logout_request);
 
         Authenticator::new(&logout_request.login)
-            .logout(Some(logout_request.token.clone()))
+            .logout(Some(logout_request.token))
             .map_err(|e| {
                 println!("{}{}", LOGOUT_USER_ERROR, e);
                 tonic::Status::internal("Logout failed")

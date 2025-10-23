@@ -145,7 +145,7 @@ impl InputField {
                     window,
                     color::BLACK,
                     text_pos,
-                    Some(&self.margin),
+                    &self.margin,
                 );
             }
         }
@@ -173,7 +173,7 @@ impl InputField {
                                 window,
                                 color::BLACK,
                                 cursor_pos,
-                                Some(&self.margin),
+                                &self.margin,
                             )
                         }
                     }

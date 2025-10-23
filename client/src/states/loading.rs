@@ -124,27 +124,28 @@ impl GameState for Loading {
 
             let width = 200.0;
             let height = 20.0;
-            let bg_rect = [
+            let mut rect = [
                 self.margin.width + WINDOW_WIDTH_CENTER as f64 - width / 2.0,
                 self.margin.height + WINDOW_HEIGHT as f64 / 2.0,
                 width,
                 height,
             ];
 
+            // Draw progress bar background
             Rectangle::new([1.0; 4])
                 .color(color::BLACK)
                 .shape(Shape::Round(8.0, 32))
-                .draw(bg_rect, &_ctx.draw_state, _ctx.transform, gl);
+                .draw(rect, &_ctx.draw_state, _ctx.transform, gl);
 
+            // Compute progress bar size according to the tasks progress
             let progress_width = (self.progress as f64 / self.timeout as f64).min(1.0) * width;
-            let mut progress_rect = bg_rect.clone();
-            progress_rect[2] = progress_width;
-
+            rect[2] = progress_width;
+            // Draw progress bar foreground
             if progress_width > 10.0 {
                 Rectangle::new([1.0; 4])
                     .color(color::WHITE)
                     .shape(Shape::Round(8.0, 32))
-                    .draw(progress_rect, &_ctx.draw_state, _ctx.transform, gl);
+                    .draw(rect, &_ctx.draw_state, _ctx.transform, gl);
             }
         });
 
@@ -155,7 +156,7 @@ impl GameState for Loading {
             window,
             color::WHITE,
             [LOGIN_TITLE_POS[0], LOGIN_TITLE_POS[1]],
-            Some(&self.margin),
+            &self.margin,
         );
     }
 

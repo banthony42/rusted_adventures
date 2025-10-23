@@ -180,7 +180,7 @@ impl IEntity for EntityModel {
             self.set_state(Animations::Idle);
             self.map = match self.next_map.take() {
                 Some(Orientation::Est) => {
-                    if let Some(new_map) = world.get_east_map(&self.map) {
+                    if let Some(new_map) = world.get_east_map(self.map) {
                         self.cell.x = 0;
                         new_pos = Some(LocationType::NewMap);
                         new_map.0
@@ -189,7 +189,7 @@ impl IEntity for EntityModel {
                     }
                 }
                 Some(Orientation::West) => {
-                    if let Some(new_map) = world.get_west_map(&self.map) {
+                    if let Some(new_map) = world.get_west_map(self.map) {
                         self.cell.x = TILEMAP_WIDTH as i64 - 1;
                         new_pos = Some(LocationType::NewMap);
                         new_map.0

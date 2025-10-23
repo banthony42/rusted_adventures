@@ -85,7 +85,7 @@ impl ConnectionTask {
         });
 
         let response: tonic::Response<AuthReply> = client.authenticate_user(request).await?;
-        let token = response.into_inner().token.clone();
+        let token = response.into_inner().token;
 
         let mut locked_task = self.data.lock().unwrap();
         locked_task.step += 1;

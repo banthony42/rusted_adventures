@@ -37,7 +37,10 @@ const CHAT_CONNEXION_FAILED: &str = "La connexion au serveur de chat à échoué
 const CHAT_ERROR_FROM_SERVER: &str = "Le serveur de chat à renvoyé une erreur.";
 const CHAT_CONNEXION_LOST: &str = "La connexion au serveur à été perdue.";
 const CHAT_SERVER_RESPONSE_TIMEOUT: &str = "Le serveur a mis trop de temps à répondre.";
-const CHAT_USAGE: &str = "/help Affiche ce message d'aide. /w [destinataire] [text ...] Envoie un message privé au destinataire.";
+const CHAT_USAGE: [&str; 2] = [
+    "/help Affiche ce message d'aide.",
+    "/w [destinataire] [text ...] Envoie un message privé au destinataire.",
+];
 const CHAT_WHISPER_USAGE: &str = "chuchotement: nécéssite un destinataire et un contenu.";
 
 impl ChatController {
@@ -162,7 +165,7 @@ impl ChatController {
             me,
             view: ChatGraphicView::new(),
             model: model_cloned,
-            tx: controller_tx.clone(),
+            tx: controller_tx,
             _runtime: runtime,
         }
     }
@@ -188,38 +191,39 @@ impl ChatController {
         self.view.mouse_scroll_args(args);
     }
 
-    fn parse_input(&self, line: String) -> ChatMessage {
+    fn parse_input(&mut self, line: String) -> Option<ChatMessage> {
         let cmd: Vec<&str> = line.split(' ').collect();
 
         match cmd[0] {
-            "/help" | "/h" => ChatMessage::new(
-                CHAT_USAGE.to_owned(),
-                SEvent::ServerEvent(ServerEventType::SrvInfo as i32), // TODO: Create LocalInfo instead of using SrvInfo
-                None,
-            ),
-            "/w" if cmd.len() < 3 => ChatMessage::new(
-                CHAT_WHISPER_USAGE.to_owned(),
-                SEvent::ServerEvent(ServerEventType::SrvDang as i32),
-                None,
-            ),
-            "/w" if cmd.len() >= 3 => ChatMessage::new(
+            "/help" | "/h" => {
+                CHAT_USAGE
+                    .iter()
+                    .for_each(|row| self.model.try_local_info(row));
+                None
+            }
+            "/w" if cmd.len() < 3 => {
+                self.model.try_local_warning(CHAT_WHISPER_USAGE);
+                None
+            }
+            "/w" if cmd.len() >= 3 => Some(ChatMessage::new(
                 cmd[2..].join(" "),
                 SEvent::ChatEvent(ChatEventType::Whisper as i32),
                 Some(Target::Outbound(cmd[1].to_string())),
-            ),
-            _ => ChatMessage::new(
+            )),
+            _ => Some(ChatMessage::new(
                 cmd.join(" "),
                 SEvent::ChatEvent(ChatEventType::Broadcast as i32),
                 Some(Target::Outbound(self.me.clone())),
-            ),
+            )),
         }
     }
 
     pub fn key_press(&mut self, args: &Button, font: &mut Font) {
         if let Some(user_input) = self.view.key_press(args, font) {
-            let msg = self.parse_input(user_input);
-            if let Err(error) = self.tx.try_send(msg) {
-                println!("Chat controller tx error: {:?}", error);
+            if let Some(msg) = self.parse_input(user_input) {
+                if let Err(error) = self.tx.try_send(msg) {
+                    println!("Chat controller tx error: {:?}", error);
+                }
             }
         };
     }

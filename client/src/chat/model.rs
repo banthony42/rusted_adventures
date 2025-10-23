@@ -10,11 +10,12 @@ use common::grpc_codegen::ChatEventType;
 use common::grpc_codegen::ClientChatEvent;
 use common::grpc_codegen::ServerChatEvent;
 use common::grpc_codegen::ServerEventType;
+use tokio::sync::MutexGuard;
 
 const CHAT_MAX_MSG: usize = 20;
 const CHAT_TIME_FORMAT: &str = "%H:%M:%S";
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Target {
     /// Entrant, en provenance
     Inbound(String),
@@ -44,7 +45,7 @@ impl Target {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ChatMessage {
     time: i64,
     text: String,
@@ -211,9 +212,6 @@ impl ChatModel {
 
     pub async fn post_message(&mut self, msg: ChatMessage) {
         let mut model = self.model.lock().await;
-
-        // Reset a timer inside the rolling list of timer
-        // self.rolling_timer[idx] = 5000
         model.push(msg);
         model._trim_v2(CHAT_MAX_MSG);
     }
@@ -243,6 +241,28 @@ impl ChatModel {
             None,
         ))
         .await
+    }
+
+    fn try_post_local_message(&mut self, text: &str, sevent: ServerEventType) {
+        if let Ok(mut model) = self.model.try_lock() {
+            model.push(ChatMessage::new(
+                String::from(text),
+                SEvent::ServerEvent(sevent as i32),
+                None,
+            ));
+            model._trim_v2(CHAT_MAX_MSG);
+        } else {
+            // Interesting to see how often this append
+            dbg!("ChatModel::try_local_info : fail to obtain model lock.");
+        }
+    }
+
+    pub fn try_local_info(&mut self, text: &str) {
+        self.try_post_local_message(text, ServerEventType::SrvInfo);
+    }
+
+    pub fn try_local_warning(&mut self, text: &str) {
+        self.try_post_local_message(text, ServerEventType::SrvWarn);
     }
 
     pub fn get(&mut self) -> Vec<ChatMessage> {

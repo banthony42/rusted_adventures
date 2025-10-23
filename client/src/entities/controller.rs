@@ -185,7 +185,7 @@ impl EntityController {
     }
 
     pub fn player_map(&self) -> MapCoord {
-        self.player.get_map().clone()
+        self.player.get_map()
     }
 
     /// Foreach entities handled in this controller, gather data for interface rendering.

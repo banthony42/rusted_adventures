@@ -91,7 +91,7 @@ impl EntityView {
             window,
             text_color,
             text_position,
-            Some(&self.margin),
+            &self.margin,
         );
     }
 

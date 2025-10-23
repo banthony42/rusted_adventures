@@ -179,7 +179,7 @@ impl SpeciesLibrary {
     }
 
     pub fn get_font_color(&self, species: &Species) -> Color {
-        self._get_species_constants(species).font_color.clone()
+        self._get_species_constants(species).font_color
     }
 
     pub fn get_height_offset(&self, species: &Species) -> f64 {

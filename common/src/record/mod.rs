@@ -108,7 +108,7 @@ where
     pub fn getdel(&mut self, key: &String) -> Option<R> {
         if let Some(hdata) = self.hash.remove(key) {
             if Self::ttl_still_valid(&hdata) {
-                return Some(hdata.data.clone());
+                return Some(hdata.data);
             }
         }
         None

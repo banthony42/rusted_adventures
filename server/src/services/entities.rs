@@ -36,8 +36,8 @@ impl RpgEntityEvent {
     }
 }
 
-async fn send_entity_event(client: &EntityEventSender, event: &EntityEvent) -> bool {
-    if let Err(err) = client.send(Ok(event.clone())).await {
+async fn send_entity_event(client: &EntityEventSender, event: EntityEvent) -> bool {
+    if let Err(err) = client.send(Ok(event)).await {
         println!("Server: send_entity_event: Error: {:?}", err);
         return false;
     }
@@ -67,7 +67,7 @@ async fn broadcast_player_on_map(
 
         for player in players.iter().filter(|name| sender.ne(*name)) {
             if let Some(client_channel) = clts.get(player) {
-                send_entity_event(client_channel, &event).await;
+                send_entity_event(client_channel, event.clone()).await;
                 println!("Server: {} broadcast sended: {:?}", sender, player);
             }
         }
@@ -152,19 +152,19 @@ async fn player_move(sender: String, move_event: PlayerMove, clients: ArcMutexHa
                 for (entity, entity_destination) in entities_on_map.iter() {
                     // Send each entity on the new map, to this player (sender)
                     let entity_spawn = EntityEvent::spawn(entity.clone());
-                    if send_entity_event(sender_tx, &entity_spawn).await {
+                    if send_entity_event(sender_tx, entity_spawn).await {
                         // Also send move event for this entity if needed
                         if let Some(dest) = entity_destination {
                             let move_event =
                                 EntityEvent::movement(entity.uuid.clone(), dest.into_destination());
-                            send_entity_event(sender_tx, &move_event).await;
+                            send_entity_event(sender_tx, move_event).await;
                         }
                     }
 
                     // If entity is another player, warn him that sender has spawn here
                     match (entity.family, clts.get(&entity.name)) {
                         (Some(Family::Class(_)), Some(entity_tx)) => {
-                            send_entity_event(entity_tx, &sender_spawn).await;
+                            send_entity_event(entity_tx, sender_spawn.clone()).await;
                         }
                         (Some(Family::Class(_)), None) => println!(
                             "Server: player move: Error: Fail to get client stream for {:?}",
@@ -227,7 +227,7 @@ impl RpgEntityService {
                             // Broadcast all concerned players with the monster move
                             for player in players.iter() {
                                 if let Some(client_sender) = clts.get(&player.name) {
-                                    send_entity_event(client_sender, &move_event).await;
+                                    send_entity_event(client_sender, move_event.clone()).await;
                                 }
                             }
                         }
@@ -262,8 +262,11 @@ impl RpgEntityService {
                             // Broadcast all concerned players with the monster spawn
                             for player in players.iter() {
                                 if let Some(client_sender) = clts.get(&player.name) {
-                                    send_entity_event(client_sender, &monster_spawn_rpc_event)
-                                        .await;
+                                    send_entity_event(
+                                        client_sender,
+                                        monster_spawn_rpc_event.clone(),
+                                    )
+                                    .await;
                                 }
                             }
                         }

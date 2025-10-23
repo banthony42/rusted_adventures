@@ -106,7 +106,7 @@ impl Spawner {
                 );
                 if let Some(species) = self.species.choose(&mut rand::rng()) {
                     let order = SpawnOrder {
-                        species: species.clone(),
+                        species: *species,
                         timer: 0,
                         running: true,
                     };

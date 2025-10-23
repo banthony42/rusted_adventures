@@ -165,21 +165,19 @@ impl World {
         self.margin = margin.clone();
     }
 
-    fn get_map(&self, coord: &MapCoord) -> Option<(MapCoord, &MapData)> {
-        let map = match self.world.get(coord) {
+    fn get_map(&self, coord: MapCoord) -> Option<(MapCoord, &MapData)> {
+        let map = match self.world.get(&coord) {
             Some(map_data) => map_data,
             None => return None,
         };
-        return Some((coord.clone(), map));
+        return Some((coord, map));
     }
 
-    pub fn get_east_map(&self, coord: &MapCoord) -> Option<(MapCoord, &MapData)> {
-        let coord_tentative = coord.clone() + MapCoord { x: 1, y: 0 };
-        self.get_map(&coord_tentative)
+    pub fn get_east_map(&self, coord: MapCoord) -> Option<(MapCoord, &MapData)> {
+        self.get_map(coord + MapCoord { x: 1, y: 0 })
     }
 
-    pub fn get_west_map(&self, coord: &MapCoord) -> Option<(MapCoord, &MapData)> {
-        let coord_tentative = coord.clone() + MapCoord { x: -1, y: 0 };
-        self.get_map(&coord_tentative)
+    pub fn get_west_map(&self, coord: MapCoord) -> Option<(MapCoord, &MapData)> {
+        self.get_map(coord + MapCoord { x: -1, y: 0 })
     }
 }
