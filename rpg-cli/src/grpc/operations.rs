@@ -124,9 +124,9 @@ fn handle_receive_message(chat_event: Option<ServerChatEvent>) {
                 Ok(ServerEventType::SrvDang) => "Server Danger: ",
                 Ok(ServerEventType::SrvAck) => "Server acknowledgement",
                 Ok(ServerEventType::SrvUnack) => "Server unacknowledgement",
-                Err(_) => todo!(),
+                Err(_) => "Server unknown event",
             },
-            None => todo!(),
+            None => "",
         };
         println!("{}{}: {}", prefix, sender, event.text);
     }
