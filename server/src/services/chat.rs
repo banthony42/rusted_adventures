@@ -1,5 +1,6 @@
 use common::authenticator::Authenticator;
 use common::character::CharacterHandler;
+use common::constants::CHAT_SERVER_INPUT_MAX;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::result::Result;
@@ -151,7 +152,10 @@ impl RpgChatService {
         // This task loop on the ChatEvent receive channel to handle
         // ChatEvent for all connected clients.
         tokio::spawn(async move {
-            while let Some(receive) = event_rx.recv().await {
+            while let Some(mut receive) = event_rx.recv().await {
+                // Small protection against huge message sent
+                // The channel size should also be considered, and update with care
+                receive.event.text.truncate(CHAT_SERVER_INPUT_MAX);
                 match receive.event.event() {
                     ChatEventType::Broadcast => broadcast(receive, clts.clone()).await,
                     ChatEventType::Whisper => whisper(receive, clts.clone()).await,

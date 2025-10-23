@@ -54,6 +54,7 @@ pub mod constants {
 
     pub const CHAT_INPUT_POSITION: [f64; 2] = [16.0, 928.0];
     pub const CHAT_INPUT_WIDTH: f64 = GUI_CHAT_WIDTH;
+    pub const CHAT_SERVER_INPUT_MAX: usize = 140;
 
     pub const CHAT_WINDOW_TIMER: u128 = 8000;
     pub const CHAT_WINDOW_WIDTH: f64 = 128.0;
