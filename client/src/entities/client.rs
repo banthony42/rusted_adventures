@@ -16,7 +16,6 @@ pub struct EntityClient {
 }
 
 impl EntityClient {
-    // TODO: chat/client.rs duplication code here
     fn auth_interceptor(
         login: String,
         token: String,

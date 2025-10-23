@@ -44,8 +44,6 @@ enum EntityOperation {
     ClearEntities,
 }
 
-// TODO: transform player/entities into struct EntityModel
-// protected by an ArcMutex therefore both the eventbus thread and main thread could use it
 pub struct EntityController {
     player: Box<dyn IEntity>,
     entities: Arc<Mutex<Vec<Box<dyn IEntity>>>>,
@@ -265,15 +263,12 @@ impl EntityController {
 
         if let Ok(mut entities) = self.entities.try_lock() {
             match self.operations {
-                EntityOperation::ClearEntities => {
-                    entities.clear();
-                    self.operations = EntityOperation::Idle;
-                }
-                _ => {}
+                EntityOperation::ClearEntities => entities.clear(),
+                EntityOperation::Idle => {}
             }
+            self.operations = EntityOperation::Idle;
 
             entities.iter_mut().for_each(|entity| {
-                // TODO: separate more entities from player (world is needed to change map, mobs will not change map)
                 entity.update(delta_ts, world);
                 self.view.update(delta_ts, entity);
 

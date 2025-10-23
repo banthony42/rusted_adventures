@@ -28,7 +28,6 @@ impl WorldImport {
             (
                 MapCoord { x: 0, y: 0 },
                 MapImport {
-                    // TODO: fix path here it is relative could be an issue when run from different location client/server folders
                     path: String::from("../assets/maps/map.0.0/sprite.json"),
                     info: String::from("Plaines"),
                 },

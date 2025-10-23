@@ -154,7 +154,6 @@ impl CharacterHandler {
     }
 
     pub fn players_on_same_map(&mut self) -> Result<Vec<String>, CharacterHandlerError> {
-        // TODO: issue: groupby clause doesn't work :
         // [941] ERROR:  could not identify an equality operator for type point at character 152
         // [941] STATEMENT:  SELECT "entities"."name" FROM ("locations" INNER JOIN "entities" ON ("locations"."entity_id" = "entities"."id")) WHERE ("entities"."id" = $1) GROUP BY "locations"."map", "entities"."name"
 

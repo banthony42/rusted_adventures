@@ -13,9 +13,9 @@ use super::{ChatCmd, GrpcCommand, GrpcSubcommand};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
 use common::grpc_codegen::rpg_chat_client::RpgChatClient;
 use common::grpc_codegen::server_chat_event::Event;
-use common::grpc_codegen::ServerChatEvent;
 use common::grpc_codegen::{AuthReply, AuthRequest};
 use common::grpc_codegen::{ChatEventType, ClientChatEvent};
+use common::grpc_codegen::{ServerChatEvent, ServerEventType};
 use std::error::Error;
 
 const SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
@@ -112,18 +112,21 @@ fn handle_receive_message(chat_event: Option<ServerChatEvent>) {
     if let Some(event) = chat_event {
         let sender = event.sender.unwrap_or_default();
 
-        // TODO: The .proto describe that a ServerChatEvent can be a ServerEventType or a ChatEventType
-        // Tonic generated code give us enum Event::ServerEvent(i32) / Event::ChatEvent(i32)
-        // Unfortunately i didn't find yet the way to use ChatEventType enum within ChatEvent
-        // Therefore to use an Event of type ChatEventType::Whisper
-        // I have to use Event::ChatEvent(1) instead of Event::ChatEvent(ChatEventType:Whisper)
-        let prefix = match event.event {
-            Some(Event::ChatEvent(1)) => "mp de ",
-            Some(Event::ChatEvent(0)) | Some(Event::ChatEvent(_)) => "General: ",
-            Some(Event::ServerEvent(3)) => "SERVER: ACKNOWLEDGEMENT",
-            Some(Event::ServerEvent(4)) => "SERVER: UNACKNOWLEDGEMENT",
-            Some(Event::ServerEvent(_)) => "SERVER: ",
-            None => return,
+        let prefix = match &event.event {
+            Some(Event::ChatEvent(c)) => match ChatEventType::try_from(*c) {
+                Ok(ChatEventType::Whisper) => "mp de ",
+                Ok(ChatEventType::Broadcast) => "General: ",
+                Err(_) => "<unknown> ",
+            },
+            Some(Event::ServerEvent(s)) => match ServerEventType::try_from(*s) {
+                Ok(ServerEventType::SrvInfo) => "Server Info: ",
+                Ok(ServerEventType::SrvWarn) => "Server Warning: ",
+                Ok(ServerEventType::SrvDang) => "Server Danger: ",
+                Ok(ServerEventType::SrvAck) => "Server acknowledgement",
+                Ok(ServerEventType::SrvUnack) => "Server unacknowledgement",
+                Err(_) => todo!(),
+            },
+            None => todo!(),
         };
         println!("{}{}: {}", prefix, sender, event.text);
     }

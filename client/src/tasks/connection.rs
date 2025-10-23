@@ -72,11 +72,6 @@ impl ConnectionTask {
     }
 
     async fn connect_user(&self) -> Result<String, Box<dyn Error + Send + Sync>> {
-        if self.login.eq("offline") {
-            // TODO: offline mode make user enter in game mode but player entity is empty
-            return Ok(String::from("offline-token"));
-        }
-
         let mut client = RpgAuthenticateClient::connect(SERVER_ENDPOINT).await?;
 
         let request = tonic::Request::new(AuthRequest {
@@ -94,7 +89,6 @@ impl ConnectionTask {
         Ok(token)
     }
 
-    // TODO: duplicate code from ChatClient and EntityClient
     fn auth_interceptor(
         login: String,
         token: String,
