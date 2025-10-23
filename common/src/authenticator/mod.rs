@@ -83,16 +83,19 @@ impl Authenticator<'_> {
         };
 
         // Import user hashed password and verify it
-        let parsed_hash = PasswordHash::new(&account_to_auth.password)
-            .expect("Error while importing user password hash.");
+        let Ok(parsed_hash) = PasswordHash::new(&account_to_auth.password) else {
+            println!("Error while importing user password hash from database.");
+            return false;
+        };
 
-        match self
+        if let Err(err) = self
             .argon2
             .verify_password(password.as_bytes(), &parsed_hash)
         {
-            Ok(_) => true,
-            Err(_) => false,
+            println!("Error while while verifying user password: {:?}", err);
+            return false;
         }
+        true
     }
 
     pub fn get_token(&mut self) -> Option<String> {
