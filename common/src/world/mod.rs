@@ -79,16 +79,15 @@ impl ColliderMap {
 impl From<&LoadedMap> for ColliderMap {
     fn from(loaded_map: &LoadedMap) -> Self {
         let mut colliders = vec![vec![false; TILEMAP_WIDTH as usize]; TILEMAP_HEIGHT as usize];
-        let _: Vec<_> = loaded_map
+        loaded_map
             .sprites
             .iter()
             .filter(|sprite| sprite.layer == MapLayer::Collider)
-            .map(|sprite| {
+            .for_each(|sprite| {
                 let x = sprite.tile_index as usize % TILEMAP_WIDTH;
                 let y = sprite.tile_index as usize / TILEMAP_WIDTH;
                 colliders[y][x] = sprite.collider;
-            })
-            .collect();
+            });
         ColliderMap(colliders)
     }
 }

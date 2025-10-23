@@ -56,12 +56,11 @@ where
     }
 
     pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
-        let _ = self
-            .messages
+        self.messages
             .iter()
             .rev()
             .filter(|msg| msg.timer > 0)
-            .map(|msg| {
+            .for_each(|msg| {
                 let text = msg.content.format();
                 let model_position = msg.content.position();
                 let text_width = self.max_width - CHAT_WINDOW_PADDING_WIDTH;
@@ -111,8 +110,7 @@ where
                     self.max_width - CHAT_WINDOW_PADDING_WIDTH,
                     window_box,
                 );
-            })
-            .collect::<Vec<_>>();
+            });
     }
 
     pub fn add_message<F>(&mut self, content: T, aggregate: F)
@@ -140,7 +138,7 @@ where
                 .collect::<Vec<_>>();
 
             // Overwrite the existing WindowMessage for this aggregation
-            if agg_messages.len().ge(&1) {
+            if agg_messages.len() >= 1 {
                 for agg_msg in agg_messages.iter() {
                     self.messages.remove(agg_msg.0);
                 }
@@ -160,18 +158,14 @@ where
     where
         F: FnMut(&mut T),
     {
-        //  drop all WindowMessage when their timer == 0
+        // drop all WindowMessage when their timer == 0
         self.messages.retain(|msg| msg.timer > 0);
 
-        //  decrement all WindowMessage.timer with delta_ts
-        let _: Vec<_> = self
-            .messages
-            .iter_mut()
-            .map(|msg| {
-                msg.timer = msg.timer.saturating_sub(delta_ts);
-                update_content(&mut msg.content);
-            })
-            .collect();
+        // decrement all WindowMessage.timer with delta_ts
+        self.messages.iter_mut().for_each(|msg| {
+            msg.timer = msg.timer.saturating_sub(delta_ts);
+            update_content(&mut msg.content);
+        });
     }
 
     pub fn resize(&mut self, margin: &Size) {

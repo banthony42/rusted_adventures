@@ -42,8 +42,7 @@ fn show_characters() {
     match Character::read_all(connection) {
         Ok(characters) => characters
             .iter()
-            .map(|character| println!("{:?}", character))
-            .collect(),
+            .for_each(|character| println!("{:?}", character)),
         Err(e) => println!("Error reading all accounts: {:?}", e),
     };
 }

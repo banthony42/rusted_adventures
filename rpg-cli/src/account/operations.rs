@@ -97,8 +97,7 @@ fn show_account() {
     match Account::read_all(connection) {
         Ok(accounts) => accounts
             .iter()
-            .map(|account| println!("{:?}", account))
-            .collect(),
+            .for_each(|account| println!("{:?}", account)),
         Err(e) => println!("Error reading all accounts: {:?}", e),
     };
 }

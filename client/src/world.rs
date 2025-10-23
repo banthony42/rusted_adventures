@@ -118,12 +118,12 @@ impl World {
     pub fn render(&self, evnt: &Event, window: &mut PistonWindow, coord: &MapCoord) {
         if let Some(map_data) = self.world.get(coord) {
             window.draw_2d(evnt, |ctx, gl, _device| {
-                let _ = map_data
+                map_data
                     .frames
                     .get_frame(map_data.frame_index)
                     .sprites
                     .iter()
-                    .map(|sprt| {
+                    .for_each(|sprt| {
                         let pos = sprt.get_tile_position();
                         Image::new().src_rect(sprt.get_src_rect()).draw(
                             sprt.get_texture(),
@@ -138,8 +138,7 @@ impl World {
                             ),
                             gl,
                         );
-                    })
-                    .collect::<Vec<_>>();
+                    });
             });
         }
     }

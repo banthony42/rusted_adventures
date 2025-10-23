@@ -50,36 +50,31 @@ where
 
     pub fn render(&self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
         let mut line_height = 0.0;
-        let _ = self
-            .content
-            .iter()
-            .rev()
-            .map(|content| {
-                let (text_color, text) = content.colored_format();
+        self.content.iter().rev().for_each(|content| {
+            let (text_color, text) = content.colored_format();
 
-                line_height += font.height_with_auto_newline(
-                    text.as_str(),
-                    self.font_size,
-                    self.width() - GUI_CHAT_PADDING_WIDTH,
-                );
+            line_height += font.height_with_auto_newline(
+                text.as_str(),
+                self.font_size,
+                self.width() - GUI_CHAT_PADDING_WIDTH,
+            );
 
-                let msg_position = [
-                    self.position[0],
-                    self.position[1] - line_height + (self.scroll * self.font_size as f64),
-                ];
+            let msg_position = [
+                self.position[0],
+                self.position[1] - line_height + (self.scroll * self.font_size as f64),
+            ];
 
-                font.render_with_auto_newline(
-                    text.as_str(),
-                    self.font_size,
-                    evnt,
-                    window,
-                    text_color,
-                    msg_position,
-                    self.width() - GUI_CHAT_PADDING_WIDTH,
-                    self.scissor,
-                );
-            })
-            .collect::<Vec<_>>();
+            font.render_with_auto_newline(
+                text.as_str(),
+                self.font_size,
+                evnt,
+                window,
+                text_color,
+                msg_position,
+                self.width() - GUI_CHAT_PADDING_WIDTH,
+                self.scissor,
+            );
+        });
     }
 
     pub fn update(&mut self, _delta_ts: u128, text: Vec<T>) {

@@ -116,17 +116,16 @@ impl EntityController {
                                                 EntityMoveEvent(entity_move) => {
                                                     // println!("Client: EntityController: EntityMoveEvent: {:?}", entity_move);
                                                         let mut entities = some_entities.lock().await;
-                                                        let _ = entities.iter_mut()
+                                                        entities.iter_mut()
                                                         .filter(|entity| entity_move.uuid.eq(entity.get_uuid()))
                                                         // Set a new destination therefore the new path will be compute at the next update call
-                                                        .map(|entity| {
+                                                        .for_each(|entity| {
                                                             if let Some(location) = entity_move.new_location {
                                                                 if let Some(map) = location.cell {
                                                                     entity.set_destination(CellCoord { x: map.x, y: map.y });
                                                                 }
                                                             }
-                                                        })
-                                                        .collect::<Vec<_>>();
+                                                        });
                                                 },
                                                 EntitySpawnEvent(entity_spawn) => {
                                                     println!("Client: EntityController: EntitySpawnEvent: {:?}", entity_spawn);
@@ -209,12 +208,9 @@ impl EntityController {
         self.view.render(evnt, window, &self.player, font);
 
         if let Ok(entities) = self.entities.try_lock() {
-            let _ = entities
-                .iter()
-                .map(|entity| {
-                    self.view.render(evnt, window, entity, font);
-                })
-                .collect::<Vec<_>>();
+            entities.iter().for_each(|entity| {
+                self.view.render(evnt, window, entity, font);
+            });
         } else {
             dbg!("EntityController::render : fail to obtain entities model lock ...");
         }
@@ -276,25 +272,22 @@ impl EntityController {
                 _ => {}
             }
 
-            let _ = entities
-                .iter_mut()
-                .map(|entity| {
-                    // TODO: separate more entities from player (world is needed to change map, mobs will not change map)
-                    entity.update(delta_ts, world);
-                    self.view.update(delta_ts, entity);
+            entities.iter_mut().for_each(|entity| {
+                // TODO: separate more entities from player (world is needed to change map, mobs will not change map)
+                entity.update(delta_ts, world);
+                self.view.update(delta_ts, entity);
 
-                    if let Some(map_data) = world.world.get(&self.player.get_map()) {
-                        if let Some(new_destination) = entity.consume_destination() {
-                            self.path_finder.compute(
-                                entity.get_cell(),
-                                new_destination,
-                                &map_data.collider_map,
-                            );
-                            entity.set_path(self.path_finder.get_path(), None);
-                        }
+                if let Some(map_data) = world.world.get(&self.player.get_map()) {
+                    if let Some(new_destination) = entity.consume_destination() {
+                        self.path_finder.compute(
+                            entity.get_cell(),
+                            new_destination,
+                            &map_data.collider_map,
+                        );
+                        entity.set_path(self.path_finder.get_path(), None);
                     }
-                })
-                .collect::<Vec<_>>();
+                }
+            });
         } else {
             dbg!("EntityController::update : fail to obtain entities model lock ...");
         }

@@ -101,41 +101,37 @@ impl<'de> Visitor<'de> for SpriteDeserializer {
                     .as_array()
                     .expect("Fail to get tiles JSON array as Vector.");
 
-                let _: Vec<_> = tiles
-                    .iter()
-                    .enumerate()
-                    .map(|(tile_index, tile)| {
-                        let tileset_index = tile
-                            .as_u64()
-                            .expect("Fail to get value from tiles JSON array as u64.")
-                            as u8;
+                tiles.iter().enumerate().for_each(|(tile_index, tile)| {
+                    let tileset_index = tile
+                        .as_u64()
+                        .expect("Fail to get value from tiles JSON array as u64.")
+                        as u8;
 
-                        // Value 0 within tilemap is consider empty
-                        // It means that the sprite at this position is not define in this layer.
-                        // We can't use .filter after .iter because we need that .enumerate count all the tiles
-                        if tileset_index == 0 {
-                            return;
-                        }
+                    // Value 0 within tilemap is consider empty
+                    // It means that the sprite at this position is not define in this layer.
+                    // We can't use .filter after .iter because we need that .enumerate count all the tiles
+                    if tileset_index == 0 {
+                        return;
+                    }
 
-                        let layer = match layer_name.as_str() {
-                            "Collider" => MapLayer::Collider,
-                            "AnimatedSprites" => MapLayer::AnimatedSprites,
-                            "Map" => MapLayer::Map,
-                            _ => panic!("Error: layer {:?} not supported.", layer_name),
-                        };
+                    let layer = match layer_name.as_str() {
+                        "Collider" => MapLayer::Collider,
+                        "AnimatedSprites" => MapLayer::AnimatedSprites,
+                        "Map" => MapLayer::Map,
+                        _ => panic!("Error: layer {:?} not supported.", layer_name),
+                    };
 
-                        sprites.push(LoadedSprite {
-                            collider: layer == MapLayer::Collider,
-                            layer: layer,
-                            bound_x: bounds_x,
-                            bound_y: bounds_y,
-                            tileset_id: tileset as usize,
-                            tile_index: tile_index as u32,
-                            tileset_index: tileset_index,
-                            frame: frame as usize,
-                        });
-                    })
-                    .collect();
+                    sprites.push(LoadedSprite {
+                        collider: layer == MapLayer::Collider,
+                        layer: layer,
+                        bound_x: bounds_x,
+                        bound_y: bounds_y,
+                        tileset_id: tileset as usize,
+                        tile_index: tile_index as u32,
+                        tileset_index: tileset_index,
+                        frame: frame as usize,
+                    });
+                });
             }
         }
 

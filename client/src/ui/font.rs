@@ -110,10 +110,10 @@ impl Font {
         };
 
         window.draw_2d(evnt, |ctx, gl, _| {
-            let _: Vec<_> = text_split_by_newline
+            text_split_by_newline
                 .iter()
                 .enumerate()
-                .map(|(index, text)| {
+                .for_each(|(index, text)| {
                     let _ = text::Text::new_color(color, font_size).draw(
                         text,
                         self.get(),
@@ -124,8 +124,7 @@ impl Font {
                         ),
                         gl,
                     );
-                })
-                .collect();
+                });
         });
     }
 
