@@ -1,6 +1,6 @@
 <h1 align="center">
-  <img src="images/logo.png" alt="RPG" width="192">
-  <div>RPG</div>
+  <img src="images/logo.png" alt="Rusted Adventures" width="192">
+  <div>Rusted Adventures</div>
 </h1>
 
 <h4 align="center">A minimal multiplayer role playing game <span style="font-weight: 750">draft</span> build with <a href="https://www.rust-lang.org/fr" target="_blank" rel="noopener noreferrer">Rust</a> and drawn with <a href="https://www.aseprite.org/" target="_blank" rel="noopener noreferrer">Aseprite</a>.</h4>
@@ -46,7 +46,7 @@ it's only a pretext here, to be confront to interesting problematics to develop.
 
 ## Description
 
-Welcome to RPG !
+Welcome to Rusted Adventures !
 A minimal multiplayer role playing game, humbly inspired by [Dofus Retro](https://www.dofus-retro.com/en/mmorpg/discover).<br>
 Here you won't spend hours killing monsters, collecting rare loot or delves perilous dungeons.<br>
 Instead you can observe a passionate trying to implement it.<br>
