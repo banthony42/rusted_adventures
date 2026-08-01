@@ -1,0 +1,24 @@
+# Rust build artifacts
+target/
+**/target/
+
+# Git
+.git
+.gitignore
+
+# IDEs
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.*
+
+# Aseprite source files
+**/*.aseprite

@@ -7,9 +7,9 @@ edition = "2021"
 argon2 = { version = "0.5.3", features = ["std"] }
 diesel = { version = "*", features = ["postgres", "uuid"] }
 dotenvy = "0.15"
-rand = "*"
-tonic = "*"
-prost = "*"
+rand = "0.9.0"
+tonic = "0.12.3"
+prost = "0.13.3"
 uuid = "1.15.1"
 byteorder = "1.5.0"
 serde_json = "*"
@@ -19,4 +19,4 @@ serde = {  version = "*", features = [ "derive" ] }
 git = "https://github.com/neeryapp/diesel_geometry.git"
 
 [build-dependencies]
-tonic-build = "*"
+tonic-build = "0.12.3"
