@@ -1,0 +1,67 @@
+Enum "PGClass" {
+  "Warrior"
+  "Mage"
+}
+
+Enum "PGSpecies" {
+  "Bouftou"
+  "Crabedoeuf"
+}
+
+Table "accounts" {
+  "id" uuid [pk, not null, default: `gen_random_uuid()`]
+  "login" VARCHAR(12) [unique, not null]
+  "password" VARCHAR(255) [not null]
+  "session_token" varchar(255)
+}
+
+Table "bestiary" {
+  "id" serial [pk, increment]
+  "species" PGSpecies [not null]
+  "name" varchar(16) [unique, not null]
+}
+
+Table "locations" {
+  "id" serial [pk, increment]
+  "map" point [not null]
+  "cell" point [not null]
+  "destination" point
+}
+
+Table "entities" {
+  "id" serial [pk, increment]
+  "location_id" integer [unique, not null]
+}
+
+Table "characters" {
+  "id" serial [pk, increment]
+  "account_id" uuid [not null]
+  "entity_id" integer [unique, not null]
+  "name" varchar(16) [unique, not null]
+  "class" PGClass [not null]
+}
+
+Table "monsters" {
+  "id" serial [increment]
+  "bestiary_id" integer [not null]
+  "entity_id" integer [unique, not null]
+
+  Indexes {
+    (bestiary_id, entity_id) [pk]
+  }
+}
+
+Ref:"locations"."id" <? "entities"."location_id" [delete: cascade]
+
+Ref:"accounts"."id" <? "characters"."account_id" [delete: cascade]
+
+Ref:"entities"."id" <? "characters"."entity_id" [delete: cascade]
+
+Ref:"bestiary"."id" <? "monsters"."bestiary_id" [delete: cascade]
+
+Ref:"entities"."id" <? "monsters"."entity_id" [delete: cascade]
+
+Records bestiary(name, species) {
+  'Bouftou', 'Bouftou'
+  'Crabedoeuf', 'Crabedoeuf'
+}

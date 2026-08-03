@@ -1,0 +1,3 @@
+## Server
+  - gRPC services to handle all clients events in the game. (entities lifecycle, players movements...)
+  - The world engine which handle the entities behaviours, spawn ...
