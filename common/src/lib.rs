@@ -1,7 +1,10 @@
 use std::ops::{MulAssign, SubAssign};
 
 use diesel_geometry::data_types::PgPoint;
-use rand::distr::{Distribution, StandardUniform};
+use rand::{
+    distr::{Distribution, StandardUniform},
+    RngExt,
+};
 
 use crate::world::ColliderMap;
 

@@ -1,6 +1,6 @@
 # https://www.lpalmieri.com/posts/fast-rust-docker-builds/
 
-FROM rust:1.95-bookworm AS chef
+FROM rust:1.97-bookworm AS chef
 
 RUN apt-get update && \
     apt-get install -y protobuf-compiler libpq5 && \

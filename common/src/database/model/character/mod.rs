@@ -8,7 +8,10 @@ use diesel::{
     serialize::{self, IsNull, Output, ToSql},
     Selectable,
 };
-use rand::distr::{Distribution, StandardUniform};
+use rand::{
+    distr::{Distribution, StandardUniform},
+    RngExt,
+};
 
 use crate::{
     database::schema::sql_types::Pgclass, grpc_codegen::entity::Family,

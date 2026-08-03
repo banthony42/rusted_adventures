@@ -11,10 +11,10 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.5.7", features = ["derive"] }
-diesel = { version = "2.2.0", features = ["postgres", "uuid"] }
+diesel = { version = "2.3.11", features = ["postgres", "uuid"] }
 rpassword = "7.3.1"
-tonic = "*"
-prost = "*"
-tokio = { version = "1.40.0", features = ["full"] }
+tonic = "0.14.6"
+prost = "0.14.4"
+tokio = { version = "1.53.1", features = ["full"] }
 tokio-stream = "0.1.16"
 common = { path = "../common" }
