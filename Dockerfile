@@ -48,7 +48,7 @@ WORKDIR /app
 COPY --from=builder /target/release/rpg-server /app/server/rpg-server
 COPY assets/maps/ /app/assets/maps/
 
-EXPOSE 21210
+EXPOSE 2121
 
 WORKDIR /app/server
 

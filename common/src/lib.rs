@@ -75,8 +75,8 @@ pub mod constants {
     pub const MAP_WIDTH_RANGE: Range<i64> = 0..MAP_WIDTH as i64;
     pub const MAP_HEIGHT_RANGE: Range<i64> = 0..MAP_HEIGHT as i64;
 
-    pub const SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
-    pub const CHAT_SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
+    pub const SERVER_ENDPOINT: &str = "http://127.0.0.1:2121";
+    pub const CHAT_SERVER_ENDPOINT: &str = "http://127.0.0.1:2121";
 
     #[derive(Hash, PartialEq, Eq, Debug, Clone)]
     pub enum Species {

@@ -1,7 +1,10 @@
 use std::thread;
 
 use ::common::grpc_codegen::rpg_chat_server::RpgChatServer;
-use common::{authenticator::Authenticator, grpc_codegen::rpg_entity_server::RpgEntityServer};
+use common::{
+    authenticator::Authenticator, database::db::Database,
+    grpc_codegen::rpg_entity_server::RpgEntityServer,
+};
 use services::chat::RpgChatService;
 use services::entities::RpgEntityService;
 use tokio::sync::mpsc::Receiver;
@@ -11,9 +14,8 @@ use common::grpc_codegen::rpg_authenticate_server::RpgAuthenticateServer;
 
 use services::authenticate::RpgAuthenticateService;
 use tonic::{Request, Status};
-use world::engine::WorldEngine;
 
-use crate::world::engine::WorldEvent;
+use world::engine::{WorldEngine, WorldEvent};
 
 pub mod proto {
     pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
@@ -58,13 +60,10 @@ fn auth_interceptor(req: Request<()>) -> Result<Request<()>, Status> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "0.0.0.0:21210".parse()?;
-    let rpg_authenticate = RpgAuthenticateService::default();
-
-    let reflection_service = tonic_reflection::server::Builder::configure()
-        .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
-        .build_v1()
-        .expect("Server: Fail to build tonic server reflection.");
+    // Run diesel migration
+    Database::new()
+        .run_migration()
+        .expect("Server: Fail to run database migration");
 
     // For setup simplicity the WorldEngine coexist within the Grpc Server.
     // I insist on the term 'WorldENGINE' because it's not a server since it not handle connections or requests.
@@ -79,6 +78,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // heavy setup configuration / prerequisite.
     // In addition i already know redis, where i totally discover and learn SQL like DB.
     let world_rx = run_world_engine_on_another_thread();
+
+    // Run tonic gRPC server
+    let addr = "0.0.0.0:2121".parse()?;
+    let rpg_authenticate = RpgAuthenticateService::default();
+
+    let reflection_service = tonic_reflection::server::Builder::configure()
+        .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
+        .build_v1()
+        .expect("Server: Fail to build tonic server reflection.");
 
     Server::builder()
         .add_service(reflection_service)

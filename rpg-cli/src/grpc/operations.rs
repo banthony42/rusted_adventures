@@ -18,7 +18,7 @@ use common::grpc_codegen::{ChatEventType, ClientChatEvent};
 use common::grpc_codegen::{ServerChatEvent, ServerEventType};
 use std::error::Error;
 
-const SERVER_ENDPOINT: &str = "http://127.0.0.1:21210";
+const SERVER_ENDPOINT: &str = "http://127.0.0.1:2121";
 
 async fn authenticate_user(
     login: String,
