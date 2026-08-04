@@ -201,7 +201,7 @@ impl<'de> Visitor<'de> for TilesetsDeserializer {
         // Iter on all frames objects
         while let Some(frame_obj) = seq.next_element::<serde_json::Value>()? {
             tilesets.push(format!(
-                "../assets/maps/{}",
+                "assets/maps/{}",
                 frame_obj
                     .get("image")
                     .expect("tilesets not found.")

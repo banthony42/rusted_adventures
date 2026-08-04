@@ -195,43 +195,43 @@ pub fn load_assets(window: &mut PistonWindow) -> HashMap<EntityAssets, GameAsset
     let assets_list = vec![
         (
             EntityAssets::Warrior(Animations::Idle),
-            Path::new("../assets/characters/warrior-Idle.json"),
+            Path::new("assets/characters/warrior-Idle.json"),
         ),
         (
             EntityAssets::Warrior(Animations::Run),
-            Path::new("../assets/characters/warrior-Run.json"),
+            Path::new("assets/characters/warrior-Run.json"),
         ),
         (
             EntityAssets::Mage(Animations::Idle),
-            Path::new("../assets/characters/mage-Idle.json"),
+            Path::new("assets/characters/mage-Idle.json"),
         ),
         (
             EntityAssets::Mage(Animations::Run),
-            Path::new("../assets/characters/mage-Run.json"),
+            Path::new("assets/characters/mage-Run.json"),
         ),
         (
             EntityAssets::Character(Animations::Idle),
-            Path::new("../assets/characters/character_template-Idle.json"),
+            Path::new("assets/characters/character_template-Idle.json"),
         ),
         (
             EntityAssets::Character(Animations::Run),
-            Path::new("../assets/characters/character_template-Run.json"),
+            Path::new("assets/characters/character_template-Run.json"),
         ),
         (
             EntityAssets::Bouftou(Animations::Idle),
-            Path::new("../assets/monsters/bouftou_animation-Idle.json"),
+            Path::new("assets/monsters/bouftou_animation-Idle.json"),
         ),
         (
             EntityAssets::Bouftou(Animations::Run),
-            Path::new("../assets/monsters/bouftou_animation-Run.json"),
+            Path::new("assets/monsters/bouftou_animation-Run.json"),
         ),
         (
             EntityAssets::Crabedoeuf(Animations::Idle),
-            Path::new("../assets/monsters/crabedoeuf-Idle.json"),
+            Path::new("assets/monsters/crabedoeuf-Idle.json"),
         ),
         (
             EntityAssets::Crabedoeuf(Animations::Run),
-            Path::new("../assets/monsters/crabedoeuf-Run.json"),
+            Path::new("assets/monsters/crabedoeuf-Run.json"),
         ),
     ];
 
@@ -254,7 +254,7 @@ pub fn load_hard_drawn_assets(window: &mut PistonWindow) -> HashMap<UITexture, G
     // Load whole hard drown PNG interface
     let assets: Vec<(UITexture, &str)> = vec![(
         UITexture::Interface,
-        "../assets/interface/interface_1024x192_grid16.png",
+        "assets/interface/interface_1024x192_grid16.png",
     )];
 
     assets

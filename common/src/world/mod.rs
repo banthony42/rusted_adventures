@@ -28,14 +28,14 @@ impl WorldImport {
             (
                 MapCoord { x: 0, y: 0 },
                 MapImport {
-                    path: String::from("../assets/maps/map.0.0/sprite.json"),
+                    path: String::from("assets/maps/map.0.0/sprite.json"),
                     info: String::from("Plaines"),
                 },
             ),
             (
                 MapCoord { x: 1, y: 0 },
                 MapImport {
-                    path: String::from("../assets/maps/map.1.0/sprite.json"),
+                    path: String::from("assets/maps/map.1.0/sprite.json"),
                     info: String::from("Plage cliquetante"),
                 },
             ),

@@ -138,11 +138,7 @@ POSTGRES_HOST=localhost ./target/debug/rpg-cli account <user> <password>
 ### Run
 
 ```sh
-# Launch the game client
-# Because of assets are load using relative path to client folder ...
-# It's mandatory to launch the client from here for now
-cd client
-../target/debug/rpg-client
+./target/debug/rpg-client
 ```
 
 Use your login and password account to enter in the game.

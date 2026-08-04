@@ -16,7 +16,7 @@ impl Font {
     }
 
     pub fn load(&mut self, window: &mut PistonWindow) {
-        let font_path = PathBuf::from("../assets/fonts/OpenSans_Condensed-SemiBold.ttf");
+        let font_path = PathBuf::from("assets/fonts/OpenSans_Condensed-SemiBold.ttf");
         self.font = Some(
             window
                 .load_font(font_path)

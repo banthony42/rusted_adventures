@@ -45,11 +45,10 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-COPY --from=builder /target/release/rpg-server /app/server/rpg-server
-COPY assets/maps/ /app/assets/maps/
+COPY --from=builder /target/release/rpg-server .
+COPY assets/maps/ ./assets/maps/
 
 EXPOSE 2121
 
-WORKDIR /app/server
 
 CMD ["./rpg-server"]

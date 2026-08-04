@@ -43,7 +43,7 @@ fn run_game() {
         .window
         .ctx
         .window()
-        .set_window_icon(Some(load_icon(Path::new("../assets/interface/logo.png"))));
+        .set_window_icon(Some(load_icon(Path::new("assets/interface/logo.png"))));
 
     let mut state: Box<dyn GameState> = StateFactory::<Login>::new(&mut window, None);
     let mut ts: u128 = 0;
