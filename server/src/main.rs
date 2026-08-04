@@ -15,6 +15,7 @@ use common::grpc_codegen::rpg_authenticate_server::RpgAuthenticateServer;
 use services::authenticate::RpgAuthenticateService;
 use tonic::{Request, Status};
 
+use tracing_subscriber::EnvFilter;
 use world::engine::{WorldEngine, WorldEvent};
 
 pub mod proto {
@@ -60,6 +61,10 @@ fn auth_interceptor(req: Request<()>) -> Result<Request<()>, Status> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+
     // Run diesel migration
     Database::new()
         .run_migration()
@@ -88,7 +93,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_v1()
         .expect("Server: Fail to build tonic server reflection.");
 
+    tracing::info!("Starting server {addr}");
+
     Server::builder()
+        .trace_fn(|request| {
+            tracing::info_span!(
+                "Request ",
+                method = %request.method(),
+                uri = %request.uri().path()
+            )
+        })
         .add_service(reflection_service)
         .add_service(RpgAuthenticateServer::new(rpg_authenticate))
         .add_service(RpgChatServer::with_interceptor(

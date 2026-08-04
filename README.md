@@ -157,7 +157,7 @@ All known issues, and tasks are tracked here : [Trello Board](https://trello.com
 - [Luca Palmieri - Zero To Production In Rust](https://www.zero2prod.com/index.html?country=France&discount_code=VAT20&country_code=FR)
 - [Akanoa - La Forge](https://lafor.ge/)
   <br>
-- [Rust crates](https://crates.io/) : [ [serde](https://serde.rs/) - [piston](https://www.piston.rs/) - [diesel](https://diesel.rs/) - [tokio](https://tokio.rs/) - [tonic](https://github.com/hyperium/tonic) - [prost](https://crates.io/crates/prost) - [argon2](https://crates.io/crates/argon2) - [clap](https://crates.io/crates/clap) ]
+- [Rust crates](https://crates.io/) : [ [serde](https://serde.rs/) - [piston](https://www.piston.rs/) - [diesel](https://diesel.rs/) - [tokio](https://tokio.rs/) - [tonic](https://github.com/hyperium/tonic) - [prost](https://crates.io/crates/prost) - [argon2](https://crates.io/crates/argon2) - [clap](https://crates.io/crates/clap) - [tracing](https://crates.io/crates/tracing) ]
 - [refactoring.guru: Rust design patterns](https://refactoring.guru/design-patterns/behavioral-patterns)
 - [zerotomastery: Rust type state pattern](https://zerotomastery.io/blog/rust-typestate-patterns/)
 - [dev.to: Khaled Hosseini: Play Microservices Auth service](https://dev.to/khaledhosseini/play-microservices-authentication-4di3)

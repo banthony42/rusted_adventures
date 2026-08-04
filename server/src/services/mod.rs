@@ -1,15 +1,15 @@
 mod constants {
-    pub const AUTHENTICATE_USER_WITH: &str = "Server: AuthenticateUser: with: ";
-    pub const AUTHENTICATE_USER_SUCCESS: &str = "Server: AuthenticateUser: Success: ";
-    pub const AUTHENTICATE_USER_ERROR: &str = "Server: AuthenticateUser: Error: ";
+    pub const AUTHENTICATE_USER_WITH: &str = "AuthenticateUser: with: ";
+    pub const AUTHENTICATE_USER_SUCCESS: &str = "AuthenticateUser: Success: ";
+    pub const AUTHENTICATE_USER_ERROR: &str = "AuthenticateUser: Error: ";
 
-    pub const LOGOUT_USER_WITH: &str = "Server: LogoutUser: with: ";
-    pub const LOGOUT_USER_ERROR: &str = "Server: LogoutUser: Error: ";
-    pub const LOGOUT_USER_SUCCESS: &str = "Server: LogoutUser: Success: ";
+    pub const LOGOUT_USER_WITH: &str = "LogoutUser: with: ";
+    pub const LOGOUT_USER_ERROR: &str = "LogoutUser: Error: ";
+    pub const LOGOUT_USER_SUCCESS: &str = "LogoutUser: Success: ";
 
     pub const INVALID_LOGIN_PASSWORD: &str = "Invalid login or password";
 
-    pub const CHARACTER_CREATION: &str = "Server: AuthenticateUser: CreateCharacter: ";
+    pub const CHARACTER_CREATION: &str = "AuthenticateUser: CreateCharacter: ";
 }
 
 mod utils {

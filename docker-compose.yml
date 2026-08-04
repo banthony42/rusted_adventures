@@ -8,6 +8,7 @@ services:
       - postgres
     environment:
       RUST_BACKTRACE: "${RUST_BACKTRACE}"
+      RUST_LOG: "${RUST_LOG}"
       DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}"
 
   postgres:

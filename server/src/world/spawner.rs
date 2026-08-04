@@ -33,10 +33,7 @@ impl SpawnOrder {
         world_importer: &WorldImport,
     ) -> bool {
         let Some(map_data) = world_importer.atlas.get(&map) else {
-            println!(
-                "{}MonsterSpawn: MapCoord not found in atlas for map: {:?}",
-                LOG_PREFIX, map
-            );
+            tracing::warn!("{LOG_PREFIX} MonsterSpawn: {map:?} not found in atlas");
             return false;
         };
 
@@ -49,16 +46,13 @@ impl SpawnOrder {
                     monster_id: monster.id,
                 });
                 if let Err(err) = tx.blocking_send(mob_spawn_event) {
-                    println!(
-                        "{}World transmitter send has failed sending: MonsterSpawn: {:?}",
-                        LOG_PREFIX, err
-                    );
+                    tracing::error!("{LOG_PREFIX} Fail to send WorldEvent: MonsterSpawn: {err}");
                 }
                 return true;
             }
-            Err(err) => println!(
-                "{}Fail to create monster: {:?} at map: {:?} err: {:?}",
-                LOG_PREFIX, self.species, map, err
+            Err(err) => tracing::error!(
+                "{LOG_PREFIX} Fail to create monster: {:?} at {map:?} : {err}",
+                self.species
             ),
         }
         false
@@ -98,33 +92,22 @@ impl Spawner {
             // Even if several monsters are missing, only spawn one
             // to create delay between each spawn
             if missing > 0 {
-                println!(
-                    "{}update orders: missing: {} monsters: {}",
-                    LOG_PREFIX,
-                    missing,
-                    monsters.len()
-                );
-                if let Some(species) = self.species.choose(&mut rand::rng()) {
-                    let order = SpawnOrder {
-                        species: *species,
-                        timer: 0,
-                        running: true,
-                    };
-                    println!(
-                        "{}{:?} will spawn in {}s",
-                        LOG_PREFIX,
-                        order.species,
-                        order.spawn_time() / 1000
-                    );
-                    self.spawn_orders.push(order);
-                } else {
-                    println!("{}update: Failed to randomly choose species.", LOG_PREFIX);
+                match self.species.choose(&mut rand::rng()) {
+                    None => tracing::warn!("{LOG_PREFIX} Failed to randomly choose species"),
+                    Some(species) => {
+                        let order = SpawnOrder {
+                            species: *species,
+                            timer: 0,
+                            running: true,
+                        };
+                        tracing::info!(
+                            "{LOG_PREFIX} {:?} will spawn in {}s",
+                            order.species,
+                            order.spawn_time() / 1000
+                        );
+                        self.spawn_orders.push(order);
+                    }
                 }
-                println!(
-                    "{}update orders: orders: {}",
-                    LOG_PREFIX,
-                    self.spawn_orders.len()
-                )
             }
         }
     }

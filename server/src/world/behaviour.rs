@@ -13,7 +13,7 @@ type BehaviourTaskCallback = Box<
     dyn Fn(i32, &mut MonsterHandler, &Sender<WorldEvent>, &WorldImport) -> bool + Send + 'static,
 >;
 
-const LOG_PREFIX: &str = "Server: WorldEngine: Behaviour: ";
+const LOG_PREFIX: &str = "Server: WorldEngine: Behaviour:";
 const BEHAVIOUR_UPDATE_RATE: u128 = 10000;
 const MOVE_BEHAVIOUR_RATE: u128 = 8000;
 const MONSTER_PM: i64 = 5;
@@ -60,22 +60,21 @@ fn move_behaviour(
     world_tx: &Sender<WorldEvent>,
     world_importer: &WorldImport,
 ) -> bool {
-    let Ok(monster) = Monster::read_info(&mut handler.connection, &monster_id) else {
-        println!(
-            "{}Drop behaviour task for monster id: {}",
-            LOG_PREFIX, monster_id
-        );
-        return false;
+    let monster = match Monster::read_info(&mut handler.connection, &monster_id) {
+        Ok(info) => info,
+        Err(e) => {
+            tracing::error!("{LOG_PREFIX} Drop behaviour task for monster id: {monster_id}: {e}");
+            return false;
+        }
     };
 
-    let Some(map_data) = world_importer.atlas.get(&MapCoord {
+    let m = MapCoord {
         x: monster.map.0 as i8,
         y: monster.map.1 as i8,
-    }) else {
-        println!(
-            "{}MapCoord not found in atlas. Drop behaviour task for monster id: {}",
-            LOG_PREFIX, monster_id
-        );
+    };
+
+    let Some(map_data) = world_importer.atlas.get(&m) else {
+        tracing::warn!("{LOG_PREFIX} Drop behaviour task for monster id: {monster_id}: {m:?} not found in atlas");
         return false;
     };
 
@@ -90,10 +89,13 @@ fn move_behaviour(
             let orientation = loop {
                 match rand::random::<Orientation>() {
                     pick if last_orientation.is_none() => break pick,
+                    // We don't want the entity to go back (should not be the invert of the last)
                     pick if last_orientation.is_some_and(|inner| inner.invert() != pick) => {
                         break pick
                     }
-                    _ => { /* pick is same from the last loop iter, retry */ }
+                    // TODO: Test if both lines above can be simplify by:
+                    // pick if Some(pick.invert()) == last_orientation => break pick
+                    _ => { /* pick is same from the last loop, retry */ }
                 }
             };
             let step = match orientation {
@@ -114,6 +116,7 @@ fn move_behaviour(
         }
     }
 
+    // TODO: .limit() seems useless since already call in the previous loop
     new_destination = new_destination.limit();
     let new_rpc_loc = RpcLocation {
         map: Some(monster.map.into()),
@@ -123,13 +126,12 @@ fn move_behaviour(
         }),
     };
 
-    // It's assume that player spawning on map
-    // will see the monster directly at its new location
-    // whereas player already on the map will see the monster move to new location
+    // We accept that players who appear on the map
+    // will see the monster directly at its new location,
+    // while players already on the map will see the monster move to a new location
     if let Err(err) = handler.update_location(monster.entity_id, new_rpc_loc) {
-        println!(
-            "{}Error while updating location for monster id:{} {}. Behaviour has been dropped.",
-            LOG_PREFIX, monster_id, err
+        tracing::error!(
+            "{LOG_PREFIX} Drop behaviour task for monster id: {monster_id}: Update location: {err}",
         );
         return false;
     }
@@ -140,11 +142,9 @@ fn move_behaviour(
         destination: new_rpc_loc,
         map: monster.map.into(),
     });
+
     if let Err(err) = world_tx.blocking_send(move_event) {
-        println!(
-            "{}World transmitter send has failed sending: MonsterMove: {:?}",
-            LOG_PREFIX, err
-        );
+        tracing::error!("{LOG_PREFIX} Fail to send WorldEvent: MonsterMove: {err}");
     }
     // Return true, therefore this behaviour never stop
     // It will be dropped when the associated monster disappear from database
@@ -186,11 +186,6 @@ impl WorldEngineComponent for BehaviourHandler {
         // Periodically load Monsters from DB
         // Create behaviours (timer + callback) for each monster.id
         if self.timer > BEHAVIOUR_UPDATE_RATE {
-            println!(
-                "{} Behaviour tasks running: {}",
-                LOG_PREFIX,
-                self.tasks.len()
-            );
             if let Ok(monsters) = Monster::read_all(&mut handler.connection) {
                 // Drop all BehaviourTask associated to inexistant monster id in DB
                 self.tasks.retain(|task| {

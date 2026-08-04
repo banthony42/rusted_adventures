@@ -1,5 +1,6 @@
 use common::authenticator::Authenticator;
 use common::database::model::character::PgClasses;
+use tracing::instrument;
 
 use crate::services::constants::*;
 use common::character::{CharacterHandler, CharacterHandlerError};
@@ -12,16 +13,17 @@ pub struct RpgAuthenticateService {}
 
 #[tonic::async_trait]
 impl RpgAuthenticate for RpgAuthenticateService {
+    #[instrument(level = "debug")]
     async fn authenticate_user(
         &self,
         request: tonic::Request<AuthRequest>,
     ) -> Result<tonic::Response<AuthReply>, tonic::Status> {
         let auth_req: AuthRequest = request.into_inner();
-        println!("{}{:?}", AUTHENTICATE_USER_WITH, auth_req);
+        tracing::info!("{AUTHENTICATE_USER_WITH}{auth_req:?}");
 
         let mut user = Authenticator::new(&auth_req.login);
         if !user.authenticate(&auth_req.password) {
-            println!("{}{}", AUTHENTICATE_USER_ERROR, INVALID_LOGIN_PASSWORD);
+            tracing::error!("{AUTHENTICATE_USER_ERROR}{INVALID_LOGIN_PASSWORD}");
             return Err(tonic::Status::invalid_argument(INVALID_LOGIN_PASSWORD));
         }
 
@@ -52,19 +54,18 @@ impl RpgAuthenticate for RpgAuthenticateService {
         let new_token = format!("{}-cafebab", auth_req.login);
 
         user.set_token(&new_token).map_err(|e| {
-            println!("{}{}", AUTHENTICATE_USER_ERROR, e);
+            tracing::error!("{AUTHENTICATE_USER_ERROR}{e}");
             tonic::Status::internal(e.to_string())
         })?;
 
-        println!("{} token: {}", AUTHENTICATE_USER_SUCCESS, new_token);
-
+        tracing::info!("{AUTHENTICATE_USER_SUCCESS} token: {new_token}");
         // Automate characters creation : for now only one character is allowed per account
         let success = Response::new(AuthReply { token: new_token });
         match CharacterHandler::new(&auth_req.login) {
             Ok(_) => {
-                println!(
-                    "{}A character already exist for {}",
-                    CHARACTER_CREATION, auth_req.login
+                tracing::info!(
+                    "{CHARACTER_CREATION} A character already exist for {}",
+                    auth_req.login
                 );
                 Ok(success)
             }
@@ -74,38 +75,41 @@ impl RpgAuthenticate for RpgAuthenticateService {
                     &auth_req.login,
                     rand::random::<PgClasses>(),
                 ) {
-                    println!("{}failed with: {:?}", CHARACTER_CREATION, e);
+                    tracing::error!("{CHARACTER_CREATION}failed with: {e:?}");
                     Err(tonic::Status::internal(e.to_string()))
                 } else {
-                    println!("{}succeed.", CHARACTER_CREATION);
+                    tracing::info!("{CHARACTER_CREATION}succeed.");
                     Ok(success)
                 }
             }
             Err(e) => {
-                println!(
-                    "{}while retrieving Character for {}: {}",
-                    AUTHENTICATE_USER_ERROR, auth_req.login, e
+                tracing::error!(
+                    "{AUTHENTICATE_USER_ERROR}while retrieving Character for {}: {e}",
+                    auth_req.login
                 );
                 Err(tonic::Status::internal(e.to_string()))
             }
         }
     }
 
+    // find what is best instrument here or span in trace_fn
+    // find how to enable/disable that according to env var (we dont want that for prod)
+    #[instrument(level = "debug")]
     async fn logout(
         &self,
         request: tonic::Request<LogoutRequest>,
     ) -> Result<tonic::Response<EmptyReply>, tonic::Status> {
         let logout_request: LogoutRequest = request.into_inner();
-        println!("{}{:?}", LOGOUT_USER_WITH, logout_request);
+        tracing::info!("{LOGOUT_USER_WITH}{logout_request:?}");
 
         Authenticator::new(&logout_request.login)
             .logout(Some(logout_request.token))
             .map_err(|e| {
-                println!("{}{}", LOGOUT_USER_ERROR, e);
+                tracing::error!("{LOGOUT_USER_ERROR}{e}");
                 tonic::Status::internal("Logout failed")
             })
             .and_then(|_| {
-                println!("{}", LOGOUT_USER_SUCCESS);
+                tracing::info!("{LOGOUT_USER_SUCCESS}");
                 Ok(Response::new(EmptyReply {}))
             })
     }

@@ -10,6 +10,7 @@ use tokio::sync::Mutex;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 use tonic::{Request, Response, Status, Streaming};
+use tracing::instrument;
 
 use common::grpc_codegen::rpg_chat_server::RpgChat;
 use common::grpc_codegen::server_chat_event::Event;
@@ -42,57 +43,56 @@ impl RpgChatEvent {
     }
 }
 
+#[instrument(level = "debug")]
 async fn broadcast(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
-    println!("Server: RpgChatService: {:?}", chat_event);
     let (sender, event) = chat_event.into_parts();
 
     // Get player on same map than the sender
     // Broadcast only to that list
-    let Ok(mut handler) = CharacterHandler::new(&sender) else {
-        println!(
-            "Server: chat broadcast: Failure while getting char handler for: {}",
-            sender
-        );
-        return;
-    };
-    let Ok(player_list) = handler.players_on_same_map() else {
-        println!(
-            "Server: chat broadcast: Failure while getting players on same map for: {}",
-            sender
-        );
-        return;
+    let mut handler = match CharacterHandler::new(&sender) {
+        Ok(handler) => handler,
+        Err(e) => {
+            tracing::error!("RpgChatService broadcast: Load characters for: {sender}: {e}");
+            return;
+        }
     };
 
-    let new_event = ServerChatEvent {
+    let recipients = match handler.players_on_same_map() {
+        Ok(list) => list,
+        Err(e) => {
+            tracing::error!("RpgChatService broadcast: Get recipients of {sender}: {e}");
+            return;
+        }
+    };
+
+    let broadcast = ServerChatEvent {
         seq_number: 0,
         text: event.text,
         sender: Some(sender.clone()),
         event: Some(Event::ChatEvent(ChatEventType::Broadcast as i32)),
     };
 
-    println!(
-        "Server: {} chat broadcast with: {:?} to: {:?}",
-        sender, new_event, player_list
-    );
+    tracing::debug!("RpgChatService: {sender} broadcast {broadcast:?} to {recipients:?}");
+
     {
         let clts = clients.lock().await;
         // Send the event to each client filtering out the sender to avoid send him it's own event.
-        for player in player_list.iter().filter(|name| sender.ne(*name)) {
+        for player in recipients.iter().filter(|name| sender.ne(*name)) {
             if let Some(client_channel) = clts.get(player) {
-                if let Err(err) = client_channel.send(Ok(new_event.clone())).await {
-                    println!("Server: RpgChatService: Error: chat broadcast: {:?}", err);
+                if let Err(err) = client_channel.send(Ok(broadcast.clone())).await {
+                    tracing::error!("RpgChatService broadcast: Fail to send to {player}: {err}");
                 }
             }
         }
     }
 }
 
+#[instrument(level = "debug")]
 async fn whisper(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
-    println!("Server: RpgChatService: {:?}", chat_event);
     let (sender, event) = chat_event.into_parts();
 
     if let Some(recipient) = event.recipient {
-        let new_event = ServerChatEvent {
+        let whisper = ServerChatEvent {
             seq_number: 0,
             text: event.text,
             sender: Some(sender.clone()),
@@ -114,8 +114,8 @@ async fn whisper(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
                     sender: None,
                     event: Some(Event::ServerEvent(ServerEventType::SrvUnack as i32)),
                 };
-                if let Err(err) = sender_event_tx.send(Ok(sender_unacknowledgement)).await {
-                    println!("Server: RpgChatService: Error: chat whisper: {:?}", err)
+                if let Err(e) = sender_event_tx.send(Ok(sender_unacknowledgement)).await {
+                    tracing::error!("RpgChatService: whisper: Fail unacknowledge to {sender}: {e}")
                 }
                 return;
             }
@@ -126,14 +126,16 @@ async fn whisper(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
                 sender: None,
                 event: Some(Event::ServerEvent(ServerEventType::SrvAck as i32)),
             };
-            if let Err(err) = sender_event_tx.send(Ok(sender_acknowledgement)).await {
-                println!("Server: RpgChatService: Error: chat whisper: {:?}", err)
+            if let Err(e) = sender_event_tx.send(Ok(sender_acknowledgement)).await {
+                tracing::error!("RpgChatService: whisper: Fail acknowledge to {sender}: {e}");
             }
         }
 
         if let Some(recipient_event_tx) = clts.get(&recipient) {
-            if let Err(err) = recipient_event_tx.send(Ok(new_event)).await {
-                println!("Server: RpgChatService: Error: chat whisper: {:?}", err)
+            tracing::debug!("RpgChatService: {sender} whisper {whisper:?} to {recipient}");
+            if let Err(e) = recipient_event_tx.send(Ok(whisper)).await {
+                tracing::error!("RpgChatService: whisper: Fail to send to {recipient}: {e}");
+                return;
             }
         }
     }
@@ -171,6 +173,7 @@ impl RpgChatService {
 impl RpgChat for RpgChatService {
     type ChatStream = ReceiverStream<Result<ServerChatEvent, Status>>;
 
+    #[instrument(level = "debug")]
     async fn chat(
         &self,
         request: Request<Streaming<ClientChatEvent>>,
@@ -196,23 +199,24 @@ impl RpgChat for RpgChatService {
                 if let Err(status) = chat_event.as_ref() {
                     if let Some(io_err) = match_for_io_error(&status) {
                         if io_err.kind() == ErrorKind::BrokenPipe {
-                            println!("Server: RpgChatService client: {:?} : broken pipe", login);
+                            tracing::error!("RpgChatService chat: client {login}: broken pipe");
                             break;
                         }
                     }
-                    println!("Server: RpgChatService: client {:?} : {:?}", login, status);
+                    tracing::info!("RpgChatService chat: client {login}: {status}");
                 }
 
                 if let Some(event) = chat_event.ok() {
                     if event.text.is_empty() {
                         continue;
                     }
-                    if let Err(_) = event_tx.send(RpgChatEvent::new(login.clone(), event)).await {
+                    if let Err(e) = event_tx.send(RpgChatEvent::new(login.clone(), event)).await {
+                        tracing::error!("RpgChatService chat: client {login}: {e}");
                         break;
                     }
                 }
             }
-            println!("Server: RpgChatService: client: {:?} disconnected", login);
+            tracing::info!("RpgChatService chat: client {login} disconnected");
             cl.lock().await.remove(&login);
         });
 
