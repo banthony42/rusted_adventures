@@ -1,5 +1,5 @@
 use common::database::model::account::{Account, CreateAccount, UpdateAccount};
-use diesel::result::DatabaseErrorKind;
+use diesel::result::{DatabaseErrorKind, Error};
 
 use common::authenticator::Authenticator;
 use common::database::db::Database;
@@ -18,7 +18,6 @@ pub fn handle_account(account: AccountCommand) {
 }
 
 fn create_account(create_account: CreateAccountCmd) {
-    let mut authenticator = Authenticator::default();
     let mut new_account: CreateAccount = create_account.into();
 
     // Ask user to confirm new password
@@ -30,19 +29,15 @@ fn create_account(create_account: CreateAccountCmd) {
         std::process::exit(1)
     }
 
-    new_account.password = authenticator.hash_password(new_account.password);
+    let mut connection = Database::new().establish_connection();
+    new_account.password = Authenticator::hash_password(new_account.password);
 
-    match Account::create(authenticator.get_db(), &new_account) {
+    match Account::create(&mut connection, &new_account) {
         Ok(_) => println!("Account created."),
-        Err(e) => match e {
-            diesel::result::Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
-                println!(
-                    "Error login `{}` already exist. Please retry with another login.",
-                    new_account.login
-                )
-            }
-            _ => println!("Error while creating account : {:?}", e),
-        },
+        Err(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => {
+            println!("This login is not available.")
+        }
+        Err(e) => println!("Error while creating account : {e:?}"),
     }
 }
 
@@ -70,11 +65,12 @@ fn update_account(update_account: UpdateAccountCmd) {
     // Create the update item with the new Hash for the user
     let update_item = UpdateAccount {
         login: Some(update_account.login.clone()),
-        password: Some(auth_user.hash_password(new_password)),
+        password: Some(Authenticator::hash_password(new_password)),
         session_token: None,
     };
 
-    match Account::update(auth_user.get_db(), &update_account.login, &update_item) {
+    let mut connection = Database::new().establish_connection();
+    match Account::update(&mut connection, &update_account.login, &update_item) {
         Ok(_) => {}
         Err(e) => println!("Error updating accounts: {:?}", e),
     }
@@ -86,18 +82,17 @@ fn update_account(update_account: UpdateAccountCmd) {
 
 fn delete_account(delete_account: DeleteAccountCmd) {
     let connection = &mut Database::new().establish_connection();
-    match Account::delete(connection, &delete_account.login) {
-        Ok(_) => {}
-        Err(e) => println!("Error deleting accounts: {:?}", e),
+    if let Err(e) = Account::delete(connection, &delete_account.login) {
+        println!("Error deleting accounts: {e:?}");
     };
 }
 
 fn show_account() {
     let connection = &mut Database::new().establish_connection();
     match Account::read_all(connection) {
+        Err(e) => println!("Error reading all accounts: {e:?}"),
         Ok(accounts) => accounts
             .iter()
             .for_each(|account| println!("{:?}", account)),
-        Err(e) => println!("Error reading all accounts: {:?}", e),
     };
 }

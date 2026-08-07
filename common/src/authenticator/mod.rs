@@ -11,75 +11,39 @@ use crate::database::db::Database;
 use crate::database::model::account::account::AccountError;
 use crate::database::model::account::Account;
 
-pub struct Authenticator<'a> {
+pub struct Authenticator {
     login: String,
-    argon2: Argon2<'a>,
     connection: PgConnection,
 }
 
-fn create_argon2_context() -> Params {
-    match Params::new(19 * 1024, 2, 1, Some(Params::DEFAULT_OUTPUT_LEN)) {
-        Ok(p) => p,
-        Err(e) => {
-            println!("Error while hashing password: {:?}", e);
-            std::process::exit(1);
-        }
-    }
-}
-
-impl Default for Authenticator<'_> {
-    fn default() -> Self {
-        let argon2 = Argon2::new(
-            Algorithm::Argon2id,
-            Version::default(),
-            create_argon2_context(),
-        );
-
-        Self {
-            login: Default::default(),
-            argon2: argon2,
-            connection: Database::new().establish_connection(),
-        }
-    }
-}
-
-impl Authenticator<'_> {
+impl Authenticator {
     pub fn new(login: &str) -> Self {
-        let argon2 = Argon2::new(
-            Algorithm::Argon2id,
-            Version::default(),
-            create_argon2_context(),
-        );
-
         Authenticator {
-            argon2: argon2,
             login: login.to_string(),
             connection: Database::new().establish_connection(),
         }
     }
 
-    pub fn get_db(&mut self) -> &mut PgConnection {
-        &mut self.connection
+    fn create_argon2<'a>() -> Argon2<'a> {
+        Argon2::new(
+            Algorithm::Argon2id,
+            Version::default(),
+            Params::new(19 * 1024, 2, 1, Some(Params::DEFAULT_OUTPUT_LEN))
+                .expect("Error while creating Argon2 context"),
+        )
     }
 
-    pub fn hash_password(&self, password: String) -> String {
-        let salt = SaltString::generate(&mut OsRng);
-
-        let hash_pasword = match self.argon2.hash_password(password.as_bytes(), &salt) {
-            Ok(hash) => hash.to_string(),
-            Err(e) => {
-                println!("Error while hashing password: {:?}", e);
-                std::process::exit(1)
-            }
-        };
-        return hash_pasword;
+    pub fn hash_password(password: String) -> String {
+        Self::create_argon2()
+            .hash_password(password.as_bytes(), &SaltString::generate(&mut OsRng))
+            .expect("Error while hashing password")
+            .to_string()
     }
 
     pub fn authenticate(&mut self, password: &String) -> bool {
         // Get the user account in DB
-        let account_to_auth = match Account::read(&mut self.connection, &self.login) {
-            Ok(account) => account,
-            Err(_) => return false,
+        let Ok(account_to_auth) = Account::read(&mut self.connection, &self.login) else {
+            return false;
         };
 
         // Import user hashed password and verify it
@@ -88,10 +52,8 @@ impl Authenticator<'_> {
             return false;
         };
 
-        if let Err(err) = self
-            .argon2
-            .verify_password(password.as_bytes(), &parsed_hash)
-        {
+        // TODO: we must return false (invalid password) only on password_hash::errors::Error::Password
+        if let Err(err) = Self::create_argon2().verify_password(password.as_bytes(), &parsed_hash) {
             println!("Error while while verifying user password: {:?}", err);
             return false;
         }
@@ -112,10 +74,8 @@ impl Authenticator<'_> {
     }
 
     pub fn set_token(&mut self, token: &String) -> Result<(), diesel::result::Error> {
-        match Account::set_token(&mut self.connection, &self.login, token) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
-        }
+        Account::set_token(&mut self.connection, &self.login, token)?;
+        Ok(())
     }
 
     pub fn is_connected(&mut self) -> Result<(), AccountError> {
