@@ -10,6 +10,9 @@ mod constants {
     pub const INVALID_LOGIN_PASSWORD: &str = "Invalid login or password";
 
     pub const CHARACTER_CREATION: &str = "AuthenticateUser: CreateCharacter: ";
+
+    pub const MAX_LOGIN_LENGTH: usize = 32;
+    pub const MAX_PASSWORD_LENGTH: usize = 128;
 }
 
 mod utils {

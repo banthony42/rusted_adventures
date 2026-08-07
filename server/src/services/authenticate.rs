@@ -21,10 +21,18 @@ impl RpgAuthenticate for RpgAuthenticateService {
         let auth_req: AuthRequest = request.into_inner();
         tracing::info!("{AUTHENTICATE_USER_WITH}{auth_req:?}");
 
+        if auth_req.login.is_empty() || auth_req.login.len() > MAX_LOGIN_LENGTH {
+            return Err(tonic::Status::invalid_argument(INVALID_LOGIN_PASSWORD));
+        }
+
+        if auth_req.password.is_empty() || auth_req.password.len() > MAX_PASSWORD_LENGTH {
+            return Err(tonic::Status::invalid_argument(INVALID_LOGIN_PASSWORD));
+        }
+
         let mut user = Authenticator::new(&auth_req.login);
         if !user.authenticate(&auth_req.password) {
             tracing::error!("{AUTHENTICATE_USER_ERROR}{INVALID_LOGIN_PASSWORD}");
-            return Err(tonic::Status::invalid_argument(INVALID_LOGIN_PASSWORD));
+            return Err(tonic::Status::unauthenticated(INVALID_LOGIN_PASSWORD));
         }
 
         // Session ID Token best practices from OWASP:
