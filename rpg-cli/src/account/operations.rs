@@ -48,7 +48,7 @@ fn update_account(update_account: UpdateAccountCmd) {
 
     // Try to authenticate user
     let mut auth_user = Authenticator::new(&update_account.login);
-    if !auth_user.authenticate(&current_password) {
+    if auth_user.authenticate(&current_password).is_err() {
         println!("Invalid Login or Password.");
         std::process::exit(1)
     }
@@ -66,7 +66,6 @@ fn update_account(update_account: UpdateAccountCmd) {
     let update_item = UpdateAccount {
         login: Some(update_account.login.clone()),
         password: Some(Authenticator::hash_password(new_password)),
-        session_token: None,
     };
 
     let mut connection = Database::new().establish_connection();
@@ -74,10 +73,6 @@ fn update_account(update_account: UpdateAccountCmd) {
         Ok(_) => {}
         Err(e) => println!("Error updating accounts: {:?}", e),
     }
-
-    if let Err(e) = auth_user.logout(None) {
-        println!("Logout failed: {}", e);
-    };
 }
 
 fn delete_account(delete_account: DeleteAccountCmd) {

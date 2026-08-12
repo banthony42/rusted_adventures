@@ -38,7 +38,6 @@ impl Into<CreateAccount> for CreateAccountCmd {
         CreateAccount {
             login: self.login,
             password: self.password,
-            session_token: None,
         }
     }
 }

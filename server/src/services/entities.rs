@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::sync::Arc;
 
+use common::authenticator::Authenticator;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio_stream::wrappers::ReceiverStream;
@@ -10,7 +11,6 @@ use tonic::{Request, Response, Status, Streaming};
 
 use common::character::CharacterHandler;
 use common::database::db::Database;
-use common::database::model::account::{Account, UpdateAccount};
 use common::database::model::character::Character;
 use common::database::model::monster::Monster;
 use common::grpc_codegen::{
@@ -272,6 +272,7 @@ impl RpgEntity for RpgEntityService {
     ) -> Result<Response<Self::EntityEventBusStream>, Status> {
         let (metadata, _, mut client_stream) = request.into_parts();
         let login = login_from_metadata(metadata)?;
+        let token = "get token from metadata like above".to_string();
         let login_clone = login.clone();
         let (server_event_tx, server_event_rx) = mpsc::channel::<Result<EntityEvent, Status>>(10);
 
@@ -332,15 +333,7 @@ impl RpgEntity for RpgEntityService {
                 cl.lock().await.remove(&login);
             }
             // Revoke the token
-            let _ = Account::update(
-                &mut char_handler.connection,
-                &login,
-                &UpdateAccount {
-                    login: None,
-                    password: None,
-                    session_token: Some(None),
-                },
-            );
+            let _ = Authenticator::new(&login).revoke_session(Some(token));
         });
 
         self.clients

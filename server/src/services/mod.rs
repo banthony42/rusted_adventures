@@ -4,7 +4,6 @@ mod constants {
     pub const AUTHENTICATE_USER_ERROR: &str = "AuthenticateUser: Error: ";
 
     pub const LOGOUT_USER_WITH: &str = "LogoutUser: with: ";
-    pub const LOGOUT_USER_ERROR: &str = "LogoutUser: Error: ";
     pub const LOGOUT_USER_SUCCESS: &str = "LogoutUser: Success: ";
 
     pub const INVALID_LOGIN_PASSWORD: &str = "Invalid login or password";

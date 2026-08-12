@@ -1,29 +1,76 @@
+use argon2::password_hash::rand_core::OsRng;
 use argon2::{
     password_hash, Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier,
     Version,
 };
 
+use chrono::{Duration, Local, TimeDelta};
 use diesel::PgConnection;
-use password_hash::rand_core::OsRng;
 use password_hash::SaltString;
+use rand::Rng;
+use sha2::{Digest, Sha256};
+use thiserror::Error;
 
 use crate::database::db::Database;
-use crate::database::model::account::account::AccountError;
 use crate::database::model::account::Account;
+use crate::database::model::session::{CreateSession, Session, UpdateSession};
+
+pub const SESSION_TOKEN_EXPIRATION: TimeDelta = Duration::hours(2);
+
+#[derive(Debug, Error)]
+pub enum AuthError {
+    #[error("Failed to read account in database: {0}")]
+    ReadAccount(diesel::result::Error),
+
+    #[error("Failed to create new session: {0}")]
+    CreateSession(diesel::result::Error),
+
+    #[error("Failed to parse password hash from database: {0}")]
+    ParsePassword(password_hash::errors::Error),
+
+    #[error("Failed to verify password: {0}")]
+    VerifyPassword(password_hash::errors::Error),
+
+    #[error("Invalid password")]
+    InvalidPassword,
+
+    #[error("Error while revoking session account: {0}")]
+    RevokeSession(diesel::result::Error),
+
+    #[error("Failed to retrieve couple session, login: {0}")]
+    SessionNotFound(diesel::result::Error),
+
+    #[error("Failed to update session: {0}")]
+    UpdateSession(diesel::result::Error),
+
+    #[error("Failed to delete session: {0}")]
+    DeleteSession(diesel::result::Error),
+
+    #[error("Expired session")]
+    SessionExpired,
+}
+
+impl From<AuthError> for tonic::Status {
+    fn from(value: AuthError) -> Self {
+        match value {
+            AuthError::ReadAccount(_) | AuthError::InvalidPassword => {
+                Self::unauthenticated("Invalid login or password")
+            }
+            AuthError::SessionNotFound(_) | AuthError::SessionExpired => {
+                Self::unauthenticated("Invalid or expired token")
+            }
+            _ => Self::internal("Authentication failed"),
+        }
+    }
+}
 
 pub struct Authenticator {
     login: String,
+    account: Option<Account>,
     connection: PgConnection,
 }
 
 impl Authenticator {
-    pub fn new(login: &str) -> Self {
-        Authenticator {
-            login: login.to_string(),
-            connection: Database::new().establish_connection(),
-        }
-    }
-
     fn create_argon2<'a>() -> Argon2<'a> {
         Argon2::new(
             Algorithm::Argon2id,
@@ -33,6 +80,23 @@ impl Authenticator {
         )
     }
 
+    fn account(&mut self) -> Result<&Account, AuthError> {
+        if self.account.is_none() {
+            self.account = Some(
+                Account::read(&mut self.connection, &self.login).map_err(AuthError::ReadAccount)?,
+            );
+        }
+        Ok(self.account.as_ref().unwrap())
+    }
+
+    pub fn new(login: &str) -> Self {
+        Authenticator {
+            login: login.to_string(),
+            account: None,
+            connection: Database::new().establish_connection(),
+        }
+    }
+
     pub fn hash_password(password: String) -> String {
         Self::create_argon2()
             .hash_password(password.as_bytes(), &SaltString::generate(&mut OsRng))
@@ -40,56 +104,107 @@ impl Authenticator {
             .to_string()
     }
 
-    pub fn authenticate(&mut self, password: &String) -> bool {
-        // Get the user account in DB
-        let Ok(account_to_auth) = Account::read(&mut self.connection, &self.login) else {
-            return false;
-        };
-
-        // Import user hashed password and verify it
-        let Ok(parsed_hash) = PasswordHash::new(&account_to_auth.password) else {
-            println!("Error while importing user password hash from database.");
-            return false;
-        };
-
-        // TODO: we must return false (invalid password) only on password_hash::errors::Error::Password
-        if let Err(err) = Self::create_argon2().verify_password(password.as_bytes(), &parsed_hash) {
-            println!("Error while while verifying user password: {:?}", err);
-            return false;
-        }
-        true
+    pub fn login(&self) -> &String {
+        &self.login
     }
 
-    pub fn get_token(&mut self) -> Option<String> {
-        match Account::read(&mut self.connection, &self.login) {
-            Ok(account) => account.session_token,
-            Err(_) => {
-                println!(
-                    "Server: Authenticator: Fail to get token for: {}",
-                    self.login
-                );
-                None
-            }
+    pub fn authenticate(&mut self, password: &String) -> Result<(), AuthError> {
+        let account = self.account()?;
+        let parsed_hash = PasswordHash::new(&account.password).map_err(AuthError::ParsePassword)?;
+
+        match Self::create_argon2().verify_password(password.as_bytes(), &parsed_hash) {
+            Ok(_) => Ok(()),
+            Err(password_hash::Error::Password) => Err(AuthError::InvalidPassword),
+            Err(e) => Err(AuthError::VerifyPassword(e)),
         }
+        .inspect_err(|error| tracing::debug!("authenticate: {error:?}"))
     }
 
-    pub fn set_token(&mut self, token: &String) -> Result<(), diesel::result::Error> {
-        Account::set_token(&mut self.connection, &self.login, token)?;
+    /// Create a new session for the account, following `Session ID Token best practices from OWASP`:
+    /// https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
+    ///
+    /// - Token name should not be extremely descriptive
+    /// - Token should use at least 64 bits of entropy / length
+    /// - Token content should be meaningless to prevent disclosure
+    /// - Token generated by a CSPRNG with size of at least 128 bits
+    /// - Token should be generate server side
+    pub fn create_session(&mut self) -> Result<String, AuthError> {
+        let mut token_bytes = [0u8; 16];
+        let mut rng: rand::rngs::StdRng = rand::make_rng();
+        rng.fill_bytes(&mut token_bytes);
+
+        let token = hex::encode(token_bytes);
+        let token_hash = hex::encode(Sha256::digest(&token));
+        let expires_at = Local::now().naive_local() + SESSION_TOKEN_EXPIRATION;
+        let account_id = self.account()?.id;
+
+        Session::create(
+            &mut self.connection,
+            CreateSession {
+                token_hash,
+                account_id,
+                expires_at,
+            },
+        )
+        .map_err(AuthError::CreateSession)
+        .inspect_err(|error| tracing::debug!("create session: {error:?}"))?;
+
+        Ok(token)
+    }
+
+    /// Assert user has an active and valid session, following `Session ID Token best practices from OWASP`:
+    /// https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
+    ///
+    /// - session token renewal timeout, auto-renew the token without asking re-authentication
+    /// - session absolute timeout to force re-authentication
+    /// - server should never accept token they have never generated
+    pub fn is_connected(&mut self, token: Option<&str>) -> Result<(), AuthError> {
+        let session = match token {
+            Some(token) => Session::read_by_token_if_owned_by(
+                &mut self.connection,
+                &hex::encode(Sha256::digest(token)),
+                &self.login,
+            )
+            .map_err(AuthError::SessionNotFound)?,
+            None => Session::read_by_login(&mut self.connection, &self.login)
+                .map_err(AuthError::SessionNotFound)?,
+        };
+
+        if session.expires_at > Local::now().naive_local() {
+            Session::delete(&mut self.connection, &session.id).map_err(AuthError::DeleteSession)?;
+            return Err(AuthError::SessionExpired);
+        }
+
+        Session::update(
+            &mut self.connection,
+            &session.id,
+            UpdateSession {
+                token_hash: None,
+                last_used_at: Local::now().naive_local(),
+            },
+        )
+        .map_err(AuthError::UpdateSession)?;
         Ok(())
     }
 
-    pub fn is_connected(&mut self) -> Result<(), AccountError> {
-        Account::is_connected(&mut self.connection, &self.login)?;
-        Ok(())
-    }
-
-    pub fn logout(&mut self, token: Option<String>) -> Result<(), AccountError> {
-        let _token = match token {
-            Some(token) => Some(token),
-            None => self.get_token(),
-        };
-
-        Account::logout(&mut self.connection, &self.login, _token)
-            .map_err(|_| AccountError::LogoutError)
+    /// Logout account by revoking its active session, if a `token` is supplied
+    /// the database ensure that the given `token` pertain to the `self.login`
+    ///
+    /// Following `Session ID Token best practices from OWASP`:
+    /// https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
+    ///
+    /// - Client/**Server** should provide manual logout and visible logout button
+    /// - Client/**Server** Avoid persistent token, token should be drop at logout
+    pub fn revoke_session(&mut self, token: Option<String>) -> Result<(), AuthError> {
+        match token {
+            None => Session::delete_by_account_login(&mut self.connection, &self.login),
+            Some(token) => Session::delete_by_token_if_owned_by(
+                &mut self.connection,
+                &hex::encode(token),
+                &self.login,
+            ),
+        }
+        .map_err(AuthError::RevokeSession)
+        .inspect_err(|error| tracing::debug!("revoke_session: {error:?}"))
     }
 }

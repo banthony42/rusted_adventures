@@ -11,7 +11,6 @@ pub struct Account {
     pub id: uuid::Uuid,
     pub login: String,
     pub password: String,
-    pub session_token: Option<String>,
 }
 
 #[derive(Insertable)]
@@ -19,7 +18,6 @@ pub struct Account {
 pub struct CreateAccount {
     pub login: String,
     pub password: String,
-    pub session_token: Option<String>,
 }
 
 #[derive(Debug, Insertable, AsChangeset)]
@@ -27,5 +25,4 @@ pub struct CreateAccount {
 pub struct UpdateAccount {
     pub login: Option<String>,
     pub password: Option<String>,
-    pub session_token: Option<Option<String>>,
 }

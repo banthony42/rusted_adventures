@@ -1,12 +1,15 @@
 use diesel::{
-    allow_columns_to_appear_in_same_group_by_clause, result::Error as DieselError,
-    ExpressionMethods, JoinOnDsl, QueryDsl, QueryResult, RunQueryDsl, SelectableHelper,
+    allow_columns_to_appear_in_same_group_by_clause,
+    dsl::{exists, now},
+    result::Error as DieselError,
+    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, QueryDsl, QueryResult, RunQueryDsl,
+    SelectableHelper,
 };
 use diesel_geometry::{data_types::PgPoint, prelude::PgSameAsExpressionMethods};
 
 use crate::database::{
     model::{character::PgClasses, location::Location, EntityIdentifiable},
-    schema::{accounts, characters, entities, locations},
+    schema::{accounts, characters, entities, locations, sessions},
 };
 
 use crate::grpc_codegen::Entity as RpcEntity;
@@ -167,9 +170,14 @@ impl Character {
         let data: Vec<CharacterInfoData> = characters::table
             .inner_join(entities::table)
             .inner_join(locations::table.on(locations::id.eq(entities::location_id)))
-            .inner_join(accounts::table.on(characters::account_id.eq(accounts::id)))
             .filter(locations::map.same_as(map_coord))
-            .filter(accounts::session_token.is_not_null())
+            .filter(exists(
+                sessions::table.filter(
+                    sessions::account_id
+                        .eq(characters::account_id)
+                        .and(sessions::expires_at.gt(now)),
+                ),
+            ))
             .select((
                 characters::id,
                 characters::name,

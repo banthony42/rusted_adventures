@@ -4,6 +4,7 @@ pub mod character;
 pub mod entity;
 pub mod location;
 pub mod monster;
+pub mod session;
 
 pub trait EntityIdentifiable {
     fn get_id(&self) -> i32;

@@ -100,7 +100,7 @@ async fn whisper(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
         };
 
         let mut authenticator = Authenticator::new(&recipient);
-        let recipient_disconnected = authenticator.is_connected().is_err();
+        let recipient_disconnected = authenticator.is_connected(None).is_err();
 
         let clts = clients.lock().await;
         if let Some(sender_event_tx) = clts.get(&sender) {

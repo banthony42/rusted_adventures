@@ -8,7 +8,7 @@ use common::{
 use services::chat::RpgChatService;
 use services::entities::RpgEntityService;
 use tokio::sync::mpsc::Receiver;
-use tonic::{metadata::MetadataValue, transport::Server};
+use tonic::transport::Server;
 
 use common::grpc_codegen::rpg_authenticate_server::RpgAuthenticateServer;
 
@@ -37,26 +37,24 @@ fn run_world_engine_on_another_thread() -> Receiver<WorldEvent> {
 }
 
 fn auth_interceptor(req: Request<()>) -> Result<Request<()>, Status> {
-    match req.metadata().get("login") {
-        Some(login_md) => {
-            let login = login_md
-                .to_str()
-                .map_err(|e| Status::unauthenticated(format!("Error getting login: {:?}", e)))?;
+    let Some(login_data) = req.metadata().get("login") else {
+        return Err(Status::invalid_argument("login or authorization not found"));
+    };
 
-            let mut user = Authenticator::new(login);
-            let token: MetadataValue<_> = user
-                .get_token()
-                .ok_or(Status::unauthenticated("user not authenticated"))?
-                .parse()
-                .map_err(|e| Status::unauthenticated(format!("{:?}", e)))?;
+    let Some(token_data) = req.metadata().get("authorization") else {
+        return Err(Status::invalid_argument("login or authorization not found"));
+    };
 
-            match req.metadata().get("authorization") {
-                Some(t) if token == t => Ok(req),
-                _ => Err(Status::unauthenticated("No valid auth token")),
-            }
-        }
-        _ => Err(Status::unauthenticated("login not found")),
-    }
+    let Ok(login) = login_data.to_str() else {
+        return Err(Status::invalid_argument("Invalid login or authorization"));
+    };
+
+    let Ok(token) = token_data.to_str() else {
+        return Err(Status::invalid_argument("Invalid login or authorization"));
+    };
+
+    Authenticator::new(login).is_connected(Some(token))?;
+    Ok(req)
 }
 
 #[tokio::main]

@@ -6,4 +6,3 @@ create table accounts(
     session_token varchar(255)
 );
 
--- Your SQL goes here
