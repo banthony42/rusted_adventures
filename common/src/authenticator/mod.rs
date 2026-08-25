@@ -1,10 +1,12 @@
+use std::env;
+
 use argon2::password_hash::rand_core::OsRng;
 use argon2::{
     password_hash, Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier,
     Version,
 };
 
-use chrono::{Duration, Local, TimeDelta};
+use chrono::{Duration, Local};
 use diesel::PgConnection;
 use password_hash::SaltString;
 use rand::Rng;
@@ -15,7 +17,7 @@ use crate::database::db::Database;
 use crate::database::model::account::Account;
 use crate::database::model::session::{CreateSession, Session, UpdateSession};
 
-pub const SESSION_TOKEN_EXPIRATION: TimeDelta = Duration::hours(2);
+pub const SESSION_TOKEN_EXPIRATION: i64 = 3600 * 2;
 
 #[derive(Debug, Error)]
 pub enum AuthError {
@@ -135,7 +137,12 @@ impl Authenticator {
 
         let token = hex::encode(token_bytes);
         let token_hash = hex::encode(Sha256::digest(&token));
-        let expires_at = Local::now().naive_local() + SESSION_TOKEN_EXPIRATION;
+        let expiration = env::var("SESSION_TOKEN_EXPIRATION")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(SESSION_TOKEN_EXPIRATION);
+
+        let expires_at = Local::now().naive_local() + Duration::seconds(expiration);
         let account_id = self.account()?.id;
 
         Session::create(
@@ -170,7 +177,7 @@ impl Authenticator {
                 .map_err(AuthError::SessionNotFound)?,
         };
 
-        if session.expires_at > Local::now().naive_local() {
+        if Local::now().naive_local() > session.expires_at {
             Session::delete(&mut self.connection, &session.id).map_err(AuthError::DeleteSession)?;
             return Err(AuthError::SessionExpired);
         }

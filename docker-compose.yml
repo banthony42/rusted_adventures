@@ -10,6 +10,7 @@ services:
       RUST_BACKTRACE: "${RUST_BACKTRACE}"
       RUST_LOG: "${RUST_LOG}"
       DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}"
+      SESSION_TOKEN_EXPIRATION: "${SESSION_TOKEN_EXPIRATION}"
 
   postgres:
     image: postgres:17.10-alpine3.23
