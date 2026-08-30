@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub mod constants {
     pub const TEST_SERVER_ENDPOINT: &str = "http://localhost:2121";
     pub const INVALID_LOGIN_PASSWORD: &str = "Invalid login or password";
@@ -15,12 +16,14 @@ pub mod utils {
 
     use crate::shared::constants::TEST_SERVER_ENDPOINT;
 
+    #[allow(dead_code)]
     #[derive(Debug)]
     pub enum AuthError {
         Connection(tonic::transport::Error),
         Status(tonic::Status),
     }
 
+    #[allow(dead_code)]
     #[derive(Debug)]
     pub enum GetPlayerError {
         Connection(tonic::transport::Error),
@@ -46,6 +49,7 @@ pub mod utils {
             .map_err(AuthError::Status)
     }
 
+    #[allow(dead_code)]
     pub async fn client_logout_user(
         login: impl Into<String>,
         token: impl Into<String>,
@@ -63,6 +67,7 @@ pub mod utils {
             .map_err(AuthError::Status)
     }
 
+    #[cfg(test)]
     pub fn auth_interceptor(
         login: String,
         token: String,
@@ -82,6 +87,7 @@ pub mod utils {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn client_get_player(
         login: impl Into<String>,
         token: impl Into<String>,
