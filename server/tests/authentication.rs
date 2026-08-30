@@ -125,11 +125,11 @@ mod authentication {
     /// Ensure token are unique and different over sessions
     #[tokio::test]
     async fn auth_10_multiple_authentication() {
-        let response_1 = client_authenticate_user("arthur", "42")
+        let response_1 = client_authenticate_user("auth_10_1", "42")
             .await
             .expect("Unexpected error");
 
-        let response_2 = client_authenticate_user("arthur", "42")
+        let response_2 = client_authenticate_user("auth_10_2", "42")
             .await
             .expect("Unexpected error");
 
