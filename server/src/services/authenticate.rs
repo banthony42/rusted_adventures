@@ -106,6 +106,10 @@ impl RpgAuthenticate for RpgAuthenticateService {
         let req: LogoutRequest = request.into_inner();
         tracing::info!("{LOGOUT_USER_WITH}{req:?}");
 
+        if req.token.is_empty() || req.login.is_empty() {
+            return Err(tonic::Status::invalid_argument(INVALID_EXPIRED_TOKEN));
+        }
+
         Authenticator::new(&req.login).revoke_session(Some(req.token))?;
 
         tracing::info!("{LOGOUT_USER_SUCCESS}");

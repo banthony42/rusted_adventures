@@ -207,11 +207,14 @@ impl Authenticator {
             None => Session::delete_by_account_login(&mut self.connection, &self.login),
             Some(token) => Session::delete_by_token_if_owned_by(
                 &mut self.connection,
-                &hex::encode(token),
+                &hex::encode(Sha256::digest(token)),
                 &self.login,
             ),
         }
-        .map_err(AuthError::RevokeSession)
+        .map_err(|e| match e {
+            diesel::result::Error::NotFound => AuthError::SessionNotFound(e),
+            _ => AuthError::RevokeSession(e),
+        })
         .inspect_err(|error| tracing::debug!("revoke_session: {error:?}"))
     }
 }

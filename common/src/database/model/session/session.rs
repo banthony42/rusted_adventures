@@ -85,7 +85,9 @@ impl Session {
                 )
                 .filter(sessions::token_hash.eq(hash)),
         )
-        .execute(db)?;
+        .returning(sessions::id)
+        .get_result::<uuid::Uuid>(db)?;
+
         Ok(())
     }
 }

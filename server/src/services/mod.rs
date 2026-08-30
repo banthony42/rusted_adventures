@@ -7,6 +7,7 @@ mod constants {
     pub const LOGOUT_USER_SUCCESS: &str = "LogoutUser: Success: ";
 
     pub const INVALID_LOGIN_PASSWORD: &str = "Invalid login or password";
+    pub const INVALID_EXPIRED_TOKEN: &str = "Invalid or expired token";
 
     pub const CHARACTER_CREATION: &str = "AuthenticateUser: CreateCharacter: ";
 
