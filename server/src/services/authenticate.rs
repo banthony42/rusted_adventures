@@ -19,7 +19,7 @@ impl RpgAuthenticate for RpgAuthenticateService {
         request: tonic::Request<AuthRequest>,
     ) -> Result<tonic::Response<AuthReply>, tonic::Status> {
         let auth_req: AuthRequest = request.into_inner();
-        tracing::info!("{AUTHENTICATE_USER_WITH}{auth_req:?}");
+        tracing::info!("{AUTHENTICATE_USER_WITH} login: {}", auth_req.login);
 
         if auth_req.login.is_empty() || auth_req.login.len() > MAX_LOGIN_LENGTH {
             return Err(tonic::Status::invalid_argument(INVALID_LOGIN_PASSWORD));
@@ -104,7 +104,7 @@ impl RpgAuthenticate for RpgAuthenticateService {
         request: tonic::Request<LogoutRequest>,
     ) -> Result<tonic::Response<EmptyReply>, tonic::Status> {
         let req: LogoutRequest = request.into_inner();
-        tracing::info!("{LOGOUT_USER_WITH}{req:?}");
+        tracing::info!("{LOGOUT_USER_WITH} login: {}", req.login);
 
         if req.token.is_empty() || req.login.is_empty() {
             return Err(tonic::Status::invalid_argument(INVALID_EXPIRED_TOKEN));
