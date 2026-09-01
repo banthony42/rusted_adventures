@@ -3,6 +3,7 @@ pub mod constants {
     pub const TEST_SERVER_ENDPOINT: &str = "http://localhost:2121";
     pub const INVALID_LOGIN_PASSWORD: &str = "Invalid login or password";
     pub const INVALID_EXPIRED_TOKEN: &str = "Invalid or expired token";
+    pub const TOO_MANY_AUTH_ATTEMPT: &str = "Too many attempts, retry later";
     pub const MAX_LOGIN_LENGTH: usize = 32;
     pub const MAX_PASSWORD_LENGTH: usize = 128;
 }

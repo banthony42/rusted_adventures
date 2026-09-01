@@ -15,5 +15,11 @@ values
 ('logout3', '$argon2id$v=19$m=19456,t=2,p=1$w5jBKGfEWQaHE1zMDLQVLg$7+rGaiH/6otLvjZ+0Zf5rTpIeIudK21cp6MVke0SSW4'),
 ('logout4', '$argon2id$v=19$m=19456,t=2,p=1$w5jBKGfEWQaHE1zMDLQVLg$7+rGaiH/6otLvjZ+0Zf5rTpIeIudK21cp6MVke0SSW4'),
 ('logout5', '$argon2id$v=19$m=19456,t=2,p=1$w5jBKGfEWQaHE1zMDLQVLg$7+rGaiH/6otLvjZ+0Zf5rTpIeIudK21cp6MVke0SSW4'),
-('logout7', '$argon2id$v=19$m=19456,t=2,p=1$w5jBKGfEWQaHE1zMDLQVLg$7+rGaiH/6otLvjZ+0Zf5rTpIeIudK21cp6MVke0SSW4');
+('logout7', '$argon2id$v=19$m=19456,t=2,p=1$w5jBKGfEWQaHE1zMDLQVLg$7+rGaiH/6otLvjZ+0Zf5rTpIeIudK21cp6MVke0SSW4'),
+('security1A', '$argon2id$v=19$m=19456,t=2,p=1$w5jBKGfEWQaHE1zMDLQVLg$7+rGaiH/6otLvjZ+0Zf5rTpIeIudK21cp6MVke0SSW4'),
+('security1B', '$argon2id$v=19$m=19456,t=2,p=1$w5jBKGfEWQaHE1zMDLQVLg$7+rGaiH/6otLvjZ+0Zf5rTpIeIudK21cp6MVke0SSW4'),
+('security2', '$argon2id$v=19$m=19456,t=2,p=1$w5jBKGfEWQaHE1zMDLQVLg$7+rGaiH/6otLvjZ+0Zf5rTpIeIudK21cp6MVke0SSW4'),
+('security3', '$argon2id$v=19$m=19456,t=2,p=1$w5jBKGfEWQaHE1zMDLQVLg$7+rGaiH/6otLvjZ+0Zf5rTpIeIudK21cp6MVke0SSW4'),
+('security4', '$argon2id$v=19$m=19456,t=2,p=1$w5jBKGfEWQaHE1zMDLQVLg$7+rGaiH/6otLvjZ+0Zf5rTpIeIudK21cp6MVke0SSW4'),
+('security5', '$argon2id$v=19$m=19456,t=2,p=1$w5jBKGfEWQaHE1zMDLQVLg$7+rGaiH/6otLvjZ+0Zf5rTpIeIudK21cp6MVke0SSW4');
 
