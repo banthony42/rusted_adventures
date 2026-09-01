@@ -13,7 +13,7 @@ mod logout {
 
     /// Nominal case
     #[tokio::test]
-    async fn logout_001_valid_session() {
+    async fn logout_01_valid_session() {
         let response = client_authenticate_user("logout1", "42")
             .await
             .expect("Unexpected error");
@@ -38,7 +38,7 @@ mod logout {
 
     /// Connected user logout with nonexistent/wrong token
     #[tokio::test]
-    async fn logout_002_bad_token() {
+    async fn logout_02_bad_token() {
         let response = client_authenticate_user("logout2", "42")
             .await
             .expect("Unexpected error");
@@ -60,7 +60,7 @@ mod logout {
 
     /// Logout with a valid token that not pertain to an existing login
     #[tokio::test]
-    async fn logout_003_bad_login() {
+    async fn logout_03_bad_login() {
         let response = client_authenticate_user("logout3", "42")
             .await
             .expect("Unexpected error");
@@ -82,7 +82,7 @@ mod logout {
 
     /// Valid login with empty token
     #[tokio::test]
-    async fn logout_004_empty_token() {
+    async fn logout_04_empty_token() {
         let response = client_authenticate_user("logout4", "42")
             .await
             .expect("Unexpected error");
@@ -104,7 +104,7 @@ mod logout {
 
     /// Valid token with empty login
     #[tokio::test]
-    async fn logout_005_empty_login() {
+    async fn logout_05_empty_login() {
         let response = client_authenticate_user("logout5", "42")
             .await
             .expect("Unexpected error");
@@ -126,7 +126,7 @@ mod logout {
 
     /// Both empty login and token
     #[tokio::test]
-    async fn logout_006_empty_credentials() {
+    async fn logout_06_empty_credentials() {
         match client_logout_user("".to_string(), "".to_string()).await {
             Ok(_) => panic!("Unexpected success, user should not be logout"),
             Err(AuthError::Connection(c)) => panic!("Unexpected error: {c}"),
@@ -138,7 +138,7 @@ mod logout {
     }
 
     #[tokio::test]
-    async fn logout_007_multiple_disconnection() {
+    async fn logout_07_multiple_disconnection() {
         let response = client_authenticate_user("logout7", "42")
             .await
             .expect("Unexpected error");

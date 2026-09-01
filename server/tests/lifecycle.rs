@@ -12,7 +12,7 @@ mod lifecycle {
 
     /// Classic connection / disconnection flow (Nominal case)
     #[tokio::test]
-    async fn lifecycle_001_nominal_auth_and_logout() {
+    async fn lifecycle_01_nominal_auth_and_logout() {
         // Connect a user
         let response = client_authenticate_user("lifecycle1", "42")
             .await
@@ -32,7 +32,7 @@ mod lifecycle {
     /// Ensure unique sessions policy
     /// New authentication revoke the last generated token
     #[tokio::test]
-    async fn lifecycle_002_revoked_token_usage() {
+    async fn lifecycle_02_revoked_token_usage() {
         let response_1 = client_authenticate_user("lifecycle2", "42")
             .await
             .expect("Unexpected error");
@@ -62,7 +62,7 @@ mod lifecycle {
 
     /// Assert expired token lock protected services
     #[tokio::test]
-    async fn lifecycle_003_session_expiration() {
+    async fn lifecycle_03_session_expiration() {
         // Connect a user to get a token
         let response = client_authenticate_user("lifecycle3", "42")
             .await
