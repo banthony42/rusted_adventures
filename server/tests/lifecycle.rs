@@ -24,9 +24,19 @@ mod lifecycle {
         assert!(result.is_ok(), "{result:?}");
 
         // Logout user
-        let result = client_logout_user("lifecycle1", token).await;
+        let result = client_logout_user("lifecycle1", &token).await;
         assert!(result.is_ok(), "{result:?}");
         assert!(result.unwrap().into_inner() == EmptyReply {});
+
+        // Ensure token has been revoked by logout
+        match client_get_player("lifecycle1", token).await {
+            Ok(_) => panic!("Unexpected success, token should be revoked after logout"),
+            Err(GetPlayerError::Connection(c)) => panic!("Unexpected error: {c}"),
+            Err(GetPlayerError::Status(status)) => {
+                assert_eq!(status.code(), tonic::Code::Unauthenticated);
+                assert_eq!(status.message(), INVALID_EXPIRED_TOKEN);
+            }
+        };
     }
 
     /// Ensure unique sessions policy
