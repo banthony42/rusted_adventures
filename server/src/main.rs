@@ -53,7 +53,15 @@ fn auth_interceptor(req: Request<()>) -> Result<Request<()>, Status> {
         return Err(Status::invalid_argument("Invalid login or authorization"));
     };
 
-    Authenticator::new(login).is_connected(Some(token))?;
+    let mut user = Authenticator::new(login);
+
+    // Ensure the account is not lockout because of any bruteforce
+    // https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#account-lockout
+    user.is_allowed()?;
+
+    // Finally ensure it's connected with a valid session
+    user.is_connected(token)?;
+
     Ok(req)
 }
 

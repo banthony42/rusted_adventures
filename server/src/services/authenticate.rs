@@ -31,6 +31,10 @@ impl RpgAuthenticate for RpgAuthenticateService {
 
         let mut user = Authenticator::new(&auth_req.login);
 
+        // Ensure the account is not lockout because of any bruteforce
+        // https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#account-lockout
+        user.is_allowed()?;
+
         user.authenticate(&auth_req.password)?;
 
         // Session ID Token best practices from OWASP:
@@ -67,6 +71,11 @@ impl RpgAuthenticate for RpgAuthenticateService {
         let success = Response::new(AuthReply {
             token: session_id_token,
         });
+
+        // User is now successfully authenticated and we succeed to create a session
+        // Reset the Account Lock mecanism
+        user.reset_throttling()?;
+
         match CharacterHandler::new(&auth_req.login) {
             Ok(_) => {
                 tracing::info!(

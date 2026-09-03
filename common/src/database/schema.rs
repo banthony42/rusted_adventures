@@ -20,6 +20,10 @@ diesel::table! {
         login -> Varchar,
         #[max_length = 255]
         password -> Varchar,
+        login_failure_count -> Int4,
+        login_window_started_at -> Timestamptz,
+        locked_until -> Nullable<Timestamptz>,
+        lockout_count -> Int4,
     }
 }
 
@@ -107,5 +111,11 @@ diesel::joinable!(monsters -> entities (entity_id));
 diesel::joinable!(sessions -> accounts (account_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    accounts, bestiary, characters, entities, locations, monsters, sessions,
+    accounts,
+    bestiary,
+    characters,
+    entities,
+    locations,
+    monsters,
+    sessions,
 );

@@ -66,6 +66,10 @@ fn update_account(update_account: UpdateAccountCmd) {
     let update_item = UpdateAccount {
         login: Some(update_account.login.clone()),
         password: Some(Authenticator::hash_password(new_password)),
+        login_failure_count: None,
+        login_window_started_at: None,
+        locked_until: None,
+        lockout_count: None,
     };
 
     let mut connection = Database::new().establish_connection();
