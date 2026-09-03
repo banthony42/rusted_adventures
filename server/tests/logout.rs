@@ -6,8 +6,8 @@ mod logout {
     use crate::shared::{
         constants::INVALID_EXPIRED_TOKEN,
         utils::{
-            client_authenticate_user, client_get_player, client_logout_user, AuthError,
-            GetPlayerError,
+            client_authenticate_user, client_get_player, client_logout_user, GetPlayerError,
+            TestAuthError,
         },
     };
 
@@ -47,8 +47,8 @@ mod logout {
 
         match client_logout_user("logout2", "bad_token".to_string()).await {
             Ok(_) => panic!("Unexpected success, user should not be logout"),
-            Err(AuthError::Connection(c)) => panic!("Unexpected error: {c}"),
-            Err(AuthError::Status(status)) => {
+            Err(TestAuthError::Connection(c)) => panic!("Unexpected error: {c}"),
+            Err(TestAuthError::Status(status)) => {
                 assert_eq!(status.code(), tonic::Code::Unauthenticated);
                 assert_eq!(status.message(), INVALID_EXPIRED_TOKEN);
             }
@@ -69,8 +69,8 @@ mod logout {
 
         match client_logout_user("logout1", token.clone()).await {
             Ok(_) => panic!("Unexpected success, user should not be logout"),
-            Err(AuthError::Connection(c)) => panic!("Unexpected error: {c}"),
-            Err(AuthError::Status(status)) => {
+            Err(TestAuthError::Connection(c)) => panic!("Unexpected error: {c}"),
+            Err(TestAuthError::Status(status)) => {
                 assert_eq!(status.code(), tonic::Code::Unauthenticated);
                 assert_eq!(status.message(), INVALID_EXPIRED_TOKEN);
             }
@@ -91,8 +91,8 @@ mod logout {
 
         match client_logout_user("logout4", "".to_string()).await {
             Ok(_) => panic!("Unexpected success, user should not be logout"),
-            Err(AuthError::Connection(c)) => panic!("Unexpected error: {c}"),
-            Err(AuthError::Status(status)) => {
+            Err(TestAuthError::Connection(c)) => panic!("Unexpected error: {c}"),
+            Err(TestAuthError::Status(status)) => {
                 assert_eq!(status.code(), tonic::Code::InvalidArgument);
                 assert_eq!(status.message(), INVALID_EXPIRED_TOKEN);
             }
@@ -113,8 +113,8 @@ mod logout {
 
         match client_logout_user("".to_string(), token.clone()).await {
             Ok(_) => panic!("Unexpected success, user should not be logout"),
-            Err(AuthError::Connection(c)) => panic!("Unexpected error: {c}"),
-            Err(AuthError::Status(status)) => {
+            Err(TestAuthError::Connection(c)) => panic!("Unexpected error: {c}"),
+            Err(TestAuthError::Status(status)) => {
                 assert_eq!(status.code(), tonic::Code::InvalidArgument);
                 assert_eq!(status.message(), INVALID_EXPIRED_TOKEN);
             }
@@ -129,8 +129,8 @@ mod logout {
     async fn logout_06_empty_credentials() {
         match client_logout_user("".to_string(), "".to_string()).await {
             Ok(_) => panic!("Unexpected success, user should not be logout"),
-            Err(AuthError::Connection(c)) => panic!("Unexpected error: {c}"),
-            Err(AuthError::Status(status)) => {
+            Err(TestAuthError::Connection(c)) => panic!("Unexpected error: {c}"),
+            Err(TestAuthError::Status(status)) => {
                 assert_eq!(status.code(), tonic::Code::InvalidArgument);
                 assert_eq!(status.message(), INVALID_EXPIRED_TOKEN);
             }
@@ -153,8 +153,8 @@ mod logout {
         // Second logout for this user should fail
         match client_logout_user("logout7", token).await {
             Ok(_) => panic!("Unexpected success, user should not be logout"),
-            Err(AuthError::Connection(c)) => panic!("Unexpected error: {c}"),
-            Err(AuthError::Status(status)) => {
+            Err(TestAuthError::Connection(c)) => panic!("Unexpected error: {c}"),
+            Err(TestAuthError::Status(status)) => {
                 assert_eq!(status.code(), tonic::Code::Unauthenticated);
                 assert_eq!(status.message(), INVALID_EXPIRED_TOKEN);
             }

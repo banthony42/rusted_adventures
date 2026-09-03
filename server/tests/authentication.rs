@@ -3,7 +3,7 @@ mod shared;
 mod authentication {
     use crate::shared::{
         constants::*,
-        utils::{client_authenticate_user, AuthError},
+        utils::{client_authenticate_user, TestAuthError},
     };
     /// Nominal case
     #[tokio::test]
@@ -20,8 +20,8 @@ mod authentication {
     async fn auth_02_bad_password() {
         let response = match client_authenticate_user("arthur", "bad password").await {
             // server must be accessible for the test to be perform
-            Err(AuthError::Connection(error)) => panic!("Unexpected error: {error}"),
-            Err(AuthError::Status(status)) => status,
+            Err(TestAuthError::Connection(error)) => panic!("Unexpected error: {error}"),
+            Err(TestAuthError::Status(status)) => status,
             Ok(_) => panic!("Unexpected success"),
         };
 
@@ -34,8 +34,8 @@ mod authentication {
     async fn auth_03_unknow_login() {
         let response = match client_authenticate_user("unknow login", "password").await {
             // server must be accessible for the test to be perform
-            Err(AuthError::Connection(error)) => panic!("Unexpected error: {error}"),
-            Err(AuthError::Status(status)) => status,
+            Err(TestAuthError::Connection(error)) => panic!("Unexpected error: {error}"),
+            Err(TestAuthError::Status(status)) => status,
             Ok(_) => panic!("Unexpected success"),
         };
 
@@ -47,8 +47,8 @@ mod authentication {
     async fn auth_04_empty_login() {
         let response = match client_authenticate_user("", "password").await {
             // server must be accessible for the test to be perform
-            Err(AuthError::Connection(error)) => panic!("Unexpected error: {error}"),
-            Err(AuthError::Status(status)) => status,
+            Err(TestAuthError::Connection(error)) => panic!("Unexpected error: {error}"),
+            Err(TestAuthError::Status(status)) => status,
             Ok(_) => panic!("Unexpected success"),
         };
 
@@ -60,8 +60,8 @@ mod authentication {
     async fn auth_05_empty_password() {
         let response = match client_authenticate_user("arthur", "").await {
             // server must be accessible for the test to be perform
-            Err(AuthError::Connection(error)) => panic!("Unexpected error: {error}"),
-            Err(AuthError::Status(status)) => status,
+            Err(TestAuthError::Connection(error)) => panic!("Unexpected error: {error}"),
+            Err(TestAuthError::Status(status)) => status,
             Ok(_) => panic!("Unexpected success"),
         };
 
@@ -73,8 +73,8 @@ mod authentication {
     async fn auth_06_empty_credentials() {
         let response = match client_authenticate_user("", "").await {
             // server must be accessible for the test to be perform
-            Err(AuthError::Connection(error)) => panic!("Unexpected error: {error}"),
-            Err(AuthError::Status(status)) => status,
+            Err(TestAuthError::Connection(error)) => panic!("Unexpected error: {error}"),
+            Err(TestAuthError::Status(status)) => status,
             Ok(_) => panic!("Unexpected success"),
         };
 
@@ -88,8 +88,8 @@ mod authentication {
         let response =
             match client_authenticate_user("a".repeat(MAX_LOGIN_LENGTH + 1), "password").await {
                 // server must be accessible for the test to be perform
-                Err(AuthError::Connection(error)) => panic!("Unexpected error: {error}"),
-                Err(AuthError::Status(status)) => status,
+                Err(TestAuthError::Connection(error)) => panic!("Unexpected error: {error}"),
+                Err(TestAuthError::Status(status)) => status,
                 Ok(_) => panic!("Unexpected success"),
             };
 
@@ -103,8 +103,8 @@ mod authentication {
         let response =
             match client_authenticate_user("arthur", "a".repeat(MAX_PASSWORD_LENGTH + 1)).await {
                 // server must be accessible for the test to be perform
-                Err(AuthError::Connection(error)) => panic!("Unexpected error: {error}"),
-                Err(AuthError::Status(status)) => status,
+                Err(TestAuthError::Connection(error)) => panic!("Unexpected error: {error}"),
+                Err(TestAuthError::Status(status)) => status,
                 Ok(_) => panic!("Unexpected success"),
             };
 
@@ -125,22 +125,22 @@ mod authentication {
     /// Ensure token are unique and different over sessions
     #[tokio::test]
     async fn auth_10_multiple_authentication() {
-        let response_1 = client_authenticate_user("auth_10_1", "42")
+        let response_a = client_authenticate_user("auth10A", "42")
             .await
             .expect("Unexpected error");
 
-        let response_2 = client_authenticate_user("auth_10_2", "42")
+        let response_b = client_authenticate_user("auth10B", "42")
             .await
             .expect("Unexpected error");
 
-        let token_1 = response_1.into_inner().token;
-        let token_2 = response_2.into_inner().token;
+        let token_a = response_a.into_inner().token;
+        let token_b = response_b.into_inner().token;
 
         // We must have token for both sessions
-        assert!(!token_1.is_empty());
-        assert!(!token_2.is_empty());
+        assert!(!token_a.is_empty());
+        assert!(!token_b.is_empty());
 
         // Tokens must be unique accross sessions
-        assert_ne!(token_1, token_2);
+        assert_ne!(token_a, token_b);
     }
 }

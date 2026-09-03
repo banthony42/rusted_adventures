@@ -19,7 +19,7 @@ pub mod utils {
 
     #[allow(dead_code)]
     #[derive(Debug)]
-    pub enum AuthError {
+    pub enum TestAuthError {
         Connection(tonic::transport::Error),
         Status(tonic::Status),
     }
@@ -34,10 +34,10 @@ pub mod utils {
     pub async fn client_authenticate_user(
         login: impl Into<String>,
         password: impl Into<String>,
-    ) -> Result<tonic::Response<AuthReply>, AuthError> {
+    ) -> Result<tonic::Response<AuthReply>, TestAuthError> {
         let mut client = RpgAuthenticateClient::connect(TEST_SERVER_ENDPOINT)
             .await
-            .map_err(AuthError::Connection)?;
+            .map_err(TestAuthError::Connection)?;
 
         let request = tonic::Request::new(AuthRequest {
             login: login.into(),
@@ -47,17 +47,17 @@ pub mod utils {
         client
             .authenticate_user(request)
             .await
-            .map_err(AuthError::Status)
+            .map_err(TestAuthError::Status)
     }
 
     #[allow(dead_code)]
     pub async fn client_logout_user(
         login: impl Into<String>,
         token: impl Into<String>,
-    ) -> Result<tonic::Response<EmptyReply>, AuthError> {
+    ) -> Result<tonic::Response<EmptyReply>, TestAuthError> {
         let mut client = RpgAuthenticateClient::connect(TEST_SERVER_ENDPOINT)
             .await
-            .map_err(AuthError::Connection)?;
+            .map_err(TestAuthError::Connection)?;
 
         client
             .logout(tonic::Request::new(LogoutRequest {
@@ -65,7 +65,7 @@ pub mod utils {
                 token: token.into(),
             }))
             .await
-            .map_err(AuthError::Status)
+            .map_err(TestAuthError::Status)
     }
 
     #[cfg(test)]
