@@ -1,6 +1,6 @@
 -- Your SQL goes here
 alter table accounts
-    drop session_token;
+    drop if exists session_token;
 
 create table sessions(
     id uuid not null primary key default gen_random_uuid(),
