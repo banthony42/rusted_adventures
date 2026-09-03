@@ -74,8 +74,8 @@ mod lifecycle {
         assert!(client_get_player("lifecycle3", token.clone()).await.is_ok());
 
         // Wait the token to expire
-        // (Token expiration should be set to 1 seconds when run for testing)
-        tokio::time::sleep(Duration::from_secs(6)).await;
+        // Token expiration can be customized with SESSION_TOKEN_EXPIRATION=2 env variable for server run
+        tokio::time::sleep(Duration::from_millis(2050)).await;
 
         // Ensure token has expire and is now invalid
         match client_get_player("lifecycle3", token).await {
