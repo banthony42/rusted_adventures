@@ -1,4 +1,3 @@
-use common::authenticator::Authenticator;
 use common::character::CharacterHandler;
 use common::constants::CHAT_SERVER_INPUT_MAX;
 use std::collections::HashMap;
@@ -99,43 +98,46 @@ async fn whisper(chat_event: RpgChatEvent, clients: ArcMutexHashMapClient) {
             event: Some(Event::ChatEvent(ChatEventType::Whisper as i32)),
         };
 
-        let mut authenticator = Authenticator::new(&recipient);
-        let recipient_disconnected = authenticator.is_connected(None).is_err();
+        let sender_ack = ServerChatEvent {
+            seq_number: event.seq_number, // Answer using same SequenceNumber
+            text: String::default(),
+            sender: None,
+            event: Some(Event::ServerEvent(ServerEventType::SrvAck as i32)),
+        };
+
+        let sender_unack = ServerChatEvent {
+            seq_number: event.seq_number, // Answer using same SequenceNumber
+            text: format!("Le joueur [{recipient}] n'existe pas ou n'est pas disponnible."),
+            sender: None,
+            event: Some(Event::ServerEvent(ServerEventType::SrvUnack as i32)),
+        };
 
         let clts = clients.lock().await;
-        if let Some(sender_event_tx) = clts.get(&sender) {
-            if recipient_disconnected {
-                let sender_unacknowledgement = ServerChatEvent {
-                    seq_number: event.seq_number, // Answer using same SequenceNumber
-                    text: format!(
-                        "Le joueur [{}] n'existe pas ou n'est pas disponnible.",
-                        recipient
-                    ),
-                    sender: None,
-                    event: Some(Event::ServerEvent(ServerEventType::SrvUnack as i32)),
-                };
-                if let Err(e) = sender_event_tx.send(Ok(sender_unacknowledgement)).await {
-                    tracing::error!("RpgChatService: whisper: Fail unacknowledge to {sender}: {e}")
+
+        let sender_reply = match clts.get(&recipient) {
+            Some(recipient_event_tx) => match recipient_event_tx.send(Ok(whisper)).await {
+                Ok(_) => {
+                    tracing::debug!(
+                        "RpgChatService: whisper: {sender} message sent to {recipient}"
+                    );
+                    sender_ack
                 }
-                return;
+                Err(e) => {
+                    tracing::error!("RpgChatService: whisper: Fail to send to {recipient}: {e}");
+                    sender_unack
+                }
+            },
+            None => {
+                tracing::error!(
+                    "RpgChatService: whisper: {recipient} not found in chat connected clients."
+                );
+                sender_unack
             }
+        };
 
-            let sender_acknowledgement = ServerChatEvent {
-                seq_number: event.seq_number, // Answer using same SequenceNumber
-                text: String::default(),
-                sender: None,
-                event: Some(Event::ServerEvent(ServerEventType::SrvAck as i32)),
-            };
-            if let Err(e) = sender_event_tx.send(Ok(sender_acknowledgement)).await {
-                tracing::error!("RpgChatService: whisper: Fail acknowledge to {sender}: {e}");
-            }
-        }
-
-        if let Some(recipient_event_tx) = clts.get(&recipient) {
-            tracing::debug!("RpgChatService: {sender} whisper {whisper:?} to {recipient}");
-            if let Err(e) = recipient_event_tx.send(Ok(whisper)).await {
-                tracing::error!("RpgChatService: whisper: Fail to send to {recipient}: {e}");
-                return;
+        if let Some(sender_event_tx) = clts.get(&sender) {
+            if let Err(e) = sender_event_tx.send(Ok(sender_reply)).await {
+                tracing::error!("RpgChatService: whisper: Fail ack / unack to {sender}: {e}");
             }
         }
     }
