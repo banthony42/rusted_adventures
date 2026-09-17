@@ -1,0 +1,38 @@
+name: Test pipeline
+
+on:
+  push:
+    branches: [ "dev" ]
+  pull_request:
+    branches: [ "dev" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  common-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --verbose -p common
+    - name: Run tests
+      run: cargo test --verbose -p common
+      
+  server-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build and run server and postgresql db
+      run: docker compose up -d
+    - name: Seed the database with tests data
+      run: ./server/tests/seed.sh
+    - name: Build
+      run: cargo build --verbose -p server
+    - name: Run tests
+      run: cargo test --verbose -p server
+    - name: Clean
+      run: docker compose down -v
+      
