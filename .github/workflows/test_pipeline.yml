@@ -45,7 +45,7 @@ jobs:
           POSTGRES_USER=gh-action-test
           POSTGRES_PASSWORD=gh-action-test
           POSTGRES_DB=gh-action-test
-          POSTGRES_HOST=gh-action-test-postgres
+          POSTGRES_HOST=postgres
 
           # Test
           SESSION_TOKEN_EXPIRATION=2
@@ -53,14 +53,14 @@ jobs:
           THROTTLING_TIME_WINDOW=2
           EOF
 
-      - name: Build and run server and postgresql db
+      - name: Build and run server and db containers
         run: docker compose up -d
+
+      - name: Build server code locally
+        run: cargo build --verbose -p server
 
       - name: Seed the database with tests data
         run: ./server/tests/seed.sh
-
-      - name: Build
-        run: cargo build --verbose -p server
 
       - name: Run tests
         run: RUST_BACKTRACE=1 cargo test --verbose -p server
