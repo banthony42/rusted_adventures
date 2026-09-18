@@ -34,6 +34,25 @@ jobs:
       - name: Prerequisite
         run: sudo apt-get install protobuf-compiler
 
+      - name: Create test .env file
+        run: |
+          cat <<EOF > .env
+          # Server
+          RUST_BACKTRACE=1
+          RUST_LOG=debug,h2=off
+
+          # Postgres
+          POSTGRES_USER=gh-action-test
+          POSTGRES_PASSWORD=gh-action-test
+          POSTGRES_DB=gh-action-test
+          POSTGRES_HOST=gh-action-test-postgres
+
+          # Test
+          SESSION_TOKEN_EXPIRATION=2
+          ACCOUNT_LOCK_TIME_1=1
+          THROTTLING_TIME_WINDOW=2
+          EOF
+
       - name: Build and run server and postgresql db
         run: docker compose up -d
 
