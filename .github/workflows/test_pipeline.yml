@@ -63,7 +63,11 @@ jobs:
         run: cargo build --verbose -p server
 
       - name: Run tests
-        run: cargo test --verbose -p server
+        run: RUST_BACKTRACE=1 cargo test --verbose -p server
+
+      - name: Get containers logs
+        if: always()
+        run: docker compose logs --no-color
 
       - name: Clean
         run: docker compose down -v
