@@ -2,9 +2,9 @@ name: Test pipeline
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: ["dev"]
   pull_request:
-    branches: [ "dev" ]
+    branches: ["dev"]
 
 env:
   CARGO_TERM_COLOR: always
@@ -14,25 +14,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose -p common
-    - name: Run tests
-      run: cargo test --verbose -p common
-      
+      - uses: actions/checkout@v4
+
+      - name: Prerequisite
+        run: sudo apt-get install protobuf-compiler
+
+      - name: Build
+        run: cargo build --verbose -p common
+
+      - name: Run tests
+        run: cargo test --verbose -p common
+
   server-tests:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build and run server and postgresql db
-      run: docker compose up -d
-    - name: Seed the database with tests data
-      run: ./server/tests/seed.sh
-    - name: Build
-      run: cargo build --verbose -p server
-    - name: Run tests
-      run: cargo test --verbose -p server
-    - name: Clean
-      run: docker compose down -v
-      
+      - uses: actions/checkout@v4
+
+      - name: Prerequisite
+        run: sudo apt-get install protobuf-compiler
+
+      - name: Build and run server and postgresql db
+        run: docker compose up -d
+
+      - name: Seed the database with tests data
+        run: ./server/tests/seed.sh
+
+      - name: Build
+        run: cargo build --verbose -p server
+
+      - name: Run tests
+        run: cargo test --verbose -p server
+
+      - name: Clean
+        run: docker compose down -v
