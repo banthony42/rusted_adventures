@@ -269,6 +269,7 @@ impl Orientation {
     /// # Example
     ///
     /// ```
+    /// use::common::Orientation;
     /// let north = Orientation::North;
     /// assert_eq!(Orientation::South, north.invert());
     /// ```
