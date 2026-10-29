@@ -30,7 +30,7 @@ impl EntityView {
         &mut self,
         evnt: &Event,
         window: &mut PistonWindow,
-        entity: &Box<dyn IEntity>,
+        entity: &dyn IEntity,
         font: &mut Font,
     ) {
         if let Some(asset) = self.assets.get(entity.get_assets()) {
@@ -74,7 +74,7 @@ impl EntityView {
         &self,
         evnt: &Event,
         window: &mut PistonWindow,
-        entity: &Box<dyn IEntity>,
+        entity: &dyn IEntity,
         font: &mut Font,
     ) {
         let entity_pos = entity.get_real_pos();
@@ -95,7 +95,7 @@ impl EntityView {
         );
     }
 
-    pub fn update(&mut self, delta_ts: u128, entity: &mut Box<dyn IEntity>) {
+    pub fn update(&mut self, delta_ts: u128, entity: &mut dyn IEntity) {
         if let Some(asset) = self.assets.get(entity.get_assets()) {
             let timer = entity.get_timer();
             let frame = entity.get_frame();

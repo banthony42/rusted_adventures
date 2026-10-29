@@ -4,7 +4,10 @@ use piston_window::*;
 
 use crate::{
     chat::controller::ChatController,
-    entities::{controller::EntityController, model::EntityModel},
+    entities::{
+        controller::EntityController,
+        model::{EntityModel, Player},
+    },
     import::assets::load_assets,
     states::game::GameCredentials,
     tasks::task::TaskInterface,
@@ -22,7 +25,7 @@ pub enum GameData {
     Login(String),
     Token(String),
     Message(String),
-    Player(EntityModel),
+    Player(Player),
     Entities(Vec<EntityModel>),
 }
 
@@ -178,7 +181,7 @@ impl StateFactory<Game> {
 
         let mut login: Option<String> = None;
         let mut token: Option<String> = None;
-        let mut player: Option<EntityModel> = None;
+        let mut player: Option<Player> = None;
         let mut entities: Option<Vec<EntityModel>> = None;
 
         game_data.iter().for_each(|gd| match gd {

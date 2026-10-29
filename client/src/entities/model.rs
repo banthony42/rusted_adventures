@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use common::grpc_codegen::LocationType;
 use common::{constants::*, CellCoord, MapCoord, Orientation};
 
@@ -33,6 +35,31 @@ pub struct EntityModel {
     next_map: Option<Orientation>,
     frame: u8,
     timer: u128,
+}
+
+#[derive(Debug, Clone)]
+pub struct Player {
+    entity: EntityModel,
+}
+
+impl Player {
+    pub fn new(entity: EntityModel) -> Self {
+        Self { entity }
+    }
+}
+
+impl Deref for Player {
+    type Target = EntityModel;
+
+    fn deref(&self) -> &Self::Target {
+        &self.entity
+    }
+}
+
+impl DerefMut for Player {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.entity
+    }
 }
 
 // Needed to manipulate EntityModel attributes using IEntity abstraction

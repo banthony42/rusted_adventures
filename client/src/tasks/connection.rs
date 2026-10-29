@@ -1,4 +1,4 @@
-use crate::entities::model::{EntityModel, IEntity};
+use crate::entities::model::{EntityModel, IEntity, Player};
 use crate::states::states::GameData;
 use common::constants::{Species, SERVER_ENDPOINT};
 use common::rpc_extentions::{RpcCoordExtension, RpcLocationExtension};
@@ -126,7 +126,7 @@ impl ConnectionTask {
         if let Some(entity) = response_player_data {
             let mut locked_task = self.data.lock().unwrap();
             locked_task.step += 1;
-            let data = GameData::Player((&entity).try_into()?);
+            let data = GameData::Player(Player::new((&entity).try_into()?));
             locked_task.data.push(data);
         }
         Ok(())

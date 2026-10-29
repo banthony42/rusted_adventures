@@ -1,11 +1,15 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
 use piston::{Button, MouseButton, Size};
 use piston_window::PistonWindow;
 
 use crate::{
     entities::{
-        model::{EntityModel, UIEntityModel},
+        model::{EntityModel, Player, UIEntityModel},
         path_finding::PathFinder,
     },
     import::assets::{EntityAssets, GameAsset},
@@ -45,7 +49,7 @@ enum EntityOperation {
 }
 
 pub struct EntityController {
-    player: Box<dyn IEntity>,
+    player: Player,
     entities: Arc<Mutex<Vec<Box<dyn IEntity>>>>,
     operations: EntityOperation,
     path_finder: PathFinder<AStar>,
@@ -59,7 +63,7 @@ pub struct EntityController {
 impl EntityController {
     pub fn new(
         assets: HashMap<EntityAssets, GameAsset>,
-        player: EntityModel,
+        player: Player,
         entities: Vec<EntityModel>,
     ) -> Self {
         let runtime = Builder::new_multi_thread()
@@ -83,7 +87,7 @@ impl EntityController {
             mouse_pos: [0.0, 0.0],
             view: EntityView::new(assets),
             entities: am_entities,
-            player: Box::new(player),
+            player,
             margin: Size {
                 width: 0.0,
                 height: 0.0,
@@ -203,11 +207,11 @@ impl EntityController {
     }
 
     pub fn render(&mut self, evnt: &piston::Event, window: &mut PistonWindow, font: &mut Font) {
-        self.view.render(evnt, window, &self.player, font);
+        self.view.render(evnt, window, self.player.deref(), font);
 
         if let Ok(entities) = self.entities.try_lock() {
             entities.iter().for_each(|entity| {
-                self.view.render(evnt, window, entity, font);
+                self.view.render(evnt, window, entity.as_ref(), font);
             });
         } else {
             dbg!("EntityController::render : fail to obtain entities model lock ...");
@@ -244,7 +248,7 @@ impl EntityController {
     }
 
     pub fn update(&mut self, delta_ts: u128, world: &World) {
-        self.view.update(delta_ts, &mut self.player);
+        self.view.update(delta_ts, self.player.deref_mut());
 
         if let Some(location_type) = self.player.update(delta_ts, world) {
             // Send a LocationType::NewMap to the server
@@ -270,7 +274,7 @@ impl EntityController {
 
             entities.iter_mut().for_each(|entity| {
                 entity.update(delta_ts, world);
-                self.view.update(delta_ts, entity);
+                self.view.update(delta_ts, entity.as_mut());
 
                 if let Some(map_data) = world.world.get(&self.player.get_map()) {
                     if let Some(new_destination) = entity.consume_destination() {
