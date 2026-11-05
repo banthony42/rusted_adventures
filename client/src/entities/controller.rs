@@ -1,15 +1,11 @@
-use std::{
-    collections::HashMap,
-    ops::{Deref, DerefMut},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use piston::{Button, MouseButton, Size};
 use piston_window::PistonWindow;
 
 use crate::{
     entities::{
-        model::{EntityModel, Player, UIEntityModel},
+        model::{EntityModel, Player, PlayerType, UIEntityModel},
         path_finding::PathFinder,
     },
     import::assets::{EntityAssets, GameAsset},
@@ -49,7 +45,7 @@ enum EntityOperation {
 }
 
 pub struct EntityController {
-    player: Player,
+    player: PlayerType,
     entities: Arc<Mutex<Vec<Box<dyn IEntity>>>>,
     operations: EntityOperation,
     path_finder: PathFinder<AStar>,
@@ -63,7 +59,7 @@ pub struct EntityController {
 impl EntityController {
     pub fn new(
         assets: HashMap<EntityAssets, GameAsset>,
-        player: Player,
+        player: PlayerType,
         entities: Vec<EntityModel>,
     ) -> Self {
         let runtime = Builder::new_multi_thread()
@@ -187,7 +183,7 @@ impl EntityController {
     }
 
     pub fn player_map(&self) -> MapCoord {
-        self.player.get_map()
+        self.player.entity().get_map()
     }
 
     /// Foreach entities handled in this controller, gather data for interface rendering.
@@ -195,8 +191,10 @@ impl EntityController {
     /// This function is best effort, if a data can't be retrieve for an entity
     /// then it will be no entry in the HashMap for this entity.
     pub fn ui_entities_models(&self) -> HashMap<String, UIEntityModel> {
-        let mut ui_models =
-            HashMap::from([(self.player.get_name().clone(), self.player.into_ui_model())]);
+        let mut ui_models = HashMap::from([(
+            self.player.entity().get_name().clone(),
+            self.player.entity().into_ui_model(),
+        )]);
 
         if let Ok(entities) = self.entities.try_lock() {
             for entity in entities.iter() {
@@ -207,7 +205,7 @@ impl EntityController {
     }
 
     pub fn render(&mut self, evnt: &piston::Event, window: &mut PistonWindow, font: &mut Font) {
-        self.view.render(evnt, window, self.player.deref(), font);
+        self.view.render(evnt, window, self.player.entity(), font);
 
         if let Ok(entities) = self.entities.try_lock() {
             entities.iter().for_each(|entity| {
@@ -248,15 +246,15 @@ impl EntityController {
     }
 
     pub fn update(&mut self, delta_ts: u128, world: &World) {
-        self.view.update(delta_ts, self.player.deref_mut());
+        self.view.update(delta_ts, self.player.entity_mut());
 
-        if let Some(location_type) = self.player.update(delta_ts, world) {
+        if let Some(location_type) = self.player.entity_mut().update(delta_ts, world) {
             // Send a LocationType::NewMap to the server
             // Server will reply with all new entities present on new map (EntitySpawnEvent)
             Self::send_player_move_event(
                 &self.tx,
-                self.player.get_map(),
-                self.player.get_cell(),
+                self.player.entity().get_map(),
+                self.player.entity().get_cell(),
                 location_type,
             );
 
@@ -276,7 +274,7 @@ impl EntityController {
                 entity.update(delta_ts, world);
                 self.view.update(delta_ts, entity.as_mut());
 
-                if let Some(map_data) = world.world.get(&self.player.get_map()) {
+                if let Some(map_data) = world.world.get(&self.player.entity().get_map()) {
                     if let Some(new_destination) = entity.consume_destination() {
                         self.path_finder.compute(
                             entity.get_cell(),
@@ -302,6 +300,17 @@ impl EntityController {
     }
 
     pub fn key_press(&mut self, args: &Button, world: &HashMap<MapCoord, MapData>) {
+        if let &Button::Keyboard(key) = args {
+            // Call simple gRPC to request server on spell launch
+            // succeess -> feedback or simulate spell
+            // failure -> feedback
+            match key {
+                piston::Key::D1 => self.player.spell_1(),
+                piston::Key::D2 => self.player.spell_2(),
+                _ => {}
+            }
+        }
+
         if let Button::Mouse(MouseButton::Left) = args {
             let mouse_x = (self.mouse_pos[0] - self.margin.width) as i64;
             let mouse_y = (self.mouse_pos[1] - self.margin.height) as i64;
@@ -316,42 +325,33 @@ impl EntityController {
             }
             .limit();
 
-            if let &Button::Keyboard(key) = args {
-                if key == piston::Key::D1 {
-                    println!("Launch spell 1 to {destination:?}");
-                    // Call simple gRPC to request server on spell launch
-                    // succeess -> feedback or simulate spell
-                    // failure -> feedback
-                }
-            }
-            if let Button::Mouse(MouseButton::Left) = args {
-                let next_map_x: Option<Orientation> = match mouse_x {
-                    x if x > MAP_EAST_LIMIT as i64 => Some(Orientation::Est),
-                    x if x < MAP_CHANGE_LIMIT as i64 => Some(Orientation::West),
-                    _ => None,
-                };
-                let next_map_y: Option<Orientation> = match mouse_y {
-                    y if y > MAP_SOUTH_LIMIT as i64 => Some(Orientation::South),
-                    y if y < MAP_CHANGE_LIMIT as i64 => Some(Orientation::North),
-                    _ => None,
-                };
+            let next_map_x: Option<Orientation> = match mouse_x {
+                x if x > MAP_EAST_LIMIT as i64 => Some(Orientation::Est),
+                x if x < MAP_CHANGE_LIMIT as i64 => Some(Orientation::West),
+                _ => None,
+            };
+            let next_map_y: Option<Orientation> = match mouse_y {
+                y if y > MAP_SOUTH_LIMIT as i64 => Some(Orientation::South),
+                y if y < MAP_CHANGE_LIMIT as i64 => Some(Orientation::North),
+                _ => None,
+            };
 
-                if let Some(map_data) = world.get(&self.player.get_map()) {
-                    let path_found = self.path_finder.compute(
-                        self.player.get_cell(),
+            if let Some(map_data) = world.get(&self.player.entity().get_map()) {
+                let path_found = self.path_finder.compute(
+                    self.player.entity().get_cell(),
+                    destination,
+                    &map_data.collider_map,
+                );
+                if path_found {
+                    self.player
+                        .entity_mut()
+                        .set_path(self.path_finder.get_path(), next_map_x.or(next_map_y));
+                    Self::send_player_move_event(
+                        &self.tx,
+                        self.player.entity().get_map(),
                         destination,
-                        &map_data.collider_map,
+                        LocationType::NewCell,
                     );
-                    if path_found {
-                        self.player
-                            .set_path(self.path_finder.get_path(), next_map_x.or(next_map_y));
-                        Self::send_player_move_event(
-                            &self.tx,
-                            self.player.get_map(),
-                            destination,
-                            LocationType::NewCell,
-                        );
-                    }
                 }
             }
         }

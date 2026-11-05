@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use piston_window::*;
 
+use crate::entities::model::Player;
 use crate::import::assets::{EntityAssets, GameAsset, SpeciesLibrary};
 use crate::ui::font::Font;
 use common::{constants::*, Orientation};

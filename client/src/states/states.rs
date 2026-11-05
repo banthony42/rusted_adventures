@@ -6,7 +6,7 @@ use crate::{
     chat::controller::ChatController,
     entities::{
         controller::EntityController,
-        model::{EntityModel, Player},
+        model::{EntityModel, PlayerType},
     },
     import::assets::load_assets,
     states::game::GameCredentials,
@@ -25,7 +25,7 @@ pub enum GameData {
     Login(String),
     Token(String),
     Message(String),
-    Player(Player),
+    Player(PlayerType),
     Entities(Vec<EntityModel>),
 }
 
@@ -181,7 +181,7 @@ impl StateFactory<Game> {
 
         let mut login: Option<String> = None;
         let mut token: Option<String> = None;
-        let mut player: Option<Player> = None;
+        let mut player: Option<PlayerType> = None;
         let mut entities: Option<Vec<EntityModel>> = None;
 
         game_data.iter().for_each(|gd| match gd {

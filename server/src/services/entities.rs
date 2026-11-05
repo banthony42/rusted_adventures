@@ -332,10 +332,13 @@ impl RpgEntity for RpgEntityService {
                 }
 
                 if let Some(event) = entity_event.ok() {
-                    if let Err(_) = event_tx
+                    if let Err(err) = event_tx
                         .send(RpgEntityEvent::new(login.clone(), event))
                         .await
                     {
+                        tracing::debug!(
+                            "RpgEntityService entity_event_bus: failed to send event: {err}"
+                        );
                         break;
                     }
                 }
