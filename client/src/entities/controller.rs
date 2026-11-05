@@ -316,32 +316,42 @@ impl EntityController {
             }
             .limit();
 
-            let next_map_x: Option<Orientation> = match mouse_x {
-                x if x > MAP_EAST_LIMIT as i64 => Some(Orientation::Est),
-                x if x < MAP_CHANGE_LIMIT as i64 => Some(Orientation::West),
-                _ => None,
-            };
-            let next_map_y: Option<Orientation> = match mouse_y {
-                y if y > MAP_SOUTH_LIMIT as i64 => Some(Orientation::South),
-                y if y < MAP_CHANGE_LIMIT as i64 => Some(Orientation::North),
-                _ => None,
-            };
+            if let &Button::Keyboard(key) = args {
+                if key == piston::Key::D1 {
+                    println!("Launch spell 1 to {destination:?}");
+                    // Call simple gRPC to request server on spell launch
+                    // succeess -> feedback or simulate spell
+                    // failure -> feedback
+                }
+            }
+            if let Button::Mouse(MouseButton::Left) = args {
+                let next_map_x: Option<Orientation> = match mouse_x {
+                    x if x > MAP_EAST_LIMIT as i64 => Some(Orientation::Est),
+                    x if x < MAP_CHANGE_LIMIT as i64 => Some(Orientation::West),
+                    _ => None,
+                };
+                let next_map_y: Option<Orientation> = match mouse_y {
+                    y if y > MAP_SOUTH_LIMIT as i64 => Some(Orientation::South),
+                    y if y < MAP_CHANGE_LIMIT as i64 => Some(Orientation::North),
+                    _ => None,
+                };
 
-            if let Some(map_data) = world.get(&self.player.get_map()) {
-                let path_found = self.path_finder.compute(
-                    self.player.get_cell(),
-                    destination,
-                    &map_data.collider_map,
-                );
-                if path_found {
-                    self.player
-                        .set_path(self.path_finder.get_path(), next_map_x.or(next_map_y));
-                    Self::send_player_move_event(
-                        &self.tx,
-                        self.player.get_map(),
+                if let Some(map_data) = world.get(&self.player.get_map()) {
+                    let path_found = self.path_finder.compute(
+                        self.player.get_cell(),
                         destination,
-                        LocationType::NewCell,
+                        &map_data.collider_map,
                     );
+                    if path_found {
+                        self.player
+                            .set_path(self.path_finder.get_path(), next_map_x.or(next_map_y));
+                        Self::send_player_move_event(
+                            &self.tx,
+                            self.player.get_map(),
+                            destination,
+                            LocationType::NewCell,
+                        );
+                    }
                 }
             }
         }

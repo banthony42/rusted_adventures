@@ -7,7 +7,7 @@ use common::{
 };
 use services::chat::RpgChatService;
 use services::entities::RpgEntityService;
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::{Receiver, Sender};
 use tonic::transport::Server;
 
 use common::grpc_codegen::rpg_authenticate_server::RpgAuthenticateServer;
@@ -27,13 +27,13 @@ mod generics;
 mod services;
 mod world;
 
-fn run_world_engine_on_another_thread() -> Receiver<WorldEvent> {
-    let (mut world_engine, world_rx) = WorldEngine::new();
+fn run_world_engine_on_another_thread() -> (Receiver<WorldEvent>, Sender<WorldEvent>) {
+    let (mut world_engine, wrx_to_net, ntx_to_world) = WorldEngine::new();
     thread::spawn(move || {
         world_engine.run();
     });
 
-    return world_rx;
+    return (wrx_to_net, ntx_to_world);
 }
 
 fn auth_interceptor(req: Request<()>) -> Result<Request<()>, Status> {
@@ -88,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // But again, the goal of the project is to learn rust, and i want to avoid
     // heavy setup configuration / prerequisite.
     // In addition i already know redis, where i totally discover and learn SQL like DB.
-    let world_rx = run_world_engine_on_another_thread();
+    let (wrx_to_net, ntx_to_world) = run_world_engine_on_another_thread();
 
     // Run tonic gRPC server
     let addr = "0.0.0.0:2121".parse()?;
@@ -116,7 +116,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             auth_interceptor,
         ))
         .add_service(RpgEntityServer::with_interceptor(
-            RpgEntityService::new(world_rx),
+            RpgEntityService::new(wrx_to_net, ntx_to_world),
             auth_interceptor,
         ))
         .serve(addr)

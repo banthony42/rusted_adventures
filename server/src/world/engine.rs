@@ -41,12 +41,13 @@ pub enum WorldEvent {
 
 pub struct WorldEngine {
     world_importer: WorldImport,
-    tx: Sender<WorldEvent>,
+    wtx_to_net: Sender<WorldEvent>,
     monster_handler: MonsterHandler,
     wpl: Duration,
     spawners: Vec<Spawner>,
     behaviours: BehaviourHandler,
     last_update_ts: u128,
+    network_rx: Receiver<WorldEvent>,
 }
 
 // Limit the WorldEngine infinite loop rate
@@ -54,13 +55,15 @@ const UPDATE_PER_SECOND: u64 = 60;
 const WAIT_PER_LOOP: u64 = 1000 / UPDATE_PER_SECOND;
 
 impl WorldEngine {
-    pub fn new() -> (Self, Receiver<WorldEvent>) {
-        let (tx, rx) = mpsc::channel::<WorldEvent>(10);
+    pub fn new() -> (Self, Receiver<WorldEvent>, Sender<WorldEvent>) {
+        let (wtx_to_net, wrx_to_net) = mpsc::channel::<WorldEvent>(10);
+        let (ntx_to_world, nrx_to_world) = mpsc::channel::<WorldEvent>(10);
         (
             WorldEngine {
+                network_rx: nrx_to_world,
                 world_importer: WorldImport::new(),
                 behaviours: BehaviourHandler::new(),
-                tx,
+                wtx_to_net,
                 monster_handler: MonsterHandler::new(),
                 spawners: vec![
                     Spawner::new(vec![PgSpecies::Bouftou], MapCoord { x: 0, y: 0 }),
@@ -69,7 +72,8 @@ impl WorldEngine {
                 wpl: Duration::from_millis(WAIT_PER_LOOP),
                 last_update_ts: get_timestamp(),
             },
-            rx,
+            wrx_to_net,
+            ntx_to_world,
         )
     }
 
@@ -79,6 +83,7 @@ impl WorldEngine {
             let delta_ts = now - self.last_update_ts;
             self.last_update_ts = now;
 
+            // Handle NetworkEvent
             self.update(delta_ts);
             self.wait();
         }
@@ -89,14 +94,14 @@ impl WorldEngine {
             spawner.update(
                 delta_ts,
                 &mut self.monster_handler,
-                &self.tx,
+                &self.wtx_to_net,
                 &self.world_importer,
             );
         }
         self.behaviours.update(
             delta_ts,
             &mut self.monster_handler,
-            &self.tx,
+            &self.wtx_to_net,
             &self.world_importer,
         );
     }
