@@ -17,7 +17,7 @@ type TextureLib = HashMap<UITexture, G2dTexture>;
 
 impl Interface {
     pub fn new() -> Self {
-        return Interface {
+        Interface {
             delta_ts: 0,
             img: Image::new().rect([
                 GUI_WIDTH_CENTER as f64,
@@ -25,7 +25,7 @@ impl Interface {
                 GUI_WIDTH as f64,
                 GUI_HEIGHT as f64,
             ]),
-        };
+        }
     }
 
     pub fn update(&mut self, _args: &UpdateArgs, delta_ts: u128) {

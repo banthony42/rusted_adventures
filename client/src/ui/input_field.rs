@@ -28,18 +28,18 @@ impl InputField {
                 radius: 1.0,
             });
 
-        let rect_settings = [pos[0], pos[1], width as f64, font_size as f64 + 4.0];
+        let rect_settings = [pos[0], pos[1], width, font_size as f64 + 4.0];
 
         InputField {
             focus: false,
             mouseover: false,
-            font_size: font_size,
-            rect_settings: rect_settings,
+            font_size,
+            rect_settings,
             content: String::new(),
             content_width: 0.0,
             cursor_timer: 0,
             cursor_hidden: false,
-            rect: rect,
+            rect,
             margin: Size {
                 width: 0.0,
                 height: 0.0,
@@ -54,7 +54,7 @@ impl InputField {
     }
 
     pub fn set_height(mut self, height: f64) -> Self {
-        self.rect_settings[3] = (self.font_size as f64 + 4.0).max(height) as f64;
+        self.rect_settings[3] = (self.font_size as f64 + 4.0).max(height);
         self
     }
 
@@ -82,16 +82,10 @@ impl InputField {
 
     fn get_content_or_masked(&self) -> String {
         if self.masked {
-            let s: String = self
-                .content
-                .chars()
-                .map(|x| match x {
-                    _ => "•",
-                })
-                .collect();
+            let s: String = self.content.chars().map(|_| "•").collect();
             return s;
         }
-        return self.content.clone();
+        self.content.clone()
     }
 
     fn erase_last_char(&mut self, font: &mut Font) {
@@ -121,7 +115,7 @@ impl InputField {
 
     pub fn render(&self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
         window.draw_2d(evnt, |_ctx, gl, _device| {
-            let mut final_position = self.rect_settings.clone();
+            let mut final_position = self.rect_settings;
             final_position[0] += self.margin.width;
             final_position[1] += self.margin.height;
             self.rect
@@ -130,7 +124,7 @@ impl InputField {
 
         // Assume top offset is the same for all characters, we choose '|' as char model to get the height of char
         // This height is use below to center the text in the text field Rectangle and stick the cursor to the text
-        if self.content.len() > 0 {
+        if !self.content.is_empty() {
             if let Ok(char_template) = font.get().character(self.font_size, '|') {
                 let text_pos = [
                     self.rect_settings[0],
@@ -206,11 +200,13 @@ impl InputField {
         let rect_right = rect_left + self.rect_settings[2];
         let rect_bottom = rect_top + self.rect_settings[3];
 
-        if mouse_x > rect_left && mouse_x < rect_right {
-            if mouse_y > rect_top && mouse_y < rect_bottom {
-                self.mouseover = true;
-                return;
-            }
+        if mouse_x > rect_left
+            && mouse_x < rect_right
+            && mouse_y > rect_top
+            && mouse_y < rect_bottom
+        {
+            self.mouseover = true;
+            return;
         }
         self.mouseover = false;
     }
@@ -235,6 +231,6 @@ impl InputField {
     }
 
     pub fn resize(&mut self, margin: &Size) {
-        self.margin = margin.clone();
+        self.margin = *margin;
     }
 }

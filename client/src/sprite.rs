@@ -22,10 +22,7 @@ pub struct Frame {
 
 impl Frame {
     pub fn new(sprites: Vec<Sprite>, duration: f32) -> Frame {
-        Frame {
-            sprites: sprites,
-            duration: duration,
-        }
+        Frame { sprites, duration }
     }
 }
 

@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use piston_window::*;
 
-use crate::entities::model::Player;
 use crate::import::assets::{EntityAssets, GameAsset, SpeciesLibrary};
 use crate::ui::font::Font;
 use common::{constants::*, Orientation};
@@ -39,17 +38,17 @@ impl EntityView {
                 let asset_src_rect = asset.frames[entity.get_frame()].src_rect;
                 let asset_width = asset_src_rect[2];
                 let entity_pos = entity.get_real_pos();
-                let render_offset_y = self.species_lib.get_height_offset(&entity.get_species());
+                let render_offset_y = self.species_lib.get_height_offset(entity.get_species());
 
                 let mut trans = ctx.transform.trans(
-                    self.margin.width as f64 + entity_pos.x as f64,
-                    self.margin.height as f64 + entity_pos.y as f64 - render_offset_y,
+                    self.margin.width + entity_pos.x as f64,
+                    self.margin.height + entity_pos.y as f64 - render_offset_y,
                 );
                 // Offset the point controlled by the user's keyboard, to bottom center of the sprite character.
 
                 // Flip the sprite according to Est/Wes direction
                 trans = match entity.get_orientation() {
-                    Orientation::West => trans.flip_h().trans(asset_width * -1.0, 0.0),
+                    Orientation::West => trans.flip_h().trans(-asset_width, 0.0),
                     _ => trans, // Orientation::Est default (define by the sprite) will be fixed when all orientation sprites available
                 };
 
@@ -115,6 +114,6 @@ impl EntityView {
     }
 
     pub fn resize(&mut self, margin: &Size) {
-        self.margin = margin.clone();
+        self.margin = *margin;
     }
 }

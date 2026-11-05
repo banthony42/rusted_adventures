@@ -70,8 +70,8 @@ impl Loading {
             task_data: amt,
             timeout: timeout as u128,
             progress: 0,
-            next_state: next_state,
-            font: font,
+            next_state,
+            font,
             margin: Size {
                 width: 0.0,
                 height: 0.0,
@@ -201,7 +201,7 @@ impl GameState for Loading {
         } else {
             margin.height = 0.0;
         }
-        return margin;
+        margin
     }
 
     fn get_font(&mut self) -> &mut Font {

@@ -193,12 +193,12 @@ impl EntityController {
     pub fn ui_entities_models(&self) -> HashMap<String, UIEntityModel> {
         let mut ui_models = HashMap::from([(
             self.player.entity().get_name().clone(),
-            self.player.entity().into_ui_model(),
+            self.player.entity().get_ui_model(),
         )]);
 
         if let Ok(entities) = self.entities.try_lock() {
             for entity in entities.iter() {
-                ui_models.insert(entity.get_name().clone(), entity.into_ui_model());
+                ui_models.insert(entity.get_name().clone(), entity.get_ui_model());
             }
         }
         ui_models
@@ -291,12 +291,12 @@ impl EntityController {
     }
 
     pub fn resize(&mut self, margin: &Size) {
-        self.margin = margin.clone();
+        self.margin = *margin;
         self.view.resize(margin);
     }
 
     pub fn mouse_cursor_args(&mut self, args: &[f64; 2]) {
-        self.mouse_pos = args.clone();
+        self.mouse_pos = *args;
     }
 
     pub fn key_press(&mut self, args: &Button, world: &HashMap<MapCoord, MapData>) {

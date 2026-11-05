@@ -60,13 +60,15 @@ impl TaskInterface for ConnectionTask {
 
 impl ConnectionTask {
     pub fn new(login: String, password: String) -> Self {
-        let mut data = TaskData::default();
-        data.steps = 3;
+        let data = TaskData {
+            steps: 3,
+            ..Default::default()
+        };
 
         ConnectionTask {
             data: Arc::new(Mutex::new(data)),
-            login: login,
-            password: password,
+            login,
+            password,
             timeout: 10000,
         }
     }
@@ -93,7 +95,7 @@ impl ConnectionTask {
         login: String,
         token: String,
     ) -> impl Fn(tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
-        return move |mut req: Request<()>| -> Result<Request<()>, Status> {
+        move |mut req: Request<()>| -> Result<Request<()>, Status> {
             let login_md: MetadataValue<_> = login
                 .parse()
                 .map_err(|err| Status::invalid_argument(format!("Login: {}", err)))?;
@@ -105,7 +107,7 @@ impl ConnectionTask {
             req.metadata_mut().insert("login", login_md);
             req.metadata_mut().insert("authorization", token_md);
             Ok(req)
-        };
+        }
     }
 
     async fn fetch_player_request(
@@ -172,7 +174,7 @@ impl TryInto<EntityModel> for &Entity {
     fn try_into(self) -> Result<EntityModel, Self::Error> {
         let family = self
             .family
-            .ok_or_else(|| "TryInto<EntityModel> for &Entity: Failed because family is None.")?;
+            .ok_or("TryInto<EntityModel> for &Entity: Failed because family is None.")?;
 
         let mut entity_model = EntityModel::new(
             self.name.clone(),
@@ -182,9 +184,9 @@ impl TryInto<EntityModel> for &Entity {
 
         let (cell_rpc_coord, map_rpc_coord) = self
             .location
-            .ok_or_else(|| "TryInto<EntityModel> for &Entity: Failed because location is None.")?
+            .ok_or("TryInto<EntityModel> for &Entity: Failed because location is None.")?
             .into_cell_map()
-            .ok_or_else(|| "TryInto<EntityModel> for &Entity: Failed because location.cell and location.map should exist is None.")?;
+            .ok_or("TryInto<EntityModel> for &Entity: Failed because location.cell and location.map should exist is None.")?;
 
         entity_model.set_map(map_rpc_coord.into_map());
         entity_model.set_cell(cell_rpc_coord.into_cell());

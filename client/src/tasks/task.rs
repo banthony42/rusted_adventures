@@ -3,22 +3,12 @@ use std::error::Error;
 use std::sync::{Arc, Mutex};
 use tonic::async_trait;
 
+#[derive(Default)]
 pub struct TaskData {
     pub steps: u16,
     pub step: u16,
     pub success: bool,
     pub data: Vec<GameData>,
-}
-
-impl Default for TaskData {
-    fn default() -> Self {
-        Self {
-            steps: Default::default(),
-            step: Default::default(),
-            success: Default::default(),
-            data: Default::default(),
-        }
-    }
 }
 
 #[async_trait]

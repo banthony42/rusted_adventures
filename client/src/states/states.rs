@@ -67,7 +67,7 @@ pub trait GameState {
         } else {
             margin.height = 0.0;
         }
-        return margin;
+        margin
     }
 
     fn resize_window(&mut self, args: &ResizeArgs);

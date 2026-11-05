@@ -1,5 +1,3 @@
-use std::ops::{Deref, DerefMut};
-
 use common::grpc_codegen::LocationType;
 use common::{constants::*, CellCoord, MapCoord, Orientation};
 
@@ -122,8 +120,8 @@ impl Mage {
 macro_rules! impl_entity {
     ($type:ty) => {
         impl IEntity for $type {
-            fn into_ui_model(&self) -> UIEntityModel {
-                self.entity.into_ui_model()
+            fn get_ui_model(&self) -> UIEntityModel {
+                self.entity.get_ui_model()
             }
 
             fn get_name(&self) -> &String {
@@ -206,7 +204,7 @@ impl_entity!(Mage);
 
 // Needed to manipulate EntityModel attributes using IEntity abstraction
 pub trait IEntity: Send {
-    fn into_ui_model(&self) -> UIEntityModel;
+    fn get_ui_model(&self) -> UIEntityModel;
 
     fn get_name(&self) -> &String;
 
@@ -290,7 +288,7 @@ impl EntityModel {
 }
 
 impl IEntity for EntityModel {
-    fn into_ui_model(&self) -> UIEntityModel {
+    fn get_ui_model(&self) -> UIEntityModel {
         UIEntityModel {
             real_position: self.get_real_pos(),
             map: self.get_map(),

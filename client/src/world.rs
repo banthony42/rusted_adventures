@@ -93,7 +93,7 @@ impl World {
                 .map(|path| {
                     Texture::from_path(
                         &mut window.create_texture_context(),
-                        &path,
+                        path,
                         Flip::None,
                         &TextureSettings::new(),
                     )
@@ -112,7 +112,7 @@ impl World {
                 },
             );
         }
-        return world;
+        world
     }
 
     pub fn render(&self, evnt: &Event, window: &mut PistonWindow, coord: &MapCoord) {
@@ -144,13 +144,12 @@ impl World {
     }
 
     pub fn update(&mut self, delta_ts: u128, coord: &MapCoord) {
-        let map_data = self.world.get_mut(coord).expect(
-            format!(
+        let map_data = self.world.get_mut(coord).unwrap_or_else(|| {
+            panic!(
                 "Client: world: update: trying to get map_data from : {:?}",
                 coord
             )
-            .as_str(),
-        );
+        });
 
         let frame = map_data.frames.get_frame(map_data.frame_index);
         if map_data.timer >= frame.duration as u128 {
@@ -162,15 +161,11 @@ impl World {
     }
 
     pub fn resize(&mut self, margin: &Size) {
-        self.margin = margin.clone();
+        self.margin = *margin;
     }
 
     fn get_map(&self, coord: MapCoord) -> Option<(MapCoord, &MapData)> {
-        let map = match self.world.get(&coord) {
-            Some(map_data) => map_data,
-            None => return None,
-        };
-        return Some((coord, map));
+        Some((coord, self.world.get(&coord)?))
     }
 
     pub fn get_east_map(&self, coord: MapCoord) -> Option<(MapCoord, &MapData)> {

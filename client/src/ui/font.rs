@@ -111,8 +111,8 @@ impl Font {
                         self.get(),
                         &ctx.draw_state,
                         ctx.transform.trans(
-                            margin.width + x as f64,
-                            margin.height + y as f64 + (index * font_size as usize) as f64,
+                            margin.width + x,
+                            margin.height + y + (index * font_size as usize) as f64,
                         ),
                         gl,
                     );
@@ -156,10 +156,10 @@ impl Font {
                     let mut splitter: &str = word;
                     for n in 0..nb_split {
                         let (first, second) = splitter.split_at(part_len);
-                        if first.len() > 0 {
+                        if !first.is_empty() {
                             text_split.push(first.to_string());
                         }
-                        if n == nb_split - 1 && second.len() > 0 {
+                        if n == nb_split - 1 && !second.is_empty() {
                             text_split.push(second.to_string());
                         } else {
                             splitter = second;
@@ -176,7 +176,7 @@ impl Font {
         if !row.is_empty() {
             text_split.push(row.join(" "));
         }
-        text_split.retain(|txt| txt.len() > 0);
+        text_split.retain(|txt| !txt.is_empty());
         text_split
     }
 
@@ -214,7 +214,7 @@ impl Font {
                         self.get(),
                         &DrawState::default().scissor(scissor.map(|value| value as u32)),
                         ctx.transform
-                            .trans(x as f64, y as f64 + (index * font_size as usize) as f64),
+                            .trans(x, y + (index * font_size as usize) as f64),
                         gl,
                     );
                 })

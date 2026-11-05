@@ -17,7 +17,7 @@ impl PriorityQueue {
     fn priority_push(&mut self, cell: Cell) {
         self.0.push(cell);
         // The last element is the cell with the lowest priority.
-        self.0.sort_by(|a, b| b.priority.cmp(&a.priority));
+        self.0.sort_by_key(|b| std::cmp::Reverse(b.priority));
     }
 
     /// Get the lowest priority Cell
@@ -58,7 +58,7 @@ impl AStar {
         self.path_found.push(destination);
 
         while let Some(parent) = self.predecessors[cursor.linear_index()] {
-            self.path_found.push(parent.clone());
+            self.path_found.push(parent);
             cursor = parent;
         }
         self.path_found.pop();
@@ -126,7 +126,7 @@ impl PathFindingStrategy for AStar {
                     self.predecessors[neighbour_index] = Some(current.cell);
                     self.cells.priority_push(Cell {
                         priority: current_neighbour_cost
-                            + self.manhattan_distance_from(&nb, destination),
+                            + self.manhattan_distance_from(nb, destination),
                         cell: *nb,
                     });
                 });

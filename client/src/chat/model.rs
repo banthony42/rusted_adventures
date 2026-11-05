@@ -10,7 +10,6 @@ use common::grpc_codegen::ChatEventType;
 use common::grpc_codegen::ClientChatEvent;
 use common::grpc_codegen::ServerChatEvent;
 use common::grpc_codegen::ServerEventType;
-use tokio::sync::MutexGuard;
 
 const CHAT_MAX_MSG: usize = 20;
 const CHAT_TIME_FORMAT: &str = "%H:%M:%S";
@@ -113,10 +112,7 @@ impl TryFrom<ServerChatEvent> for ChatMessage {
 
     fn try_from(value: ServerChatEvent) -> Result<Self, Self::Error> {
         if let Some(event) = value.event {
-            let target = match value.sender {
-                Some(sender) => Some(Target::Inbound(sender)),
-                None => None,
-            };
+            let target = value.sender.map(Target::Inbound);
             return Ok(ChatMessage::new(value.text, event, target));
         }
         Err("ChatMessage need an Event to be construct.")
@@ -129,10 +125,7 @@ impl TryInto<ClientChatEvent> for ChatMessage {
     fn try_into(self) -> Result<ClientChatEvent, Self::Error> {
         let chat_event_type = match self.event {
             SEvent::ServerEvent(_) => None,
-            SEvent::ChatEvent(c) => match ChatEventType::try_from(c) {
-                Ok(evnt) => Some(evnt),
-                Err(_) => None,
-            },
+            SEvent::ChatEvent(c) => ChatEventType::try_from(c).ok(),
         };
 
         if let Some(event) = chat_event_type {
