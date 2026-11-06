@@ -125,7 +125,8 @@ where
         let message_missing = self
             .messages
             .iter()
-            .filter_map(|msg| msg.content.eq(&new_msg.content).then(|| true))
+            .filter(|&msg| msg.content.eq(&new_msg.content))
+            .map(|_| true)
             .collect::<Vec<_>>()
             .is_empty();
 
@@ -134,11 +135,12 @@ where
                 .messages
                 .iter()
                 .enumerate()
-                .filter_map(|(index, msg)| (aggregate)(&msg.content).then(|| (index, msg.timer)))
+                .filter(|&(_, msg)| (aggregate)(&msg.content))
+                .map(|(index, msg)| (index, msg.timer))
                 .collect::<Vec<_>>();
 
             // Overwrite the existing WindowMessage for this aggregation
-            if agg_messages.len() >= 1 {
+            if !agg_messages.is_empty() {
                 for agg_msg in agg_messages.iter() {
                     self.messages.remove(agg_msg.0);
                 }
@@ -169,6 +171,6 @@ where
     }
 
     pub fn resize(&mut self, margin: &Size) {
-        self.margin = margin.clone();
+        self.margin = *margin;
     }
 }

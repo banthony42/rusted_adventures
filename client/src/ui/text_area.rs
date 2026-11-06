@@ -27,7 +27,7 @@ where
 {
     pub fn new(font_size: u32, size: [f64; 4]) -> Self {
         TextArea {
-            font_size: font_size,
+            font_size,
             rect: size,
             content: vec![],
             margin: Size {
@@ -96,7 +96,7 @@ where
     }
 
     pub fn resize(&mut self, margin: &Size) {
-        self.margin = margin.clone();
+        self.margin = *margin;
         // Since we render text from the bottom to the top
         // position should start at bottom left of the chat rectangle area
         // we shift with (padding / 2), and text will be render with

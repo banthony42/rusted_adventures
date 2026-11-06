@@ -35,9 +35,176 @@ pub struct EntityModel {
     timer: u128,
 }
 
+#[derive(Debug, Clone)]
+pub struct Warrior {
+    entity: EntityModel,
+}
+
+#[derive(Debug, Clone)]
+pub struct Mage {
+    entity: EntityModel,
+}
+
+pub trait Player {
+    fn entity(&self) -> &EntityModel;
+    fn entity_mut(&mut self) -> &mut EntityModel;
+
+    fn spell_1(&self);
+    fn spell_2(&self);
+}
+
+#[derive(Debug, Clone)]
+pub enum PlayerType {
+    Warrior(Warrior),
+    Mage(Mage),
+}
+
+impl Player for PlayerType {
+    fn entity(&self) -> &EntityModel {
+        match self {
+            PlayerType::Warrior(warrior) => &warrior.entity,
+            PlayerType::Mage(mage) => &mage.entity,
+        }
+    }
+
+    fn entity_mut(&mut self) -> &mut EntityModel {
+        match self {
+            PlayerType::Warrior(warrior) => &mut warrior.entity,
+            PlayerType::Mage(mage) => &mut mage.entity,
+        }
+    }
+
+    fn spell_1(&self) {
+        match self {
+            PlayerType::Warrior(warrior) => warrior.absorption(),
+            PlayerType::Mage(mage) => mage.fireball(),
+        }
+    }
+
+    fn spell_2(&self) {
+        match self {
+            PlayerType::Warrior(warrior) => warrior.charge(),
+            PlayerType::Mage(mage) => mage.ice_trap(),
+        }
+    }
+}
+
+impl Warrior {
+    pub fn new(entity: EntityModel) -> Self {
+        Self { entity }
+    }
+
+    fn absorption(&self) {
+        println!("Cast absorption");
+    }
+
+    fn charge(&self) {
+        println!("Cast charge");
+    }
+}
+
+impl Mage {
+    pub fn new(entity: EntityModel) -> Self {
+        Self { entity }
+    }
+
+    fn fireball(&self) {
+        println!("Cast fireball");
+    }
+
+    fn ice_trap(&self) {
+        println!("Cast ice trap");
+    }
+}
+
+macro_rules! impl_entity {
+    ($type:ty) => {
+        impl IEntity for $type {
+            fn get_ui_model(&self) -> UIEntityModel {
+                self.entity.get_ui_model()
+            }
+
+            fn get_name(&self) -> &String {
+                self.entity.get_name()
+            }
+
+            fn get_species(&self) -> &Species {
+                self.entity.get_species()
+            }
+
+            fn get_map(&self) -> MapCoord {
+                self.entity.get_map()
+            }
+
+            fn set_map(&mut self, map: MapCoord) {
+                self.entity.set_map(map);
+            }
+
+            fn get_uuid(&self) -> &String {
+                self.entity.get_uuid()
+            }
+
+            fn get_cell(&self) -> CellCoord {
+                self.entity.get_cell()
+            }
+
+            fn set_cell(&mut self, cell: CellCoord) {
+                self.entity.set_cell(cell);
+            }
+
+            fn get_timer(&self) -> u128 {
+                self.entity.get_timer()
+            }
+
+            fn set_timer(&mut self, timer: u128) {
+                self.entity.set_timer(timer)
+            }
+
+            fn get_frame(&self) -> usize {
+                self.entity.get_frame()
+            }
+
+            fn set_frame(&mut self, frame: u8) {
+                self.entity.set_frame(frame);
+            }
+
+            fn get_assets(&self) -> &EntityAssets {
+                self.entity.get_assets()
+            }
+
+            fn set_path(&mut self, path: Vec<CellCoord>, next_map: Option<Orientation>) {
+                self.entity.set_path(path, next_map);
+            }
+
+            fn consume_destination(&mut self) -> Option<CellCoord> {
+                self.entity.consume_destination()
+            }
+
+            fn set_destination(&mut self, destination: CellCoord) {
+                self.entity.set_destination(destination);
+            }
+
+            fn update(&mut self, delta_ts: u128, world: &World) -> Option<LocationType> {
+                self.entity.update(delta_ts, world)
+            }
+
+            fn get_real_pos(&self) -> CellCoord {
+                self.entity.get_real_pos()
+            }
+
+            fn get_orientation(&self) -> &Orientation {
+                self.entity.get_orientation()
+            }
+        }
+    };
+}
+
+impl_entity!(Warrior);
+impl_entity!(Mage);
+
 // Needed to manipulate EntityModel attributes using IEntity abstraction
 pub trait IEntity: Send {
-    fn into_ui_model(&self) -> UIEntityModel;
+    fn get_ui_model(&self) -> UIEntityModel;
 
     fn get_name(&self) -> &String;
 
@@ -121,7 +288,7 @@ impl EntityModel {
 }
 
 impl IEntity for EntityModel {
-    fn into_ui_model(&self) -> UIEntityModel {
+    fn get_ui_model(&self) -> UIEntityModel {
         UIEntityModel {
             real_position: self.get_real_pos(),
             map: self.get_map(),

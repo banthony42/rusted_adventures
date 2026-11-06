@@ -5,7 +5,7 @@ use piston_window::PistonWindow;
 
 use crate::{
     entities::{
-        model::{EntityModel, UIEntityModel},
+        model::{EntityModel, Player, PlayerType, UIEntityModel},
         path_finding::PathFinder,
     },
     import::assets::{EntityAssets, GameAsset},
@@ -45,7 +45,7 @@ enum EntityOperation {
 }
 
 pub struct EntityController {
-    player: Box<dyn IEntity>,
+    player: PlayerType,
     entities: Arc<Mutex<Vec<Box<dyn IEntity>>>>,
     operations: EntityOperation,
     path_finder: PathFinder<AStar>,
@@ -59,7 +59,7 @@ pub struct EntityController {
 impl EntityController {
     pub fn new(
         assets: HashMap<EntityAssets, GameAsset>,
-        player: EntityModel,
+        player: PlayerType,
         entities: Vec<EntityModel>,
     ) -> Self {
         let runtime = Builder::new_multi_thread()
@@ -83,7 +83,7 @@ impl EntityController {
             mouse_pos: [0.0, 0.0],
             view: EntityView::new(assets),
             entities: am_entities,
-            player: Box::new(player),
+            player,
             margin: Size {
                 width: 0.0,
                 height: 0.0,
@@ -183,7 +183,7 @@ impl EntityController {
     }
 
     pub fn player_map(&self) -> MapCoord {
-        self.player.get_map()
+        self.player.entity().get_map()
     }
 
     /// Foreach entities handled in this controller, gather data for interface rendering.
@@ -191,23 +191,25 @@ impl EntityController {
     /// This function is best effort, if a data can't be retrieve for an entity
     /// then it will be no entry in the HashMap for this entity.
     pub fn ui_entities_models(&self) -> HashMap<String, UIEntityModel> {
-        let mut ui_models =
-            HashMap::from([(self.player.get_name().clone(), self.player.into_ui_model())]);
+        let mut ui_models = HashMap::from([(
+            self.player.entity().get_name().clone(),
+            self.player.entity().get_ui_model(),
+        )]);
 
         if let Ok(entities) = self.entities.try_lock() {
             for entity in entities.iter() {
-                ui_models.insert(entity.get_name().clone(), entity.into_ui_model());
+                ui_models.insert(entity.get_name().clone(), entity.get_ui_model());
             }
         }
         ui_models
     }
 
     pub fn render(&mut self, evnt: &piston::Event, window: &mut PistonWindow, font: &mut Font) {
-        self.view.render(evnt, window, &self.player, font);
+        self.view.render(evnt, window, self.player.entity(), font);
 
         if let Ok(entities) = self.entities.try_lock() {
             entities.iter().for_each(|entity| {
-                self.view.render(evnt, window, entity, font);
+                self.view.render(evnt, window, entity.as_ref(), font);
             });
         } else {
             dbg!("EntityController::render : fail to obtain entities model lock ...");
@@ -244,15 +246,15 @@ impl EntityController {
     }
 
     pub fn update(&mut self, delta_ts: u128, world: &World) {
-        self.view.update(delta_ts, &mut self.player);
+        self.view.update(delta_ts, self.player.entity_mut());
 
-        if let Some(location_type) = self.player.update(delta_ts, world) {
+        if let Some(location_type) = self.player.entity_mut().update(delta_ts, world) {
             // Send a LocationType::NewMap to the server
             // Server will reply with all new entities present on new map (EntitySpawnEvent)
             Self::send_player_move_event(
                 &self.tx,
-                self.player.get_map(),
-                self.player.get_cell(),
+                self.player.entity().get_map(),
+                self.player.entity().get_cell(),
                 location_type,
             );
 
@@ -270,9 +272,9 @@ impl EntityController {
 
             entities.iter_mut().for_each(|entity| {
                 entity.update(delta_ts, world);
-                self.view.update(delta_ts, entity);
+                self.view.update(delta_ts, entity.as_mut());
 
-                if let Some(map_data) = world.world.get(&self.player.get_map()) {
+                if let Some(map_data) = world.world.get(&self.player.entity().get_map()) {
                     if let Some(new_destination) = entity.consume_destination() {
                         self.path_finder.compute(
                             entity.get_cell(),
@@ -289,15 +291,26 @@ impl EntityController {
     }
 
     pub fn resize(&mut self, margin: &Size) {
-        self.margin = margin.clone();
+        self.margin = *margin;
         self.view.resize(margin);
     }
 
     pub fn mouse_cursor_args(&mut self, args: &[f64; 2]) {
-        self.mouse_pos = args.clone();
+        self.mouse_pos = *args;
     }
 
     pub fn key_press(&mut self, args: &Button, world: &HashMap<MapCoord, MapData>) {
+        if let &Button::Keyboard(key) = args {
+            // Call simple gRPC to request server on spell launch
+            // succeess -> feedback or simulate spell
+            // failure -> feedback
+            match key {
+                piston::Key::D1 => self.player.spell_1(),
+                piston::Key::D2 => self.player.spell_2(),
+                _ => {}
+            }
+        }
+
         if let Button::Mouse(MouseButton::Left) = args {
             let mouse_x = (self.mouse_pos[0] - self.margin.width) as i64;
             let mouse_y = (self.mouse_pos[1] - self.margin.height) as i64;
@@ -323,18 +336,19 @@ impl EntityController {
                 _ => None,
             };
 
-            if let Some(map_data) = world.get(&self.player.get_map()) {
+            if let Some(map_data) = world.get(&self.player.entity().get_map()) {
                 let path_found = self.path_finder.compute(
-                    self.player.get_cell(),
+                    self.player.entity().get_cell(),
                     destination,
                     &map_data.collider_map,
                 );
                 if path_found {
                     self.player
+                        .entity_mut()
                         .set_path(self.path_finder.get_path(), next_map_x.or(next_map_y));
                     Self::send_player_move_event(
                         &self.tx,
-                        self.player.get_map(),
+                        self.player.entity().get_map(),
                         destination,
                         LocationType::NewCell,
                     );

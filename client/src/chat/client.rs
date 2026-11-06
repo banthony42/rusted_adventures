@@ -22,7 +22,7 @@ impl ChatClient {
         login: String,
         token: String,
     ) -> impl Fn(tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
-        return move |mut req: Request<()>| -> Result<Request<()>, Status> {
+        move |mut req: Request<()>| -> Result<Request<()>, Status> {
             let login_md: MetadataValue<_> = login
                 .parse()
                 .map_err(|err| Status::invalid_argument(format!("Login: {}", err)))?;
@@ -34,7 +34,7 @@ impl ChatClient {
             req.metadata_mut().insert("login", login_md);
             req.metadata_mut().insert("authorization", token_md);
             Ok(req)
-        };
+        }
     }
 
     /// Consumes `self` returning the parts of the chat connexion.

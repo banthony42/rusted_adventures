@@ -173,7 +173,7 @@ pub struct RpgEntityService {
 }
 
 impl RpgEntityService {
-    pub fn new(mut world_rx: Receiver<WorldEvent>) -> Self {
+    pub fn new(mut wrx_to_net: Receiver<WorldEvent>, ntx_to_world: Sender<WorldEvent>) -> Self {
         let (event_tx, mut event_rx) = mpsc::channel::<RpgEntityEvent>(10);
 
         let clients = Arc::new(Mutex::new(HashMap::<String, EntityEventSender>::new()));
@@ -187,6 +187,21 @@ impl RpgEntityService {
                     Some(PlayerMoveEvent(me)) => {
                         player_move(receive.sender, me, clts.clone()).await
                     }
+                    // Handle SpellCastedEvent
+                    // Send to world player, spell, target using ntx_to_world
+                    // All needed data to spwan the spell in the world
+                    // Then the WorldEngine simulation will send back a WorldEvent
+                    // when needed, either SpellMissEvent, SpellSucess, MonsterDamage,
+                    // This will be received on wrx_to_net
+                    // OR
+                    // Client should only use simple RPC to launch spell
+                    // We answer directly success / failure
+                    // The simulation start both side worldEngine / client
+                    // The world produce WorldEvent on wrx_to_net
+                    // to warn involved clients of what's happen
+                    // Therefore client get faster first feedback
+                    // does the spell is authorized to be launch ?
+                    // target is valid ? etc ..
                     None => {}
                 };
             }
@@ -197,7 +212,7 @@ impl RpgEntityService {
         // WorldEvent on each concerned connected players.
         tokio::spawn(async move {
             let mut connection = Database::new().establish_connection();
-            while let Some(receive) = world_rx.recv().await {
+            while let Some(receive) = wrx_to_net.recv().await {
                 match receive {
                     WorldEvent::MonsterMove(data) => {
                         let players = match Character::read_by_map(&mut connection, data.map.into())
@@ -317,10 +332,13 @@ impl RpgEntity for RpgEntityService {
                 }
 
                 if let Some(event) = entity_event.ok() {
-                    if let Err(_) = event_tx
+                    if let Err(err) = event_tx
                         .send(RpgEntityEvent::new(login.clone(), event))
                         .await
                     {
+                        tracing::debug!(
+                            "RpgEntityService entity_event_bus: failed to send event: {err}"
+                        );
                         break;
                     }
                 }

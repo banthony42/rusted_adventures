@@ -52,16 +52,14 @@ impl GameAsset {
         let frames: Vec<AssetFrame> = json_game_asset
             .frames
             .iter()
-            .map(|json_frame| {
-                return AssetFrame {
-                    src_rect: [
-                        json_frame.frame.x,
-                        json_frame.frame.y,
-                        json_frame.frame.w,
-                        json_frame.frame.h,
-                    ],
-                    duration: json_frame.duration,
-                };
+            .map(|json_frame| AssetFrame {
+                src_rect: [
+                    json_frame.frame.x,
+                    json_frame.frame.y,
+                    json_frame.frame.w,
+                    json_frame.frame.h,
+                ],
+                duration: json_frame.duration,
             })
             .collect();
 
@@ -83,23 +81,20 @@ impl GameAsset {
             }
         };
 
-        return GameAsset {
-            texture: texture,
-            frames: frames,
-        };
+        GameAsset { texture, frames }
     }
 
     pub fn load_asset(path: &Path, window: &mut PistonWindow) -> GameAsset {
         let parent = path
             .parent()
-            .expect(&format!("Fail to get parent dir of: {:?}", path.to_str()));
+            .unwrap_or_else(|| panic!("Fail to get parent dir of: {:?}", path.to_str()));
 
         let raw_data: String = fs::read_to_string(path).expect("load_asset: Unable to read file.");
 
         let json_game_asset = serde_json::from_str::<JSONGameAsset>(&raw_data)
-            .expect(&format!("Fail to load JSON asset: {:?}", path.to_str()));
+            .unwrap_or_else(|_| panic!("Fail to load JSON asset: {:?}", path.to_str()));
 
-        return Self::load_game_asset_from_json(json_game_asset, parent, window);
+        Self::load_game_asset_from_json(json_game_asset, parent, window)
     }
 }
 
@@ -174,8 +169,8 @@ impl SpeciesLibrary {
 
     fn _get_species_constants(&self, species: &Species) -> &SpeciesConstants {
         self.0
-            .get(&species)
-            .expect(format!("SpeciesLibrary: Unknow species: {:?}", species).as_str())
+            .get(species)
+            .unwrap_or_else(|| panic!("SpeciesLibrary: Unknow species: {:?}", species))
     }
 
     pub fn get_font_color(&self, species: &Species) -> Color {
@@ -235,12 +230,10 @@ pub fn load_assets(window: &mut PistonWindow) -> HashMap<EntityAssets, GameAsset
         ),
     ];
 
-    return assets_list
+    assets_list
         .iter()
-        .map(|asset_data| {
-            return (asset_data.0, GameAsset::load_asset(asset_data.1, window));
-        })
-        .collect();
+        .map(|asset_data| (asset_data.0, GameAsset::load_asset(asset_data.1, window)))
+        .collect()
 }
 
 // Temporary Hard loaded textures

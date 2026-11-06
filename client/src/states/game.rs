@@ -53,10 +53,10 @@ impl Game {
         let mut font = Font::new();
         font.load(window);
 
-        return Game {
+        Game {
             credentials,
             logout: false,
-            font: font,
+            font,
             hard_textures: load_hard_drawn_assets(window),
             margin: Size {
                 width: MAP_WIDTH_CENTER as f64,
@@ -66,7 +66,7 @@ impl Game {
             interface: Interface::new(),
             chat_controller: chat,
             ent_controller: entities,
-        };
+        }
     }
 }
 
@@ -107,12 +107,11 @@ impl GameState for Game {
 
     fn key_press(&mut self, args: &Button) {
         self.ent_controller.key_press(args, &self.world.world);
-        self.chat_controller.key_press(&args, &mut self.font);
+        self.chat_controller.key_press(args, &mut self.font);
 
         if let &Button::Keyboard(key) = args {
-            match key {
-                piston::Key::Escape => self.logout = true,
-                _ => {}
+            if key == piston::Key::Escape {
+                self.logout = true
             }
         }
     }

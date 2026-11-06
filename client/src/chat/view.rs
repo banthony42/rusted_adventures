@@ -181,7 +181,7 @@ impl ChatGraphicView {
         if let Button::Keyboard(Key::Return) = args {
             if self.chat_input.is_focus() {
                 let user_input = self.chat_input.get_content();
-                if user_input.is_empty() == false {
+                if !user_input.is_empty() {
                     self.chat_input.clean();
                     self.chat_area.set_scroll(0.0);
                     return Some(user_input);
@@ -196,7 +196,7 @@ impl ChatGraphicView {
     }
 
     pub fn resize(&mut self, margin: &Size) {
-        self.margin = margin.clone();
+        self.margin = *margin;
         self.chat_input.resize(margin);
         self.chat_area.resize(margin);
         self.chat_window.resize(margin);

@@ -49,8 +49,10 @@ impl TaskInterface for LogoutTask {
 
 impl LogoutTask {
     pub fn new(login: String, token: String) -> Self {
-        let mut data = TaskData::default();
-        data.steps = 1;
+        let data = TaskData {
+            steps: 1,
+            ..Default::default()
+        };
 
         LogoutTask {
             data: Arc::new(Mutex::new(data)),

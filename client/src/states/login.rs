@@ -26,13 +26,13 @@ const TITLE: &str = "Login";
 const TITLE_FONT_SIZE: u32 = 28;
 const LOGIN_TITLE_POS: [f64; 2] = [WINDOW_WIDTH_CENTER as f64, WINDOW_HEIGHT as f64 / 2.5];
 const USERNAME_POS: [f64; 2] = [
-    LOGIN_TITLE_POS[0] - FIELD_WIDTH as f64 / 2.0,
+    LOGIN_TITLE_POS[0] - FIELD_WIDTH / 2.0,
     LOGIN_TITLE_POS[1] + 20.0,
 ];
 const PASSWORD_POS: [f64; 2] = [USERNAME_POS[0], USERNAME_POS[1] + FIELD_HEIGHT + 10.0];
 const MESSAGE_FONT_SIZE: u32 = 18;
 const MESSAGE_POS: [f64; 2] = [
-    PASSWORD_POS[0] + FIELD_WIDTH as f64 / 2.0,
+    PASSWORD_POS[0] + FIELD_WIDTH / 2.0,
     PASSWORD_POS[1] + FIELD_HEIGHT + 50.0,
 ];
 
@@ -42,11 +42,11 @@ impl Login {
         font.load(window);
         Login {
             login: false,
-            font: font,
-            username: InputField::new(USERNAME_POS, FIELD_FONT_SIZE, FIELD_WIDTH as f64)
+            font,
+            username: InputField::new(USERNAME_POS, FIELD_FONT_SIZE, FIELD_WIDTH)
                 .set_radius(FIELD_RADIUS)
                 .set_height(FIELD_HEIGHT),
-            password: InputField::new(PASSWORD_POS, FIELD_FONT_SIZE, FIELD_WIDTH as f64)
+            password: InputField::new(PASSWORD_POS, FIELD_FONT_SIZE, FIELD_WIDTH)
                 .set_radius(FIELD_RADIUS)
                 .set_height(FIELD_HEIGHT)
                 .masked(true),
@@ -64,7 +64,7 @@ impl Login {
             self.message = Some(String::from("Please, enter login and password to connect."));
             return false;
         }
-        return true;
+        true
     }
 }
 
@@ -88,7 +88,7 @@ impl GameState for Login {
             clear(color::BLACK, gl);
 
             let rect = Rectangle::new([1.0; 4]).color(color::hex("2d2d2d"));
-            let mut final_position = self.background.clone();
+            let mut final_position = self.background;
             final_position[0] += self.margin.width;
             final_position[1] += self.margin.height;
             rect.draw(final_position, &_ctx.draw_state, _ctx.transform, gl);
@@ -126,8 +126,8 @@ impl GameState for Login {
     }
 
     fn text_input(&mut self, args: &String) {
-        self.username.text_input(&args, &mut self.font);
-        self.password.text_input(&args, &mut self.font);
+        self.username.text_input(args, &mut self.font);
+        self.password.text_input(args, &mut self.font);
     }
 
     fn mouse_cursor_args(&mut self, args: &[f64; 2]) {
