@@ -3,21 +3,22 @@ package RPG.package;
 
 import "entity/shared.proto";
 
-enum LocationType {
-  NewMap = 0;
-  NewCell = 1;
-  Update = 2;
+message PlayerNewMap {
+  Location map = 1;
 }
 
-message PlayerMove {
-  Location new_location = 1;
-  LocationType location_type = 2;
+message PlayerNewCell {
+    Location cell = 1;
 }
 
-
+message PlayerNewDest {
+    Location destination = 1;
+}
 
 message ClientEntityEvent {
   oneof event {
-    PlayerMove p_move = 1;
+    PlayerNewMap p_new_map = 1;
+    PlayerNewCell p_new_cell = 2;
+    PlayerNewDest p_new_dest = 3;
   };
 }
