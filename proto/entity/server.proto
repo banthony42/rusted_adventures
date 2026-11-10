@@ -1,0 +1,25 @@
+syntax="proto3";
+package RPG.package;
+
+import "entity/shared.proto";
+
+message EntityMove {
+  string uuid = 1;
+  Location new_location = 2;
+}
+
+message EntitySpawn {
+  Entity new_entity = 1;
+}
+
+message EntityDespawn {
+  string uuid = 1;
+}
+
+message ServerEntityEvent {
+  oneof event {
+    EntityMove move = 1;
+    EntitySpawn spawn = 2;
+    EntityDespawn despawn = 3;
+  };
+}

@@ -1,0 +1,23 @@
+syntax="proto3";
+package RPG.package;
+
+import "entity/shared.proto";
+
+enum LocationType {
+  NewMap = 0;
+  NewCell = 1;
+  Update = 2;
+}
+
+message PlayerMove {
+  Location new_location = 1;
+  LocationType location_type = 2;
+}
+
+
+
+message ClientEntityEvent {
+  oneof event {
+    PlayerMove p_move = 1;
+  };
+}
