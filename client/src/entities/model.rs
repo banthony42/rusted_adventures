@@ -44,7 +44,7 @@ pub struct Mage {
     entity: EntityModel,
 }
 
-pub trait Player {
+pub trait Playable {
     fn entity(&self) -> &EntityModel;
     fn entity_mut(&mut self) -> &mut EntityModel;
 
@@ -53,37 +53,37 @@ pub trait Player {
 }
 
 #[derive(Debug, Clone)]
-pub enum PlayerType {
+pub enum Player {
     Warrior(Warrior),
     Mage(Mage),
 }
 
-impl Player for PlayerType {
+impl Playable for Player {
     fn entity(&self) -> &EntityModel {
         match self {
-            PlayerType::Warrior(warrior) => &warrior.entity,
-            PlayerType::Mage(mage) => &mage.entity,
+            Player::Warrior(warrior) => &warrior.entity,
+            Player::Mage(mage) => &mage.entity,
         }
     }
 
     fn entity_mut(&mut self) -> &mut EntityModel {
         match self {
-            PlayerType::Warrior(warrior) => &mut warrior.entity,
-            PlayerType::Mage(mage) => &mut mage.entity,
+            Player::Warrior(warrior) => &mut warrior.entity,
+            Player::Mage(mage) => &mut mage.entity,
         }
     }
 
     fn spell_1(&self) {
         match self {
-            PlayerType::Warrior(warrior) => warrior.absorption(),
-            PlayerType::Mage(mage) => mage.fireball(),
+            Player::Warrior(warrior) => warrior.absorption(),
+            Player::Mage(mage) => mage.fireball(),
         }
     }
 
     fn spell_2(&self) {
         match self {
-            PlayerType::Warrior(warrior) => warrior.charge(),
-            PlayerType::Mage(mage) => mage.ice_trap(),
+            Player::Warrior(warrior) => warrior.charge(),
+            Player::Mage(mage) => mage.ice_trap(),
         }
     }
 }
@@ -206,9 +206,9 @@ impl_entity!(Mage);
 // autoritative server instead of client compute and server ack / save in DB
 #[derive(PartialEq)]
 pub enum UpdateInformation {
-    NewMap,
-    NewCell,
-    NewDest,
+    Map,
+    Cell,
+    Dest,
 }
 
 // Needed to manipulate EntityModel attributes using IEntity abstraction
@@ -358,7 +358,7 @@ impl IEntity for EntityModel {
                 Some(Orientation::Est) => {
                     if let Some(new_map) = world.get_east_map(self.map) {
                         self.cell.x = 0;
-                        new_pos = Some(UpdateInformation::NewMap);
+                        new_pos = Some(UpdateInformation::Map);
                         new_map.0
                     } else {
                         self.map
@@ -367,7 +367,7 @@ impl IEntity for EntityModel {
                 Some(Orientation::West) => {
                     if let Some(new_map) = world.get_west_map(self.map) {
                         self.cell.x = TILEMAP_WIDTH as i64 - 1;
-                        new_pos = Some(UpdateInformation::NewMap);
+                        new_pos = Some(UpdateInformation::Map);
                         new_map.0
                     } else {
                         self.map
@@ -386,7 +386,7 @@ impl IEntity for EntityModel {
                         self.offset.x = 0;
                         self.offset.y = 0;
                         self.step = 0.0;
-                        new_pos = Some(UpdateInformation::NewCell);
+                        new_pos = Some(UpdateInformation::Cell);
                     }
                 } else {
                     direction *= 64.0;

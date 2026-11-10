@@ -6,7 +6,7 @@ use crate::{
     chat::controller::ChatController,
     entities::{
         controller::EntityController,
-        model::{EntityModel, PlayerType},
+        model::{EntityModel, Player},
     },
     import::assets::load_assets,
     states::game::GameCredentials,
@@ -25,7 +25,7 @@ pub enum GameData {
     Login(String),
     Token(String),
     Message(String),
-    Player(PlayerType),
+    Player(Player),
     Entities(Vec<EntityModel>),
 }
 
@@ -181,7 +181,7 @@ impl StateFactory<Game> {
 
         let mut login: Option<String> = None;
         let mut token: Option<String> = None;
-        let mut player: Option<PlayerType> = None;
+        let mut player: Option<Player> = None;
         let mut entities: Option<Vec<EntityModel>> = None;
 
         game_data.iter().for_each(|gd| match gd {
@@ -207,13 +207,11 @@ impl StateFactory<Game> {
         // Allow the game state to run without entities
         // Therefore the entities list will be populated with events receive from the server
         let entities = entities.unwrap_or_default();
-        let mut ent_controller = EntityController::new(load_assets(window), player, entities);
-        ent_controller.init(login.clone(), token.clone());
+        let credz = GameCredentials { login, token };
+        let ent_ctl = EntityController::new(load_assets(window), credz.clone(), player, entities);
+        let chat_ctl = ChatController::new(credz.clone());
 
-        let credentials = GameCredentials { login, token };
-        let chat_controller = ChatController::new(credentials.clone());
-
-        let mut new_state = Game::new(window, credentials, chat_controller, ent_controller);
+        let mut new_state = Game::new(window, credz, chat_ctl, ent_ctl);
         Self::init_state(&mut new_state, window);
         Ok(Box::new(new_state))
     }
