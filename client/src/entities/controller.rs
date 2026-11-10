@@ -22,15 +22,15 @@ use super::{
 
 use common::{
     constants::*,
+    grpc_codegen::{
+        client_entity_event::Event::PMove,
+        server_entity_event::Event::{Despawn, Move, Spawn},
+    },
     rpc_extentions::{RpcCoordExtension, RpcLocationExtension},
     CellCoord, Orientation,
 };
 use common::{
-    grpc_codegen::{
-        client_entity_event::Event::PlayerMoveEvent,
-        server_entity_event::Event::{EntityDespawnEvent, EntityMoveEvent, EntitySpawnEvent},
-        ClientEntityEvent, Coord, Location, LocationType, PlayerMove,
-    },
+    grpc_codegen::{ClientEntityEvent, Coord, Location, LocationType, PlayerMove},
     MapCoord,
 };
 use tokio::runtime::{Builder, Runtime};
@@ -111,7 +111,7 @@ impl EntityController {
                                     Ok(Some(server_entity_event)) => {
                                         if let Some(se) = server_entity_event.event {
                                             match se {
-                                                EntityMoveEvent(entity_move) => {
+                                                Move(entity_move) => {
                                                     // println!("Client: EntityController: EntityMoveEvent: {:?}", entity_move);
                                                         let mut entities = some_entities.lock().await;
                                                         entities.iter_mut()
@@ -125,7 +125,7 @@ impl EntityController {
                                                             }
                                                         });
                                                 },
-                                                EntitySpawnEvent(entity_spawn) => {
+                                                Spawn(entity_spawn) => {
                                                     println!("Client: EntityController: EntitySpawnEvent: {:?}", entity_spawn);
                                                     if let Some(new_entity) = entity_spawn.new_entity {
                                                         if let Some(family) = new_entity.family {
@@ -147,7 +147,7 @@ impl EntityController {
                                                         }
                                                     }
                                                 },
-                                                EntityDespawnEvent(entity_despawn) => {
+                                                Despawn(entity_despawn) => {
                                                     println!("Client: EntityController: EntityDespawnEvent: {:?}",entity_despawn );
                                                     let mut entities = some_entities.lock().await;
                                                     entities.retain(|entity| !entity.get_uuid().eq(&entity_despawn.uuid));
@@ -237,7 +237,7 @@ impl EntityController {
                 }),
             };
             let event = ClientEntityEvent {
-                event: Some(PlayerMoveEvent(player_move)),
+                event: Some(PMove(player_move)),
             };
             if let Err(error) = tx.try_send(event) {
                 println!("Entity controller tx error: {:?}", error);

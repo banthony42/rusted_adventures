@@ -3,7 +3,7 @@ use diesel_geometry::data_types::PgPoint;
 use crate::database::model::location::{UpdateLocation, UpdateLocationDestination};
 use crate::grpc_codegen::EntityDespawn;
 use crate::grpc_codegen::{
-    server_entity_event::Event::{EntityDespawnEvent, EntityMoveEvent, EntitySpawnEvent},
+    server_entity_event::Event::{Despawn, Move, Spawn},
     EntityMove, EntitySpawn,
 };
 use crate::grpc_codegen::{
@@ -19,7 +19,7 @@ pub trait ServerEntityEventExtension {
 impl ServerEntityEventExtension for ServerEntityEvent {
     fn movement(uuid: String, location: RpcLocation) -> Self {
         ServerEntityEvent {
-            event: Some(EntityMoveEvent(EntityMove {
+            event: Some(Move(EntityMove {
                 uuid: uuid,
                 new_location: Some(location),
             })),
@@ -28,7 +28,7 @@ impl ServerEntityEventExtension for ServerEntityEvent {
 
     fn spawn(entity: RpcEntity) -> Self {
         ServerEntityEvent {
-            event: Some(EntitySpawnEvent(EntitySpawn {
+            event: Some(Spawn(EntitySpawn {
                 new_entity: Some(entity),
             })),
         }
@@ -36,7 +36,7 @@ impl ServerEntityEventExtension for ServerEntityEvent {
 
     fn despawn(uuid: String) -> Self {
         ServerEntityEvent {
-            event: Some(EntityDespawnEvent(EntityDespawn { uuid })),
+            event: Some(Despawn(EntityDespawn { uuid })),
         }
     }
 }

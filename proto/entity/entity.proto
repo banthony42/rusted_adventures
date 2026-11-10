@@ -67,15 +67,15 @@ message EntityDespawn {
 
 message ClientEntityEvent {
     oneof event {
-        PlayerMove player_move_event = 1;
+        PlayerMove p_move = 1;
     };
 }
 
 message ServerEntityEvent {
     oneof event {
-        EntityMove entity_move_event = 1;
-        EntitySpawn entity_spawn_event = 2;
-        EntityDespawn entity_despawn_event = 3;
+        EntityMove move = 1;
+        EntitySpawn spawn = 2;
+        EntityDespawn despawn = 3;
     };
 }
 

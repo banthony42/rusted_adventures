@@ -14,7 +14,7 @@ use common::database::db::Database;
 use common::database::model::character::Character;
 use common::database::model::monster::Monster;
 use common::grpc_codegen::{
-    client_entity_event::Event::PlayerMoveEvent, entity::Family, rpg_entity_server::RpgEntity,
+    client_entity_event::Event::PMove, entity::Family, rpg_entity_server::RpgEntity,
     ClientEntityEvent, EmptyRequest, Entities, Entity as RpcEntity, LocationType, PlayerData,
     PlayerMove, ServerEntityEvent as EntityEvent,
 };
@@ -184,9 +184,7 @@ impl RpgEntityService {
         tokio::spawn(async move {
             while let Some(receive) = event_rx.recv().await {
                 match receive.event.event {
-                    Some(PlayerMoveEvent(me)) => {
-                        player_move(receive.sender, me, clts.clone()).await
-                    }
+                    Some(PMove(me)) => player_move(receive.sender, me, clts.clone()).await,
                     // Handle SpellCastedEvent
                     // Send to world player, spell, target using ntx_to_world
                     // All needed data to spwan the spell in the world
