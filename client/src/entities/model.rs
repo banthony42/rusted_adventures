@@ -1,4 +1,3 @@
-use common::grpc_codegen::LocationType;
 use common::{constants::*, CellCoord, MapCoord, Orientation};
 
 use crate::{
@@ -184,7 +183,7 @@ macro_rules! impl_entity {
                 self.entity.set_destination(destination);
             }
 
-            fn update(&mut self, delta_ts: u128, world: &World) -> Option<LocationType> {
+            fn update(&mut self, delta_ts: u128, world: &World) -> Option<UpdateInformation> {
                 self.entity.update(delta_ts, world)
             }
 
@@ -201,6 +200,16 @@ macro_rules! impl_entity {
 
 impl_entity!(Warrior);
 impl_entity!(Mage);
+
+// This UpdateInformation will only exist waiting the rework on player path computing
+// Indeed the path computing should be done server side
+// autoritative server instead of client compute and server ack / save in DB
+#[derive(PartialEq)]
+pub enum UpdateInformation {
+    NewMap,
+    NewCell,
+    NewDest,
+}
 
 // Needed to manipulate EntityModel attributes using IEntity abstraction
 pub trait IEntity: Send {
@@ -231,7 +240,7 @@ pub trait IEntity: Send {
     fn consume_destination(&mut self) -> Option<CellCoord>;
     fn set_destination(&mut self, destination: CellCoord);
 
-    fn update(&mut self, delta_ts: u128, world: &World) -> Option<LocationType>;
+    fn update(&mut self, delta_ts: u128, world: &World) -> Option<UpdateInformation>;
     fn get_real_pos(&self) -> CellCoord;
 
     fn get_orientation(&self) -> &Orientation;
@@ -341,15 +350,15 @@ impl IEntity for EntityModel {
         self.next_map = next_map;
     }
 
-    fn update(&mut self, delta_ts: u128, world: &World) -> Option<LocationType> {
-        let mut new_pos: Option<LocationType> = None;
+    fn update(&mut self, delta_ts: u128, world: &World) -> Option<UpdateInformation> {
+        let mut new_pos: Option<UpdateInformation> = None;
         if self.path.is_empty() {
             self.set_state(Animations::Idle);
             self.map = match self.next_map.take() {
                 Some(Orientation::Est) => {
                     if let Some(new_map) = world.get_east_map(self.map) {
                         self.cell.x = 0;
-                        new_pos = Some(LocationType::NewMap);
+                        new_pos = Some(UpdateInformation::NewMap);
                         new_map.0
                     } else {
                         self.map
@@ -358,7 +367,7 @@ impl IEntity for EntityModel {
                 Some(Orientation::West) => {
                     if let Some(new_map) = world.get_west_map(self.map) {
                         self.cell.x = TILEMAP_WIDTH as i64 - 1;
-                        new_pos = Some(LocationType::NewMap);
+                        new_pos = Some(UpdateInformation::NewMap);
                         new_map.0
                     } else {
                         self.map
@@ -377,7 +386,7 @@ impl IEntity for EntityModel {
                         self.offset.x = 0;
                         self.offset.y = 0;
                         self.step = 0.0;
-                        new_pos = Some(LocationType::Update);
+                        new_pos = Some(UpdateInformation::NewCell);
                     }
                 } else {
                     direction *= 64.0;

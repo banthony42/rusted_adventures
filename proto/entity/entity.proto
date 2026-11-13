@@ -2,81 +2,16 @@ syntax="proto3";
 package RPG.package;
 
 import "generics.proto";
-
-enum Species {
-    BOUFTOU = 0;
-    CRABEDOEUF = 1;
-}
-
-enum Classes {
-    WARRIOR = 0;
-    MAGE = 1;
-}
-
-message Coord {
-    int64 x = 1;
-    int64 y = 2;
-}
-
-message Location {
-    Coord map = 1;
-    Coord cell = 2;
-}
-
-message Entity {
-    string uuid = 1;
-    string name = 2;
-    oneof family {
-        Species species = 3;
-        Classes class = 4;
-    };
-    Location location = 5;
-}
-
-message PlayerData {
-    Entity entity = 1;
-}
+import "entity/shared.proto";
+import "entity/client.proto";
+import "entity/server.proto";
 
 message Entities {
     repeated Entity entities = 1;
 }
 
-enum LocationType {
-    NewMap = 0;
-    NewCell = 1;
-    Update = 2;
-}
-
-message PlayerMove {
-    Location new_location = 1;
-    LocationType location_type = 2;
-}
-
-message EntityMove {
-    string uuid = 1;
-    Location new_location = 2;
-}
-
-message EntitySpawn {
-    Entity new_entity = 1;
-}
-
-message EntityDespawn {
-    string uuid = 1;
-}
-
-message ClientEntityEvent {
-    oneof event {
-        PlayerMove player_move_event = 1;
-    };
-}
-
-message ServerEntityEvent {
-    oneof event {
-        EntityMove entity_move_event = 1;
-        EntitySpawn entity_spawn_event = 2;
-        EntityDespawn entity_despawn_event = 3;
-    };
+message PlayerData {
+  Entity entity = 1;
 }
 
 service RPGEntity {

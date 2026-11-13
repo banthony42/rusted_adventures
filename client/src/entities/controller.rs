@@ -5,7 +5,7 @@ use piston_window::PistonWindow;
 
 use crate::{
     entities::{
-        model::{EntityModel, Player, PlayerType, UIEntityModel},
+        model::{EntityModel, Player, PlayerType, UIEntityModel, UpdateInformation},
         path_finding::PathFinder,
     },
     import::assets::{EntityAssets, GameAsset},
@@ -22,15 +22,16 @@ use super::{
 
 use common::{
     constants::*,
+    grpc_codegen::{
+        client_entity_event::Event::{PNewCell, PNewDest, PNewMap},
+        server_entity_event::Event::{Despawn, Move, Spawn},
+        PlayerNewCell, PlayerNewDest, PlayerNewMap,
+    },
     rpc_extentions::{RpcCoordExtension, RpcLocationExtension},
     CellCoord, Orientation,
 };
 use common::{
-    grpc_codegen::{
-        client_entity_event::Event::PlayerMoveEvent,
-        server_entity_event::Event::{EntityDespawnEvent, EntityMoveEvent, EntitySpawnEvent},
-        ClientEntityEvent, Coord, Location, LocationType, PlayerMove,
-    },
+    grpc_codegen::{ClientEntityEvent, Coord, Location},
     MapCoord,
 };
 use tokio::runtime::{Builder, Runtime};
@@ -111,7 +112,7 @@ impl EntityController {
                                     Ok(Some(server_entity_event)) => {
                                         if let Some(se) = server_entity_event.event {
                                             match se {
-                                                EntityMoveEvent(entity_move) => {
+                                                Move(entity_move) => {
                                                     // println!("Client: EntityController: EntityMoveEvent: {:?}", entity_move);
                                                         let mut entities = some_entities.lock().await;
                                                         entities.iter_mut()
@@ -125,7 +126,7 @@ impl EntityController {
                                                             }
                                                         });
                                                 },
-                                                EntitySpawnEvent(entity_spawn) => {
+                                                Spawn(entity_spawn) => {
                                                     println!("Client: EntityController: EntitySpawnEvent: {:?}", entity_spawn);
                                                     if let Some(new_entity) = entity_spawn.new_entity {
                                                         if let Some(family) = new_entity.family {
@@ -147,7 +148,7 @@ impl EntityController {
                                                         }
                                                     }
                                                 },
-                                                EntityDespawnEvent(entity_despawn) => {
+                                                Despawn(entity_despawn) => {
                                                     println!("Client: EntityController: EntityDespawnEvent: {:?}",entity_despawn );
                                                     let mut entities = some_entities.lock().await;
                                                     entities.retain(|entity| !entity.get_uuid().eq(&entity_despawn.uuid));
@@ -220,26 +221,33 @@ impl EntityController {
         tx: &Option<Sender<ClientEntityEvent>>,
         map: MapCoord,
         cell: CellCoord,
-        ltype: LocationType,
+        update_info: UpdateInformation,
     ) {
         if let Some(tx) = tx {
-            let player_move = PlayerMove {
-                location_type: ltype.into(),
-                new_location: Some(Location {
-                    map: Some(Coord {
-                        x: map.x as i64,
-                        y: map.y as i64,
-                    }),
-                    cell: Some(Coord {
-                        x: cell.x,
-                        y: cell.y,
-                    }),
+            let location = Location {
+                map: Some(Coord {
+                    x: map.x as i64,
+                    y: map.y as i64,
+                }),
+                cell: Some(Coord {
+                    x: cell.x,
+                    y: cell.y,
                 }),
             };
-            let event = ClientEntityEvent {
-                event: Some(PlayerMoveEvent(player_move)),
+
+            let event = match update_info {
+                UpdateInformation::NewMap => PNewMap(PlayerNewMap {
+                    map: Some(location),
+                }),
+                UpdateInformation::NewCell => PNewCell(PlayerNewCell {
+                    cell: Some(location),
+                }),
+                UpdateInformation::NewDest => PNewDest(PlayerNewDest {
+                    destination: Some(location),
+                }),
             };
-            if let Err(error) = tx.try_send(event) {
+
+            if let Err(error) = tx.try_send(ClientEntityEvent { event: Some(event) }) {
                 println!("Entity controller tx error: {:?}", error);
             }
         }
@@ -248,19 +256,18 @@ impl EntityController {
     pub fn update(&mut self, delta_ts: u128, world: &World) {
         self.view.update(delta_ts, self.player.entity_mut());
 
-        if let Some(location_type) = self.player.entity_mut().update(delta_ts, world) {
+        if let Some(update_info) = self.player.entity_mut().update(delta_ts, world) {
+            if update_info == UpdateInformation::NewMap {
+                self.operations = EntityOperation::ClearEntities;
+            }
             // Send a LocationType::NewMap to the server
             // Server will reply with all new entities present on new map (EntitySpawnEvent)
             Self::send_player_move_event(
                 &self.tx,
                 self.player.entity().get_map(),
                 self.player.entity().get_cell(),
-                location_type,
+                update_info,
             );
-
-            if location_type == LocationType::NewMap {
-                self.operations = EntityOperation::ClearEntities;
-            }
         }
 
         if let Ok(mut entities) = self.entities.try_lock() {
@@ -350,7 +357,7 @@ impl EntityController {
                         &self.tx,
                         self.player.entity().get_map(),
                         destination,
-                        LocationType::NewCell,
+                        UpdateInformation::NewDest,
                     );
                 }
             }
