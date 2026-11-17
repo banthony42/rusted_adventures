@@ -1,7 +1,7 @@
-use common::world::ColliderMap;
-use common::CellCoord;
+use crate::world::ColliderMap;
+use crate::CellCoord;
 
-use common::constants::TILEMAP_LINEAR_SIZE;
+use crate::constants::TILEMAP_LINEAR_SIZE;
 
 use super::PathFindingStrategy;
 

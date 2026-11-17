@@ -4,22 +4,14 @@ use piston::{Button, MouseButton, Size};
 use piston_window::PistonWindow;
 
 use crate::{
-    entities::{
-        model::{EntityModel, Playable, Player, UIEntityModel, UpdateInformation},
-        path_finding::PathFinder,
-    },
+    entities::model::{EntityModel, Playable, Player, UIEntityModel, UpdateInformation},
     import::assets::{EntityAssets, GameAsset},
     states::game::GameCredentials,
     ui::font::Font,
     world::{MapData, World},
 };
 
-use super::{
-    client::EntityClient,
-    model::IEntity,
-    path_finding::{astar::AStar, PathFindingStrategy},
-    view::EntityView,
-};
+use super::{client::EntityClient, model::IEntity, view::EntityView};
 
 use common::{
     constants::*,
@@ -27,6 +19,7 @@ use common::{
         client_entity_event::Event::{PNewCell, PNewDest, PNewMap},
         PlayerNewCell, PlayerNewDest, PlayerNewMap,
     },
+    path_finding::{astar::AStar, PathFinder, PathFindingStrategy},
     CellCoord, Orientation,
 };
 use common::{

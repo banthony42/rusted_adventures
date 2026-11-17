@@ -12,6 +12,7 @@ pub mod authenticator;
 pub mod character;
 pub mod database;
 pub mod monster;
+pub mod path_finding;
 pub mod record;
 pub mod rpc_extentions;
 pub mod utils;
