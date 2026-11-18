@@ -39,7 +39,6 @@ impl Frames {
                                 y: sprt.bound_y,
                             },
                             sprt.tile_index,
-                            sprt.collider,
                         )
                     })
                     .collect();

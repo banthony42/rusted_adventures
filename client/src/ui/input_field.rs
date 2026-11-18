@@ -3,11 +3,11 @@ use piston_window::*;
 
 use super::font::Font;
 
-#[derive(Clone)]
+// #[derive(Clone)]
 pub struct InputField {
     focus: bool,
     mouseover: bool,
-    font_size: u32,
+    font: Font,
     content: String,
     content_width: f64,
     cursor_timer: u128,
@@ -19,7 +19,7 @@ pub struct InputField {
 }
 
 impl InputField {
-    pub fn new(pos: [f64; 2], font_size: u32, width: f64) -> Self {
+    pub fn new(pos: [f64; 2], font_size: u32, width: f64, window: &mut PistonWindow) -> Self {
         let rect = Rectangle::new([1.0; 4])
             .color(color::WHITE)
             .shape(Shape::Round(1.0, 32))
@@ -33,7 +33,7 @@ impl InputField {
         InputField {
             focus: false,
             mouseover: false,
-            font_size,
+            font: Font::new(font_size).load(window),
             rect_settings,
             content: String::new(),
             content_width: 0.0,
@@ -48,13 +48,17 @@ impl InputField {
         }
     }
 
+    pub fn font(&mut self) -> &mut Font {
+        &mut self.font
+    }
+
     pub fn masked(mut self, masked: bool) -> Self {
         self.masked = masked;
         self
     }
 
     pub fn set_height(mut self, height: f64) -> Self {
-        self.rect_settings[3] = (self.font_size as f64 + 4.0).max(height);
+        self.rect_settings[3] = (self.font.size() as f64 + 4.0).max(height);
         self
     }
 
@@ -88,9 +92,9 @@ impl InputField {
         self.content.clone()
     }
 
-    fn erase_last_char(&mut self, font: &mut Font) {
+    fn erase_last_char(&mut self) {
         if let Some(char) = self.content.pop() {
-            if let Ok(text_width) = font.get().width(self.font_size, &char.to_string()) {
+            if let Some(text_width) = self.font.width(&char.to_string()) {
                 self.content_width -= text_width;
             }
         }
@@ -100,20 +104,17 @@ impl InputField {
         }
     }
 
-    fn add_text(&mut self, text: &str, font: &mut Font) {
-        match font.get().width(self.font_size, text) {
-            Ok(text_width) => {
-                let max_content_width = self.rect_settings[2] - 4.0;
-                if self.content_width + text_width < max_content_width {
-                    self.content.push_str(text);
-                    self.content_width += text_width;
-                }
+    fn add_text(&mut self, text: &str) {
+        if let Some(text_width) = self.font.width(text) {
+            let max_content_width = self.rect_settings[2] - 4.0;
+            if self.content_width + text_width < max_content_width {
+                self.content.push_str(text);
+                self.content_width += text_width;
             }
-            Err(_) => {}
         }
     }
 
-    pub fn render(&self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
+    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow) {
         window.draw_2d(evnt, |_ctx, gl, _device| {
             let mut final_position = self.rect_settings;
             final_position[0] += self.margin.width;
@@ -125,19 +126,18 @@ impl InputField {
         // Assume top offset is the same for all characters, we choose '|' as char model to get the height of char
         // This height is use below to center the text in the text field Rectangle and stick the cursor to the text
         if !self.content.is_empty() {
-            if let Ok(char_template) = font.get().character(self.font_size, '|') {
+            if let Some(char_offset) = self.font.char_offset('|') {
                 let text_pos = [
                     self.rect_settings[0],
                     self.rect_settings[1]
-                        + char_template.top()
-                        + (self.rect_settings[3] - self.font_size as f64) / 2.0,
+                        + char_offset.top
+                        + (self.rect_settings[3] - self.font.size() as f64) / 2.0,
                 ];
-                font.render_left_aligned(
+
+                self.font.render_left_aligned(
                     self.get_content_or_masked().as_str(),
-                    self.font_size,
                     evnt,
                     window,
-                    color::BLACK,
                     text_pos,
                     &self.margin,
                 );
@@ -149,23 +149,19 @@ impl InputField {
             true => { /* Don't render the cursor, should be hidden */ }
             false => {
                 if self.focus {
-                    if let Ok(text_width) = font
-                        .get()
-                        .width(self.font_size, self.get_content_or_masked().as_str())
+                    if let Some(text_width) = self.font.width(self.get_content_or_masked().as_str())
                     {
-                        if let Ok(char_template) = font.get().character(self.font_size, '|') {
+                        if let Some(char_offset) = self.font.char_offset('|') {
                             let cursor_pos = [
-                                self.rect_settings[0] + text_width - char_template.left(),
+                                self.rect_settings[0] + text_width - char_offset.left,
                                 self.rect_settings[1]
-                                    + char_template.top()
-                                    + (self.rect_settings[3] - self.font_size as f64) / 2.0,
+                                    + char_offset.top
+                                    + (self.rect_settings[3] - self.font.size() as f64) / 2.0,
                             ];
-                            font.render_left_aligned(
+                            self.font.render_left_aligned(
                                 "|",
-                                self.font_size,
                                 evnt,
                                 window,
-                                color::BLACK,
                                 cursor_pos,
                                 &self.margin,
                             )
@@ -186,9 +182,9 @@ impl InputField {
         }
     }
 
-    pub fn text_input(&mut self, args: &String, font: &mut Font) {
+    pub fn text_input(&mut self, args: &str) {
         if self.focus {
-            self.add_text(args.as_str(), font);
+            self.add_text(args);
         }
     }
 
@@ -211,7 +207,7 @@ impl InputField {
         self.mouseover = false;
     }
 
-    pub fn key_press(&mut self, args: &Button, font: &mut Font) {
+    pub fn key_press(&mut self, args: &Button) {
         if let Button::Mouse(MouseButton::Left) = args {
             match self.mouseover {
                 true => self.focus = true,
@@ -225,7 +221,7 @@ impl InputField {
 
         if self.focus {
             if let Button::Keyboard(Key::Backspace) = args {
-                self.erase_last_char(font);
+                self.erase_last_char();
             }
         }
     }

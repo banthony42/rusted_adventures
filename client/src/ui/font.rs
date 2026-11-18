@@ -1,8 +1,11 @@
+use graphics::types::Color;
 use piston_window::*;
 use std::path::PathBuf;
 
 pub struct Font {
     font: Option<Glyphs>,
+    size: u32,
+    color: Color,
 }
 
 enum TextAlign {
@@ -10,18 +13,34 @@ enum TextAlign {
     Left,
 }
 
+pub struct FontCharOffset {
+    pub top: f64,
+    pub left: f64,
+}
+
+impl FontCharOffset {
+    fn new(top: f64, left: f64) -> Self {
+        Self { top, left }
+    }
+}
+
 impl Font {
-    pub fn new() -> Font {
-        Font { font: None }
+    pub fn new(size: u32) -> Font {
+        Font {
+            font: None,
+            size,
+            color: color::BLACK,
+        }
     }
 
-    pub fn load(&mut self, window: &mut PistonWindow) {
+    pub fn load(mut self, window: &mut PistonWindow) -> Self {
         let font_path = PathBuf::from("assets/fonts/OpenSans_Condensed-SemiBold.ttf");
         self.font = Some(
             window
                 .load_font(font_path)
                 .expect("Engine can't run without font."),
         );
+        self
     }
 
     pub fn get(&mut self) -> &mut Glyphs {
@@ -30,66 +49,79 @@ impl Font {
             .expect("Font should be loaded (with `load` function) before accessing it.")
     }
 
+    pub fn size(&self) -> u32 {
+        self.size
+    }
+
+    pub fn set_size(&mut self, size: u32) -> &mut Self {
+        self.size = size;
+        self
+    }
+
+    pub fn width(&mut self, text: &str) -> Option<f64> {
+        let size = self.size;
+        match self.get().width(size, text) {
+            Ok(w) => Some(w),
+            Err(e) => {
+                println!("Error trying to get font width for: '{text}' : {e}");
+                None
+            }
+        }
+    }
+
+    pub fn char_offset(&mut self, ch: char) -> Option<FontCharOffset> {
+        let size = self.size;
+        match self.get().character(size, ch) {
+            Ok(ch) => Some(FontCharOffset::new(ch.top(), ch.left())),
+            Err(e) => {
+                println!("Error trying to get font top offset for: '{ch}' : {e}");
+                None
+            }
+        }
+    }
+
+    pub fn set_color(&mut self, color: [f32; 4]) -> &mut Self {
+        self.color = color;
+        self
+    }
+
     /// Render text center aligned
     pub fn render_centered(
         &mut self,
         text: &str,
-        font_size: u32,
         evnt: &Event,
         window: &mut PistonWindow,
-        color: [f32; 4],
         pos: [f64; 2],
         margin: &Size,
     ) {
-        self.render_text(
-            text,
-            font_size,
-            evnt,
-            window,
-            color,
-            pos,
-            margin,
-            TextAlign::Centered,
-        )
+        self.render_text(text, evnt, window, pos, margin, TextAlign::Centered)
     }
 
     /// Render text left aligned
     pub fn render_left_aligned(
         &mut self,
         text: &str,
-        font_size: u32,
         evnt: &Event,
         window: &mut PistonWindow,
-        color: [f32; 4],
         pos: [f64; 2],
         margin: &Size,
     ) {
-        self.render_text(
-            text,
-            font_size,
-            evnt,
-            window,
-            color,
-            pos,
-            margin,
-            TextAlign::Left,
-        )
+        self.render_text(text, evnt, window, pos, margin, TextAlign::Left)
     }
 
     fn render_text(
         &mut self,
         text: &str,
-        font_size: u32,
         evnt: &Event,
         window: &mut PistonWindow,
-        color: [f32; 4],
         pos: [f64; 2],
         margin: &Size,
         alignment: TextAlign,
     ) {
         let mut x = pos[0];
         let y = pos[1];
-        let Ok(text_width) = self.get().width(font_size, text) else {
+        let size = self.size;
+        let Ok(text_width) = self.get().width(size, text) else {
             println!("Font: render text: fail to get width.");
             return;
         };
@@ -106,13 +138,13 @@ impl Font {
                 .iter()
                 .enumerate()
                 .for_each(|(index, text)| {
-                    let _ = text::Text::new_color(color, font_size).draw(
+                    let _ = text::Text::new_color(self.color, size).draw(
                         text,
                         self.get(),
                         &ctx.draw_state,
                         ctx.transform.trans(
                             margin.width + x,
-                            margin.height + y + (index * font_size as usize) as f64,
+                            margin.height + y + (index * size as usize) as f64,
                         ),
                         gl,
                     );
@@ -120,7 +152,7 @@ impl Font {
         });
     }
 
-    fn split_into_lines(&mut self, text: &str, font_size: u32, max_text_width: f64) -> Vec<String> {
+    fn split_into_lines(&mut self, text: &str, max_text_width: f64) -> Vec<String> {
         // Browse the text String char by char, computing final text width in pixel.
         // Each time the width exceed the `max_text_width` we extract all browsed chars into a string, (with String::drain)
         // And we store the extraction in a Vector
@@ -128,15 +160,16 @@ impl Font {
 
         let mut row_width = 0.0;
         let mut row = Vec::new();
+        let size = self.size;
         let mut text_split: Vec<String> = Vec::new();
         let text_by_words: Vec<&str> = text.split_whitespace().collect();
         let space_width = self
             .get()
-            .character(font_size, ' ')
+            .character(size, ' ')
             .map_or(0.0, |ch| ch.advance_width());
 
         for word in text_by_words.iter() {
-            let Ok(mut word_width) = self.get().width(font_size, word) else {
+            let Ok(mut word_width) = self.get().width(size, word) else {
                 // Skip the word on any font error
                 continue;
             };
@@ -182,8 +215,8 @@ impl Font {
 
     /// Compute the total height of lines, the text will use
     /// to get render with ```render_with_auto_newline```
-    pub fn height_with_auto_newline(&mut self, text: &str, font_size: u32, line_width: f64) -> f64 {
-        self.split_into_lines(text, font_size, line_width).len() as f64 * font_size as f64
+    pub fn height_with_auto_newline(&mut self, text: &str, line_width: f64) -> f64 {
+        self.split_into_lines(text, line_width).len() as f64 * self.size as f64
     }
 
     /// Render text with automatic jump to newline, a maximum width for the line is needed.
@@ -192,29 +225,27 @@ impl Font {
     pub fn render_with_auto_newline(
         &mut self,
         text: &str,
-        font_size: u32,
         evnt: &Event,
         window: &mut PistonWindow,
-        color: [f32; 4],
         pos: [f64; 2],
         line_width: f64,
         scissor: [f64; 4],
     ) {
         let x = pos[0];
         let y = pos[1];
-        let lines = self.split_into_lines(text, font_size, line_width);
+        let size = self.size;
+        let lines = self.split_into_lines(text, line_width);
 
         window.draw_2d(evnt, |ctx, gl, _| {
             let _: Vec<_> = lines
                 .iter()
                 .enumerate()
                 .map(|(index, text)| {
-                    let _ = text::Text::new_color(color, font_size).draw(
+                    let _ = text::Text::new_color(self.color, size).draw(
                         text,
                         self.get(),
                         &DrawState::default().scissor(scissor.map(|value| value as u32)),
-                        ctx.transform
-                            .trans(x, y + (index * font_size as usize) as f64),
+                        ctx.transform.trans(x, y + (index * size as usize) as f64),
                         gl,
                     );
                 })

@@ -6,7 +6,7 @@ use piston_window::*;
 use common::constants::{WINDOW_HEIGHT, WINDOW_WIDTH};
 
 use super::loading::{Loading, LoadingNextState};
-use super::states::{GameState, StateFactory};
+use crate::states::{GameState, StateFactory};
 
 pub struct Login {
     login: bool,
@@ -38,15 +38,13 @@ const MESSAGE_POS: [f64; 2] = [
 
 impl Login {
     pub fn new(window: &mut PistonWindow, message: Option<String>) -> Self {
-        let mut font = Font::new();
-        font.load(window);
         Login {
             login: false,
-            font,
-            username: InputField::new(USERNAME_POS, FIELD_FONT_SIZE, FIELD_WIDTH)
+            font: Font::new(TITLE_FONT_SIZE).load(window),
+            username: InputField::new(USERNAME_POS, FIELD_FONT_SIZE, FIELD_WIDTH, window)
                 .set_radius(FIELD_RADIUS)
                 .set_height(FIELD_HEIGHT),
-            password: InputField::new(PASSWORD_POS, FIELD_FONT_SIZE, FIELD_WIDTH)
+            password: InputField::new(PASSWORD_POS, FIELD_FONT_SIZE, FIELD_WIDTH, window)
                 .set_radius(FIELD_RADIUS)
                 .set_height(FIELD_HEIGHT)
                 .masked(true),
@@ -94,30 +92,32 @@ impl GameState for Login {
             rect.draw(final_position, &_ctx.draw_state, _ctx.transform, gl);
         });
 
-        self.font.render_centered(
-            TITLE,
-            TITLE_FONT_SIZE,
-            evnt,
-            window,
-            color::WHITE,
-            [LOGIN_TITLE_POS[0], LOGIN_TITLE_POS[1]],
-            &self.margin,
-        );
-
-        if let Some(message) = &self.message {
-            self.font.render_centered(
-                message,
-                MESSAGE_FONT_SIZE,
+        self.font
+            .set_size(TITLE_FONT_SIZE)
+            .set_color(color::WHITE)
+            .render_centered(
+                TITLE,
                 evnt,
                 window,
-                color::YELLOW,
-                [MESSAGE_POS[0], MESSAGE_POS[1]],
+                [LOGIN_TITLE_POS[0], LOGIN_TITLE_POS[1]],
                 &self.margin,
             );
+
+        if let Some(message) = &self.message {
+            self.font
+                .set_size(MESSAGE_FONT_SIZE)
+                .set_color(color::YELLOW)
+                .render_centered(
+                    message,
+                    evnt,
+                    window,
+                    [MESSAGE_POS[0], MESSAGE_POS[1]],
+                    &self.margin,
+                );
         }
 
-        self.username.render(evnt, window, &mut self.font);
-        self.password.render(evnt, window, &mut self.font);
+        self.username.render(evnt, window);
+        self.password.render(evnt, window);
     }
 
     fn update(&mut self, _args: &UpdateArgs, delta_ts: u128) {
@@ -126,8 +126,8 @@ impl GameState for Login {
     }
 
     fn text_input(&mut self, args: &String) {
-        self.username.text_input(args, &mut self.font);
-        self.password.text_input(args, &mut self.font);
+        self.username.text_input(args);
+        self.password.text_input(args);
     }
 
     fn mouse_cursor_args(&mut self, args: &[f64; 2]) {
@@ -136,8 +136,8 @@ impl GameState for Login {
     }
 
     fn key_press(&mut self, args: &Button) {
-        self.username.key_press(args, &mut self.font);
-        self.password.key_press(args, &mut self.font);
+        self.username.key_press(args);
+        self.password.key_press(args);
 
         if let &Button::Keyboard(key) = args {
             match key {
@@ -176,7 +176,7 @@ impl GameState for Login {
         self.password.resize(&self.margin);
     }
 
-    fn get_font(&mut self) -> &mut Font {
-        &mut self.font
+    fn get_font(&mut self) -> Vec<&mut Font> {
+        vec![&mut self.font, self.username.font(), self.password.font()]
     }
 }

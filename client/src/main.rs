@@ -3,10 +3,7 @@ use std::path::Path;
 use common::constants::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use common::utils::get_timestamp;
 use piston_window::*;
-use states::{
-    login::Login,
-    states::{GameState, StateFactory},
-};
+use states::{login::Login, GameState, StateFactory};
 
 use crate::interface::load_icon;
 

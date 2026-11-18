@@ -8,7 +8,7 @@ pub struct TextArea<T>
 where
     T: TextAreaFormat,
 {
-    font_size: u32,
+    font: Font,
     rect: [f64; 4],
     position: [f64; 2],
     scissor: [f64; 4],
@@ -25,9 +25,9 @@ impl<T> TextArea<T>
 where
     T: TextAreaFormat,
 {
-    pub fn new(font_size: u32, size: [f64; 4]) -> Self {
+    pub fn new(font_size: u32, size: [f64; 4], window: &mut PistonWindow) -> Self {
         TextArea {
-            font_size,
+            font: Font::new(font_size).load(window),
             rect: size,
             content: vec![],
             margin: Size {
@@ -40,6 +40,10 @@ where
         }
     }
 
+    pub fn font(&mut self) -> &mut Font {
+        &mut self.font
+    }
+
     fn height(&self) -> f64 {
         self.rect[3]
     }
@@ -48,30 +52,27 @@ where
         self.rect[2]
     }
 
-    pub fn render(&self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
+    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow) {
         let mut line_height = 0.0;
+        let width = self.width();
         self.content.iter().rev().for_each(|content| {
             let (text_color, text) = content.colored_format();
 
-            line_height += font.height_with_auto_newline(
-                text.as_str(),
-                self.font_size,
-                self.width() - GUI_CHAT_PADDING_WIDTH,
-            );
+            line_height += self
+                .font
+                .height_with_auto_newline(text.as_str(), width - GUI_CHAT_PADDING_WIDTH);
 
             let msg_position = [
                 self.position[0],
-                self.position[1] - line_height + (self.scroll * self.font_size as f64),
+                self.position[1] - line_height + (self.scroll * self.font.size() as f64),
             ];
 
-            font.render_with_auto_newline(
+            self.font.set_color(text_color).render_with_auto_newline(
                 text.as_str(),
-                self.font_size,
                 evnt,
                 window,
-                text_color,
                 msg_position,
-                self.width() - GUI_CHAT_PADDING_WIDTH,
+                width - GUI_CHAT_PADDING_WIDTH,
                 self.scissor,
             );
         });
