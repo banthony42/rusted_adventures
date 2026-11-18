@@ -20,7 +20,7 @@ impl ServerEntityEventExtension for ServerEntityEvent {
     fn movement(uuid: String, location: RpcLocation) -> Self {
         ServerEntityEvent {
             event: Some(Move(EntityMove {
-                uuid: uuid,
+                uuid,
                 new_location: Some(location),
             })),
         }
@@ -42,13 +42,13 @@ impl ServerEntityEventExtension for ServerEntityEvent {
 }
 
 pub trait RpcLocationExtension {
-    fn into_update_location(&self) -> Option<UpdateLocation>;
-    fn into_update_destination(&self) -> Option<UpdateLocationDestination>;
-    fn into_cell_map(&self) -> Option<(RpcCoord, RpcCoord)>;
+    fn as_update_location(&self) -> Option<UpdateLocation>;
+    fn as_update_destination(&self) -> Option<UpdateLocationDestination>;
+    fn as_cell_map(&self) -> Option<(RpcCoord, RpcCoord)>;
 }
 
 impl RpcLocationExtension for RpcLocation {
-    fn into_update_destination(&self) -> Option<UpdateLocationDestination> {
+    fn as_update_destination(&self) -> Option<UpdateLocationDestination> {
         if let Some(map) = self.cell {
             return Some(UpdateLocationDestination {
                 destination: Some(map.into()),
@@ -59,12 +59,12 @@ impl RpcLocationExtension for RpcLocation {
 
     // For now i don't find the tonic / gRPC syntax or trick to force a field to not be a rust Option
     // entity.proto Location.map and Location.cell should be always defined
-    fn into_cell_map(&self) -> Option<(RpcCoord, RpcCoord)> {
+    fn as_cell_map(&self) -> Option<(RpcCoord, RpcCoord)> {
         Some((self.cell?, self.map?))
     }
 
-    fn into_update_location(&self) -> Option<UpdateLocation> {
-        let (cell, map) = self.into_cell_map()?;
+    fn as_update_location(&self) -> Option<UpdateLocation> {
+        let (cell, map) = self.as_cell_map()?;
         Some(UpdateLocation {
             map: map.into_pg_point(),
             cell: cell.into_pg_point(),

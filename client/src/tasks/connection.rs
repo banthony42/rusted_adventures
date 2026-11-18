@@ -183,7 +183,7 @@ impl TryInto<EntityModel> for &Entity {
         let (cell_rpc_coord, map_rpc_coord) = self
             .location
             .ok_or("TryInto<EntityModel> for &Entity: Failed because location is None.")?
-            .into_cell_map()
+            .as_cell_map()
             .ok_or("TryInto<EntityModel> for &Entity: Failed because location.cell and location.map should exist is None.")?;
 
         entity_model.set_map(map_rpc_coord.into_map());

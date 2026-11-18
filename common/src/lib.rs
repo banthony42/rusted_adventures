@@ -33,8 +33,8 @@ pub mod constants {
     pub const TILE_WIDTH: usize = 64;
     pub const TILE_HEIGHT: usize = 64;
 
-    pub const MAP_WIDTH: usize = (TILE_WIDTH * TILEMAP_WIDTH) as usize;
-    pub const MAP_HEIGHT: usize = (TILE_HEIGHT * TILEMAP_HEIGHT) as usize;
+    pub const MAP_WIDTH: usize = TILE_WIDTH * TILEMAP_WIDTH;
+    pub const MAP_HEIGHT: usize = TILE_HEIGHT * TILEMAP_HEIGHT;
     pub const MAP_WIDTH_CENTER: usize = (WINDOW_WIDTH - MAP_WIDTH) / 2;
     pub const MAP_HEIGHT_CENTER: usize = (WINDOW_HEIGHT - GAME_HEIGHT) / 2;
 
@@ -125,15 +125,15 @@ pub struct MapCoord {
     pub y: i8,
 }
 
-impl Into<PgPoint> for MapCoord {
-    fn into(self) -> PgPoint {
-        PgPoint(self.x as f64, self.y as f64)
+impl From<MapCoord> for PgPoint {
+    fn from(val: MapCoord) -> Self {
+        PgPoint(val.x as f64, val.y as f64)
     }
 }
 
-impl Into<PgPoint> for CellCoord {
-    fn into(self) -> PgPoint {
-        PgPoint(self.x as f64, self.y as f64)
+impl From<CellCoord> for PgPoint {
+    fn from(val: CellCoord) -> Self {
+        PgPoint(val.x as f64, val.y as f64)
     }
 }
 

@@ -130,8 +130,7 @@ impl EntityClient {
                         let mut instance =
                             EntityModel::new(new_entity.name, new_entity.uuid, species);
                         if let Some(location) = new_entity.location {
-                            if let Some((cell_rpc_coord, map_rpc_coord)) = location.into_cell_map()
-                            {
+                            if let Some((cell_rpc_coord, map_rpc_coord)) = location.as_cell_map() {
                                 instance.set_cell(cell_rpc_coord.into_cell());
                                 instance.set_map(map_rpc_coord.into_map());
                                 instance.set_path(Vec::new(), None);

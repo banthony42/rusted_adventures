@@ -49,7 +49,7 @@ impl WorldImport {
             let raw_data: String = fs::read_to_string(&map_import.path)
                 .expect("test_map_import: Unable to read file.");
             let loaded_map = serde_json::from_str::<LoadedMap>(&raw_data)
-                .expect(&format!("Fail to load JSON map: {}", &map_import.path));
+                .unwrap_or_else(|_| panic!("Fail to load JSON map: {}", map_import.path));
             atlas.insert(
                 coord,
                 RawMap {
@@ -63,6 +63,12 @@ impl WorldImport {
     }
 }
 
+impl Default for WorldImport {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct ColliderMap(Vec<Vec<bool>>);
 
 impl ColliderMap {
@@ -71,13 +77,13 @@ impl ColliderMap {
     }
 
     pub fn is_not_collider(&self, y: usize, x: usize) -> bool {
-        self.is_collider(y, x) == false
+        !self.is_collider(y, x)
     }
 }
 
 impl From<&LoadedMap> for ColliderMap {
     fn from(loaded_map: &LoadedMap) -> Self {
-        let mut colliders = vec![vec![false; TILEMAP_WIDTH as usize]; TILEMAP_HEIGHT as usize];
+        let mut colliders = vec![vec![false; TILEMAP_WIDTH]; TILEMAP_HEIGHT];
         loaded_map
             .sprites
             .iter()

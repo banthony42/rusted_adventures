@@ -190,7 +190,7 @@ async fn player_new_dest(sender: String, new_dest: PlayerNewDest, clients: ArcMu
 
     tracing::info!("RpgEntityService: PlayerNewDest: {new_dest:?}");
 
-    if let Some(new_destination) = dest.into_update_destination() {
+    if let Some(new_destination) = dest.as_update_destination() {
         if let Err(err) = character.update_destination(new_destination) {
             tracing::error!("RpgEntityService: PlayerMove: Update destination: {err}");
             return;

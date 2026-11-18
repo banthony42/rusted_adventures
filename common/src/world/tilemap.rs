@@ -123,12 +123,12 @@ impl<'de> Visitor<'de> for SpriteDeserializer {
 
                     sprites.push(LoadedSprite {
                         collider: layer == MapLayer::Collider,
-                        layer: layer,
+                        layer,
                         bound_x: bounds_x,
                         bound_y: bounds_y,
                         tileset_id: tileset as usize,
                         tile_index: tile_index as u32,
-                        tileset_index: tileset_index,
+                        tileset_index,
                         frame: frame as usize,
                     });
                 });
@@ -172,7 +172,7 @@ impl<'de> Visitor<'de> for FramesDeserializer {
                     * 1000.0,
             )
         }
-        return Ok(frames);
+        Ok(frames)
     }
 }
 
@@ -210,7 +210,7 @@ impl<'de> Visitor<'de> for TilesetsDeserializer {
                     .replace("\\", "/")
             ))
         }
-        return Ok(tilesets);
+        Ok(tilesets)
     }
 }
 
