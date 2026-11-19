@@ -148,7 +148,7 @@ fn move_behaviour(
     }
     // Return true, therefore this behaviour never stop
     // It will be dropped when the associated monster disappear from database
-    return true;
+    true
 }
 
 pub struct BehaviourHandler {
@@ -196,7 +196,7 @@ impl WorldEngineComponent for BehaviourHandler {
 
                 // Create BehaviourTask for each monster id not already registered
                 for monster in monsters.iter() {
-                    if self.task_exist_with(monster.id) == false {
+                    if !self.task_exist_with(monster.id) {
                         self.add(BehaviourTask::new(monster.id, Box::new(move_behaviour)));
                     }
                 }

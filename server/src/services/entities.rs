@@ -202,7 +202,7 @@ async fn player_new_dest(sender: String, new_dest: PlayerNewDest, clients: ArcMu
 }
 
 impl RpgEntityService {
-    pub fn new(mut wrx_to_net: Receiver<WorldEvent>, ntx_to_world: Sender<WorldEvent>) -> Self {
+    pub fn new(mut wrx_to_net: Receiver<WorldEvent>, _ntx_to_world: Sender<WorldEvent>) -> Self {
         let (event_tx, mut event_rx) = mpsc::channel::<RpgEntityEvent>(10);
 
         let clients = Arc::new(Mutex::new(HashMap::<String, EntityEventSender>::new()));
@@ -351,7 +351,7 @@ impl RpgEntity for RpgEntityService {
             // Loop to handle each client entity events
             while let Some(entity_event) = client_stream.next().await {
                 if let Err(status) = entity_event.as_ref() {
-                    if let Some(io_err) = match_for_io_error(&status) {
+                    if let Some(io_err) = match_for_io_error(status) {
                         if io_err.kind() == ErrorKind::BrokenPipe {
                             tracing::error!(
                                 "RpgEntityService entity_event_bus: client {login}: broken pipe"
@@ -362,7 +362,7 @@ impl RpgEntity for RpgEntityService {
                     tracing::info!("RpgEntityService entity_event_bus: client {login}: {status}");
                 }
 
-                if let Some(event) = entity_event.ok() {
+                if let Ok(event) = entity_event {
                     if let Err(err) = event_tx
                         .send(RpgEntityEvent::new(login.clone(), event))
                         .await
