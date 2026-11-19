@@ -33,11 +33,11 @@ pub struct CreateAccountCmd {
     pub password: String,
 }
 
-impl Into<CreateAccount> for CreateAccountCmd {
-    fn into(self) -> CreateAccount {
+impl From<CreateAccountCmd> for CreateAccount {
+    fn from(val: CreateAccountCmd) -> Self {
         CreateAccount {
-            login: self.login,
-            password: self.password,
+            login: val.login,
+            password: val.password,
         }
     }
 }
