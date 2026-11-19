@@ -24,3 +24,5 @@ common/*codegen
 
 R&D/
 local/
+
+.vscode
