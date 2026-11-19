@@ -54,10 +54,7 @@ where
     /// Remove the given `key`.
     /// Return `true` if the key has been removed, `false` otherwise. (Nothing to remove)
     pub fn del(&mut self, key: &String) -> bool {
-        match self.hash.remove(key) {
-            Some(_) => true,
-            None => false,
-        }
+        self.hash.remove(key).is_some()
     }
 
     /// Mimic `EXPIRE` redis command.
@@ -92,7 +89,7 @@ where
     /// If the `key` does not exist, `None` is returned.
     pub fn get(&mut self, key: &String) -> Option<R> {
         if let Some(hdata) = self.hash.get(key) {
-            if Self::ttl_still_valid(&hdata) == false {
+            if !Self::ttl_still_valid(hdata) {
                 self.del(key);
                 return None;
             }
@@ -137,6 +134,15 @@ where
     }
 }
 
+impl<R> Default for Record<R>
+where
+    R: Clone,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,7 +181,7 @@ mod tests {
         myrec.set(key.clone(), data.clone(), None);
         assert_eq!(myrec.db_len(), 1);
 
-        assert_eq!(myrec.del(&key), true);
+        assert!(myrec.del(&key));
         assert_eq!(myrec.db_len(), 0);
         assert_eq!(myrec.get(&key), None);
     }

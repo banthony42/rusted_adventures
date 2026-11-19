@@ -39,7 +39,6 @@ impl Frames {
                                 y: sprt.bound_y,
                             },
                             sprt.tile_index,
-                            sprt.collider,
                         )
                     })
                     .collect();
@@ -67,6 +66,10 @@ impl MapData {
         } else {
             self.frame_index += 1;
         }
+    }
+
+    pub fn info(&self) -> &str {
+        &self.info
     }
 }
 pub struct World {
@@ -164,7 +167,7 @@ impl World {
         self.margin = *margin;
     }
 
-    fn get_map(&self, coord: MapCoord) -> Option<(MapCoord, &MapData)> {
+    pub fn get_map(&self, coord: MapCoord) -> Option<(MapCoord, &MapData)> {
         Some((coord, self.world.get(&coord)?))
     }
 

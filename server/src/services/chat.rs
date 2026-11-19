@@ -199,7 +199,7 @@ impl RpgChat for RpgChatService {
         tokio::spawn(async move {
             while let Some(chat_event) = client_stream.next().await {
                 if let Err(status) = chat_event.as_ref() {
-                    if let Some(io_err) = match_for_io_error(&status) {
+                    if let Some(io_err) = match_for_io_error(status) {
                         if io_err.kind() == ErrorKind::BrokenPipe {
                             tracing::error!("RpgChatService chat: client {login}: broken pipe");
                             break;
@@ -208,7 +208,7 @@ impl RpgChat for RpgChatService {
                     tracing::info!("RpgChatService chat: client {login}: {status}");
                 }
 
-                if let Some(event) = chat_event.ok() {
+                if let Ok(event) = chat_event {
                     if event.text.is_empty() {
                         continue;
                     }

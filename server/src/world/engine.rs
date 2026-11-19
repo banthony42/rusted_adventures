@@ -47,7 +47,7 @@ pub struct WorldEngine {
     spawners: Vec<Spawner>,
     behaviours: BehaviourHandler,
     last_update_ts: u128,
-    network_rx: Receiver<WorldEvent>,
+    _network_rx: Receiver<WorldEvent>,
 }
 
 // Limit the WorldEngine infinite loop rate
@@ -60,7 +60,7 @@ impl WorldEngine {
         let (ntx_to_world, nrx_to_world) = mpsc::channel::<WorldEvent>(10);
         (
             WorldEngine {
-                network_rx: nrx_to_world,
+                _network_rx: nrx_to_world,
                 world_importer: WorldImport::new(),
                 behaviours: BehaviourHandler::new(),
                 wtx_to_net,

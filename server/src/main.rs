@@ -33,7 +33,7 @@ fn run_world_engine_on_another_thread() -> (Receiver<WorldEvent>, Sender<WorldEv
         world_engine.run();
     });
 
-    return (wrx_to_net, ntx_to_world);
+    (wrx_to_net, ntx_to_world)
 }
 
 fn auth_interceptor(req: Request<()>) -> Result<Request<()>, Status> {

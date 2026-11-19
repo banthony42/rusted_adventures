@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::{fmt::Display, io::Write};
 
 use diesel::{
     deserialize::{self, FromSql, FromSqlRow},
@@ -6,12 +6,13 @@ use diesel::{
     pg::{Pg, PgValue},
     prelude::{Insertable, Queryable},
     serialize::{self, IsNull, Output, ToSql},
-    Selectable,
+    ExpressionMethods, QueryDsl, QueryResult, RunQueryDsl, Selectable,
 };
 
-use crate::database::schema::sql_types::Pgspecies;
-
-pub mod bestiary;
+use crate::database::{
+    db::DBConnection,
+    schema::{bestiary, sql_types::Pgspecies},
+};
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, Clone, Copy)]
 #[diesel(sql_type = Pgspecies)]
@@ -40,11 +41,11 @@ impl FromSql<Pgspecies, Pg> for PgSpecies {
     }
 }
 
-impl ToString for PgSpecies {
-    fn to_string(&self) -> String {
+impl Display for PgSpecies {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PgSpecies::Bouftou => String::from("Bouftou"),
-            PgSpecies::Crabedoeuf => String::from("Cradeboeuf"),
+            PgSpecies::Bouftou => write!(f, "Bouftou"),
+            PgSpecies::Crabedoeuf => write!(f, "Crabedoeuf"),
         }
     }
 }
@@ -63,4 +64,32 @@ pub struct CreateBestiaryEntry {
     pub id: i32,
     pub species: PgSpecies,
     pub name: String,
+}
+
+pub struct Bestiary;
+
+impl Bestiary {
+    /// Create a Bestiary entry in DB with the given CreateBestiaryEntry item
+    pub fn create(db: &mut DBConnection, item: &CreateBestiaryEntry) -> QueryResult<BestiaryEntry> {
+        diesel::insert_into(bestiary::table)
+            .values(item)
+            .get_result(db)
+    }
+
+    /// Return the Bestiary entry in DB for the given bestiary id
+    pub fn read_by_id(db: &mut DBConnection, id: &i32) -> QueryResult<BestiaryEntry> {
+        bestiary::table
+            .filter(bestiary::id.eq(id))
+            .first::<BestiaryEntry>(db)
+    }
+
+    /// Return the Bestiary entry in DB for the given bestiary species
+    pub fn read_by_species(
+        db: &mut DBConnection,
+        species: &PgSpecies,
+    ) -> QueryResult<BestiaryEntry> {
+        bestiary::table
+            .filter(bestiary::species.eq(species))
+            .first::<BestiaryEntry>(db)
+    }
 }

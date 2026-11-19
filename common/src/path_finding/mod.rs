@@ -1,4 +1,4 @@
-use common::{world::ColliderMap, CellCoord};
+use crate::{world::ColliderMap, CellCoord};
 
 pub mod astar;
 

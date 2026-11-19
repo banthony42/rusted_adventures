@@ -1,4 +1,4 @@
-use crate::states::states::GameData;
+use crate::states::GameData;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use tonic::async_trait;

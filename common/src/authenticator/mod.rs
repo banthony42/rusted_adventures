@@ -1,6 +1,5 @@
 use std::env;
 
-use argon2::password_hash::rand_core::OsRng;
 use argon2::{
     password_hash, Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier,
     Version,
@@ -8,7 +7,6 @@ use argon2::{
 
 use chrono::{Duration, Local};
 use diesel::PgConnection;
-use password_hash::SaltString;
 use rand::Rng;
 use sha2::{Digest, Sha256};
 use thiserror::Error;
@@ -38,10 +36,10 @@ pub enum AuthError {
     CreateSession(diesel::result::Error),
 
     #[error("Failed to parse password hash from database: {0}")]
-    ParsePassword(password_hash::errors::Error),
+    ParsePassword(password_hash::phc::Error),
 
     #[error("Failed to verify password: {0}")]
-    VerifyPassword(password_hash::errors::Error),
+    VerifyPassword(password_hash::Error),
 
     #[error("Invalid password")]
     InvalidPassword,
@@ -149,7 +147,7 @@ impl Authenticator {
 
     pub fn hash_password(password: String) -> String {
         Self::create_argon2()
-            .hash_password(password.as_bytes(), &SaltString::generate(&mut OsRng))
+            .hash_password(password.as_bytes())
             .expect("Error while hashing password")
             .to_string()
     }
@@ -239,7 +237,7 @@ impl Authenticator {
 
         match Self::create_argon2().verify_password(password.as_bytes(), &parsed_hash) {
             Ok(_) => Ok(()),
-            Err(password_hash::Error::Password) => self.throttling(),
+            Err(password_hash::Error::PasswordInvalid) => self.throttling(),
             Err(e) => Err(AuthError::VerifyPassword(e)),
         }
         .inspect_err(|error| tracing::debug!("authenticate: {error:?}"))

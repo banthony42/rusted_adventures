@@ -8,7 +8,7 @@ use crate::{
         db::Database,
         model::{
             account::Account,
-            character::{character::CharacterInfo, Character, CreateCharacter, PgClasses},
+            character::{Character, CharacterInfo, CreateCharacter, PgClasses},
             entity::{CreateEntity, Entity},
             location::{CreateLocation, Location, UpdateLocationDestination},
             monster::Monster,
@@ -22,11 +22,11 @@ use crate::{
 
 use crate::grpc_codegen::Entity as RpcEntity;
 
-impl Into<Coord> for PgPoint {
-    fn into(self) -> Coord {
+impl From<PgPoint> for Coord {
+    fn from(val: PgPoint) -> Self {
         Coord {
-            x: self.0 as i64,
-            y: self.1 as i64,
+            x: val.0 as i64,
+            y: val.1 as i64,
         }
     }
 }
@@ -51,7 +51,7 @@ impl Display for CharacterHandlerError {
                 write!(f, "This account doesn't have any character.")
             }
             CharacterHandlerError::DatabaseError(err) => {
-                write!(f, "DatabaseError: {}", err.to_string())
+                write!(f, "DatabaseError: {err}")
             }
             CharacterHandlerError::GRPCLocationIntoUpdateLocation => {
                 write!(f, "Error while trying to transform gRPC Location into database model UpdateLocation.")
@@ -74,9 +74,9 @@ impl CharacterHandler {
     /// (For now an account can have only one character)
     pub fn new(login: &String) -> Result<Self, CharacterHandlerError> {
         let mut connection = Database::new().establish_connection();
-        let character = Character::read_by_account(&mut connection, &login)
-            .map_err(|e| CharacterHandlerError::DatabaseError(e))?
-            .get(0) // For now consider account play with only one character
+        let character = Character::read_by_account(&mut connection, login)
+            .map_err(CharacterHandlerError::DatabaseError)?
+            .first() // For now consider account play with only one character
             .cloned()
             .ok_or(CharacterHandlerError::NoCharacterForAccount)?;
 
@@ -110,7 +110,7 @@ impl CharacterHandler {
                 destination: None,
             },
         )
-        .map_err(|e| CharacterHandlerError::DatabaseError(e))?;
+        .map_err(CharacterHandlerError::DatabaseError)?;
 
         let entity = Entity::create(
             &mut connection,
@@ -118,11 +118,11 @@ impl CharacterHandler {
                 location_id: location.id,
             },
         )
-        .map_err(|e| CharacterHandlerError::DatabaseError(e))?;
+        .map_err(CharacterHandlerError::DatabaseError)?;
 
         // Create and bind character as foreign key
         let user_account = Account::read(&mut connection, account_login)
-            .map_err(|e| CharacterHandlerError::DatabaseError(e))?;
+            .map_err(CharacterHandlerError::DatabaseError)?;
 
         let character = Character::create(
             &mut connection,
@@ -133,7 +133,7 @@ impl CharacterHandler {
                 class,
             },
         )
-        .map_err(|e| CharacterHandlerError::DatabaseError(e))?;
+        .map_err(CharacterHandlerError::DatabaseError)?;
 
         Ok(Self {
             character,
@@ -148,7 +148,7 @@ impl CharacterHandler {
     pub fn as_rpc_entity(&mut self) -> Result<RpcEntity, CharacterHandlerError> {
         Ok(
             CharacterInfo::from_character(&mut self.connection, &self.character)
-                .map_err(|e| CharacterHandlerError::DatabaseError(e))?
+                .map_err(CharacterHandlerError::DatabaseError)?
                 .into(),
         )
     }
@@ -158,25 +158,25 @@ impl CharacterHandler {
         // [941] STATEMENT:  SELECT "entities"."name" FROM ("locations" INNER JOIN "entities" ON ("locations"."entity_id" = "entities"."id")) WHERE ("entities"."id" = $1) GROUP BY "locations"."map", "entities"."name"
 
         let location = Location::read(&mut self.connection, &self.character.entity_id)
-            .map_err(|e| CharacterHandlerError::DatabaseError(e))?;
+            .map_err(CharacterHandlerError::DatabaseError)?;
 
         Character::read_names_by_map_exclude(
             &mut self.connection,
             location.map,
             &self.character.name,
         )
-        .map_err(|e| CharacterHandlerError::DatabaseError(e))
+        .map_err(CharacterHandlerError::DatabaseError)
     }
 
     pub fn entities_on_map(
         &mut self,
     ) -> Result<Vec<RpcEntityWithDestination>, CharacterHandlerError> {
         let location = Location::read(&mut self.connection, &self.character.entity_id)
-            .map_err(|e| CharacterHandlerError::DatabaseError(e))?;
+            .map_err(CharacterHandlerError::DatabaseError)?;
 
         let mut players: Vec<RpcEntityWithDestination> =
             Character::read_by_map(&mut self.connection, location.map)
-                .map_err(|e| CharacterHandlerError::DatabaseError(e))?
+                .map_err(CharacterHandlerError::DatabaseError)?
                 .into_iter()
                 .filter(|e| self.character.name.ne(&e.name))
                 .map(|e| {
@@ -187,7 +187,7 @@ impl CharacterHandler {
 
         let mut monsters: Vec<RpcEntityWithDestination> =
             Monster::read_all_by_map(&mut self.connection, location.map)
-                .map_err(|e| CharacterHandlerError::DatabaseError(e))?
+                .map_err(CharacterHandlerError::DatabaseError)?
                 .into_iter()
                 .map(|e| {
                     let destination: Option<Coord> = e.destination.map(|d| d.into());
@@ -205,7 +205,7 @@ impl CharacterHandler {
     /// If `new_loc` match the `destination` then `destination` is reset to None
     pub fn update_location(&mut self, new_loc: RpcLocation) -> Result<(), CharacterHandlerError> {
         let update_location = new_loc
-            .into_update_location()
+            .as_update_location()
             .ok_or_else(|| CharacterHandlerError::GRPCLocationIntoUpdateLocation)?;
 
         Location::update_by_entity_id(
@@ -213,7 +213,7 @@ impl CharacterHandler {
             &self.character.entity_id,
             update_location,
         )
-        .map_err(|e| CharacterHandlerError::DatabaseError(e))?;
+        .map_err(CharacterHandlerError::DatabaseError)?;
 
         Ok(())
     }
@@ -227,7 +227,7 @@ impl CharacterHandler {
             &self.character.entity_id,
             new_loc,
         )
-        .map_err(|e| CharacterHandlerError::DatabaseError(e))?;
+        .map_err(CharacterHandlerError::DatabaseError)?;
 
         Ok(())
     }

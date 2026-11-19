@@ -44,7 +44,7 @@ const CHAT_USAGE: [&str; 2] = [
 const CHAT_WHISPER_USAGE: &str = "chuchotement: nécéssite un destinataire et un contenu.";
 
 impl ChatController {
-    pub fn new(credentials: GameCredentials) -> Self {
+    pub fn new(credentials: GameCredentials, window: &mut PistonWindow) -> Self {
         let (login, token) = credentials.into_parts();
         let (controller_tx, mut controller_rx) = mpsc::channel::<ChatMessage>(10);
         let runtime = Builder::new_multi_thread()
@@ -163,15 +163,19 @@ impl ChatController {
 
         ChatController {
             me,
-            view: ChatGraphicView::new(),
+            view: ChatGraphicView::new(window),
             model: model_cloned,
             tx: controller_tx,
             _runtime: runtime,
         }
     }
 
-    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
-        self.view.render(evnt, window, font);
+    pub fn font(&mut self) -> Vec<&mut Font> {
+        self.view.font()
+    }
+
+    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow) {
+        self.view.render(evnt, window);
     }
 
     pub fn update(&mut self, delta_ts: u128, ui_entities_model: HashMap<String, UIEntityModel>) {
@@ -179,8 +183,8 @@ impl ChatController {
             .update(delta_ts, self.model.get(), ui_entities_model);
     }
 
-    pub fn text_input(&mut self, args: &String, font: &mut Font) {
-        self.view.text_input(args, font);
+    pub fn text_input(&mut self, args: &str) {
+        self.view.text_input(args);
     }
 
     pub fn mouse_cursor_args(&mut self, args: &[f64; 2]) {
@@ -218,8 +222,8 @@ impl ChatController {
         }
     }
 
-    pub fn key_press(&mut self, args: &Button, font: &mut Font) {
-        if let Some(user_input) = self.view.key_press(args, font) {
+    pub fn key_press(&mut self, args: &Button) {
+        if let Some(user_input) = self.view.key_press(args) {
             if let Some(msg) = self.parse_input(user_input) {
                 if let Err(error) = self.tx.try_send(msg) {
                     println!("Chat controller tx error: {:?}", error);

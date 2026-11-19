@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-argon2 = { version = "0.5.3", features = ["std"] }
+argon2 = { version = "0.6.0" }
 diesel = { version = "*", features = ["postgres", "uuid", "chrono"] }
 dotenvy = "0.15"
 rand = "0.10.2"

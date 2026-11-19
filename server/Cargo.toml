@@ -9,13 +9,13 @@ path = "src/main.rs"
 
 [dependencies]
 diesel = { version = "2.3.11", features = ["postgres"] }
-tokio = { version = "1.53.1", features = ["full"] }
+tokio = { version = "1.54.1", features = ["full"] }
 tonic = "0.14.6"
 prost = "0.14.4"
 rand = "0.10.2"
 common = { path = "../common" }
 tokio-stream = "0.1.16"
 tonic-reflection = "0.14.6"
-h2 = "0.4.7"
+h2 = "0.4.20"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }

@@ -4,22 +4,14 @@ use piston::{Button, MouseButton, Size};
 use piston_window::PistonWindow;
 
 use crate::{
-    entities::{
-        model::{EntityModel, Playable, Player, UIEntityModel, UpdateInformation},
-        path_finding::PathFinder,
-    },
-    import::assets::{EntityAssets, GameAsset},
+    entities::model::{EntityModel, Playable, Player, UIEntityModel, UpdateInformation},
+    import::assets::load_assets,
     states::game::GameCredentials,
     ui::font::Font,
     world::{MapData, World},
 };
 
-use super::{
-    client::EntityClient,
-    model::IEntity,
-    path_finding::{astar::AStar, PathFindingStrategy},
-    view::EntityView,
-};
+use super::{client::EntityClient, model::IEntity, view::EntityView};
 
 use common::{
     constants::*,
@@ -27,6 +19,7 @@ use common::{
         client_entity_event::Event::{PNewCell, PNewDest, PNewMap},
         PlayerNewCell, PlayerNewDest, PlayerNewMap,
     },
+    path_finding::{astar::AStar, PathFinder, PathFindingStrategy},
     CellCoord, Orientation,
 };
 use common::{
@@ -54,11 +47,12 @@ pub struct EntityController {
 
 impl EntityController {
     pub fn new(
-        assets: HashMap<EntityAssets, GameAsset>,
         credentials: GameCredentials,
         player: Player,
         entities: Vec<EntityModel>,
+        window: &mut PistonWindow,
     ) -> Self {
+        let assets = load_assets(window);
         let am_entities = Arc::new(Mutex::new(
             entities
                 .iter()
@@ -74,7 +68,7 @@ impl EntityController {
             operations: EntityOperation::Idle,
             path_finder: PathFinder::new(AStar::new()),
             mouse_pos: [0.0, 0.0],
-            view: EntityView::new(assets),
+            view: EntityView::new(assets, window),
             entities: am_entities,
             player,
             margin: Size {
@@ -82,6 +76,10 @@ impl EntityController {
                 height: 0.0,
             },
         }
+    }
+
+    pub fn font(&mut self) -> Vec<&mut Font> {
+        self.view.font()
     }
 
     pub fn player_map(&self) -> MapCoord {
@@ -106,12 +104,12 @@ impl EntityController {
         ui_models
     }
 
-    pub fn render(&mut self, evnt: &piston::Event, window: &mut PistonWindow, font: &mut Font) {
-        self.view.render(evnt, window, self.player.entity(), font);
+    pub fn render(&mut self, evnt: &piston::Event, window: &mut PistonWindow) {
+        self.view.render(evnt, window, self.player.entity());
 
         if let Ok(entities) = self.entities.try_lock() {
             entities.iter().for_each(|entity| {
-                self.view.render(evnt, window, entity.as_ref(), font);
+                self.view.render(evnt, window, entity.as_ref());
             });
         } else {
             dbg!("EntityController::render : fail to obtain entities model lock ...");

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, vec};
 
 use piston_window::*;
 
@@ -72,11 +72,21 @@ pub struct ChatGraphicView {
 }
 
 impl ChatGraphicView {
-    pub fn new() -> Self {
+    pub fn new(window: &mut PistonWindow) -> Self {
         ChatGraphicView {
-            chat_window: TextWindow::new(CHAT_FONT_SIZE, CHAT_WINDOW_WIDTH, CHAT_WINDOW_TIMER),
-            chat_input: InputField::new(CHAT_INPUT_POSITION, CHAT_FONT_SIZE, CHAT_INPUT_WIDTH),
-            chat_area: TextArea::new(CHAT_FONT_SIZE, GUI_CHAT_SIZE),
+            chat_window: TextWindow::new(
+                CHAT_FONT_SIZE,
+                CHAT_WINDOW_WIDTH,
+                CHAT_WINDOW_TIMER,
+                window,
+            ),
+            chat_input: InputField::new(
+                CHAT_INPUT_POSITION,
+                CHAT_FONT_SIZE,
+                CHAT_INPUT_WIDTH,
+                window,
+            ),
+            chat_area: TextArea::new(CHAT_FONT_SIZE, GUI_CHAT_SIZE, window),
             margin: Size {
                 width: 0.0,
                 height: 0.0,
@@ -84,10 +94,18 @@ impl ChatGraphicView {
         }
     }
 
-    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
-        self.chat_input.render(evnt, window, font);
-        self.chat_area.render(evnt, window, font);
-        self.chat_window.render(evnt, window, font);
+    pub fn font(&mut self) -> Vec<&mut Font> {
+        vec![
+            self.chat_area.font(),
+            self.chat_input.font(),
+            self.chat_window.font(),
+        ]
+    }
+
+    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow) {
+        self.chat_input.render(evnt, window);
+        self.chat_area.render(evnt, window);
+        self.chat_window.render(evnt, window);
     }
 
     /// If the given ChatMessage is a broadcast message and less than 200ms age, return true.
@@ -163,8 +181,8 @@ impl ChatGraphicView {
         }
     }
 
-    pub fn text_input(&mut self, args: &String, font: &mut Font) {
-        self.chat_input.text_input(args, font);
+    pub fn text_input(&mut self, args: &str) {
+        self.chat_input.text_input(args);
     }
 
     pub fn mouse_cursor_args(&mut self, args: &[f64; 2]) {
@@ -175,8 +193,8 @@ impl ChatGraphicView {
         self.chat_area.mouse_scroll_args(args);
     }
 
-    pub fn key_press(&mut self, args: &Button, font: &mut Font) -> Option<String> {
-        self.chat_input.key_press(args, font);
+    pub fn key_press(&mut self, args: &Button) -> Option<String> {
+        self.chat_input.key_press(args);
 
         if let Button::Keyboard(Key::Return) = args {
             if self.chat_input.is_focus() {

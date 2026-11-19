@@ -6,7 +6,7 @@ use crate::{
     database::{
         db::Database,
         model::{
-            bestiary::{bestiary::Bestiary, BestiaryEntry, PgSpecies},
+            bestiary::{Bestiary, BestiaryEntry, PgSpecies},
             entity::{CreateEntity, Entity},
             location::{CreateLocation, Location},
             monster::{CreateMonster, Monster},
@@ -28,7 +28,7 @@ impl Display for MonsterHandlerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MonsterHandlerError::DatabaseError(err) => {
-                write!(f, "DatabaseError: {}", err.to_string())
+                write!(f, "DatabaseError: {err}")
             }
             MonsterHandlerError::GRPCLocationIntoUpdateLocation => {
                 write!(f, "Error while trying to transform gRPC Location into database model UpdateLocation.")
@@ -40,7 +40,6 @@ impl Display for MonsterHandlerError {
 pub struct MonsterHandler {
     pub connection: PgConnection,
     cache: Record<BestiaryEntry>,
-    ttl: Option<u32>,
 }
 
 impl MonsterHandler {
@@ -48,7 +47,6 @@ impl MonsterHandler {
         Self {
             connection: Database::new().establish_connection(),
             cache: Record::new(),
-            ttl: Some(900),
         }
     }
 
@@ -59,10 +57,11 @@ impl MonsterHandler {
         if let Some(cache) = self.cache.get(&species.to_string()) {
             return Ok(cache);
         }
-        let entry = Bestiary::read_by_species(&mut self.connection, &species)
-            .map_err(|e| MonsterHandlerError::DatabaseError(e))?;
-        self.cache.set(species.to_string(), entry.clone(), self.ttl);
-        return Ok(entry);
+        let entry = Bestiary::read_by_species(&mut self.connection, species)
+            .map_err(MonsterHandlerError::DatabaseError)?;
+        self.cache
+            .set(species.to_string(), entry.clone(), Some(500));
+        Ok(entry)
     }
 
     pub fn create(
@@ -79,7 +78,7 @@ impl MonsterHandler {
                 destination: None,
             },
         )
-        .map_err(|e| MonsterHandlerError::DatabaseError(e))?;
+        .map_err(MonsterHandlerError::DatabaseError)?;
 
         let entity = Entity::create(
             &mut self.connection,
@@ -87,7 +86,7 @@ impl MonsterHandler {
                 location_id: location.id,
             },
         )
-        .map_err(|e| MonsterHandlerError::DatabaseError(e))?;
+        .map_err(MonsterHandlerError::DatabaseError)?;
 
         let bestiary = self.get_bestiary_entry(species)?;
 
@@ -98,7 +97,7 @@ impl MonsterHandler {
                 entity_id: entity.id,
             },
         )
-        .map_err(|e| MonsterHandlerError::DatabaseError(e))
+        .map_err(MonsterHandlerError::DatabaseError)
     }
 
     /// Update the Monster location with `new_loc`
@@ -109,12 +108,18 @@ impl MonsterHandler {
         new_loc: RpcLocation,
     ) -> Result<(), MonsterHandlerError> {
         let update_location = new_loc
-            .into_update_location()
+            .as_update_location()
             .ok_or_else(|| MonsterHandlerError::GRPCLocationIntoUpdateLocation)?;
 
         Location::update_by_entity_id(&mut self.connection, &entity_id, update_location)
-            .map_err(|e| MonsterHandlerError::DatabaseError(e))?;
+            .map_err(MonsterHandlerError::DatabaseError)?;
 
         Ok(())
+    }
+}
+
+impl Default for MonsterHandler {
+    fn default() -> Self {
+        Self::new()
     }
 }

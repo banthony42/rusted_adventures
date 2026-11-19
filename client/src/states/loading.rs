@@ -8,7 +8,9 @@ use tokio::runtime::{Builder, Runtime};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
-use crate::states::states::GameData;
+use crate::states::GameData;
+use crate::states::GameState;
+use crate::states::StateFactory;
 use crate::tasks::task::TaskData;
 use crate::tasks::task::TaskInterface;
 use crate::ui::font::Font;
@@ -16,8 +18,6 @@ use common::constants::*;
 
 use super::game::Game;
 use super::login::Login;
-use super::states::GameState;
-use super::states::StateFactory;
 
 pub enum LoadingNextState {
     Game,
@@ -62,8 +62,6 @@ impl Loading {
             };
         });
 
-        let mut font = Font::new();
-        font.load(window);
         Loading {
             _rt: runtime,
             task: master_task,
@@ -71,7 +69,7 @@ impl Loading {
             timeout: timeout as u128,
             progress: 0,
             next_state,
-            font,
+            font: Font::new(TITLE_FONT_SIZE).load(window),
             margin: Size {
                 width: 0.0,
                 height: 0.0,
@@ -149,12 +147,10 @@ impl GameState for Loading {
             }
         });
 
-        self.font.render_centered(
+        self.font.set_color(color::WHITE).render_centered(
             TITLE,
-            TITLE_FONT_SIZE,
             evnt,
             window,
-            color::WHITE,
             [LOGIN_TITLE_POS[0], LOGIN_TITLE_POS[1]],
             &self.margin,
         );
@@ -204,7 +200,7 @@ impl GameState for Loading {
         margin
     }
 
-    fn get_font(&mut self) -> &mut Font {
-        &mut self.font
+    fn get_font(&mut self) -> Vec<&mut Font> {
+        vec![&mut self.font]
     }
 }

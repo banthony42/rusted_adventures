@@ -1,6 +1,6 @@
 use common::constants::SERVER_ENDPOINT;
 
-use crate::states::states::GameData;
+use crate::states::GameData;
 
 use super::task::{TaskData, TaskInterface};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;

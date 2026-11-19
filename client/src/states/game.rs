@@ -5,18 +5,16 @@ use crate::{
     chat::controller::ChatController,
     entities::controller::EntityController,
     import::assets::{load_hard_drawn_assets, UITexture},
-    interface::Interface,
+    interface::{Interface, InterfaceUpdate},
+    states::{GameState, StateFactory},
     tasks::logout::LogoutTask,
     ui::font::Font,
     world::World,
-    GameState,
 };
+
 use common::constants::*;
 
-use super::{
-    loading::{Loading, LoadingNextState},
-    states::StateFactory,
-};
+use super::loading::{Loading, LoadingNextState};
 
 #[derive(Clone)]
 pub struct GameCredentials {
@@ -50,20 +48,17 @@ impl Game {
         chat: ChatController,
         entities: EntityController,
     ) -> Self {
-        let mut font = Font::new();
-        font.load(window);
-
         Game {
             credentials,
             logout: false,
-            font,
+            font: Font::new(42).load(window),
             hard_textures: load_hard_drawn_assets(window),
             margin: Size {
                 width: MAP_WIDTH_CENTER as f64,
                 height: MAP_HEIGHT_CENTER as f64,
             },
             world: World::new(window),
-            interface: Interface::new(),
+            interface: Interface::new(window),
             chat_controller: chat,
             ent_controller: entities,
         }
@@ -90,16 +85,30 @@ impl GameState for Game {
 
         self.world
             .render(evnt, window, &self.ent_controller.player_map());
-        self.ent_controller.render(evnt, window, &mut self.font);
+        self.ent_controller.render(evnt, window);
         self.interface.render(evnt, window, &self.hard_textures);
-        self.chat_controller.render(evnt, window, &mut self.font);
+        self.chat_controller.render(evnt, window);
     }
 
-    fn update(&mut self, _args: &UpdateArgs, delta_ts: u128) {
+    fn update(&mut self, args: &UpdateArgs, delta_ts: u128) {
         self.world
             .update(delta_ts, &self.ent_controller.player_map());
         self.ent_controller.update(delta_ts, &self.world);
-        self.interface.update(_args, delta_ts);
+
+        let map_coord = self.ent_controller.player_map();
+        let map_info = self
+            .world
+            .get_map(map_coord)
+            .map_or(String::default(), |map| map.1.info().to_string());
+
+        self.interface.update(
+            args,
+            delta_ts,
+            InterfaceUpdate {
+                map_coord,
+                map_info,
+            },
+        );
         // Get players position from ent_controller and pass it to chat_controller.update
         self.chat_controller
             .update(delta_ts, self.ent_controller.ui_entities_models());
@@ -107,7 +116,7 @@ impl GameState for Game {
 
     fn key_press(&mut self, args: &Button) {
         self.ent_controller.key_press(args, &self.world.world);
-        self.chat_controller.key_press(args, &mut self.font);
+        self.chat_controller.key_press(args);
 
         if let &Button::Keyboard(key) = args {
             if key == piston::Key::Escape {
@@ -119,7 +128,7 @@ impl GameState for Game {
     fn key_release(&mut self, _args: &Button) {}
 
     fn text_input(&mut self, args: &String) {
-        self.chat_controller.text_input(args, &mut self.font);
+        self.chat_controller.text_input(args);
     }
 
     fn mouse_cursor_args(&mut self, args: &[f64; 2]) {
@@ -144,7 +153,11 @@ impl GameState for Game {
         self.chat_controller.resize(&self.margin);
     }
 
-    fn get_font(&mut self) -> &mut Font {
-        &mut self.font
+    fn get_font(&mut self) -> Vec<&mut Font> {
+        let mut game_fonts = vec![&mut self.font];
+        game_fonts.append(&mut self.chat_controller.font());
+        game_fonts.append(&mut self.ent_controller.font());
+        game_fonts.append(&mut self.interface.font());
+        game_fonts
     }
 }

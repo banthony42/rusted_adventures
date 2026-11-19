@@ -3,6 +3,8 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use dotenvy::dotenv;
 use std::env;
 
+pub type DBConnection = diesel::pg::PgConnection;
+
 pub struct Database {
     url: String,
 }
@@ -32,13 +34,13 @@ impl Database {
         Database { url }
     }
 
-    pub fn establish_connection(&self) -> PgConnection {
-        PgConnection::establish(&self.url)
-            .expect(format!("Database connection error: {}", self.url).as_str())
+    pub fn establish_connection(&self) -> DBConnection {
+        DBConnection::establish(&self.url)
+            .unwrap_or_else(|_| panic!("Database connection error: {}", self.url))
     }
 
     pub fn run_migration(&self) -> Result<(), String> {
-        let mut conn: PgConnection = self.establish_connection();
+        let mut conn = self.establish_connection();
         let migrations = conn
             .run_pending_migrations(Self::MIGRATIONS)
             .map_err(|e| e.to_string())?;
@@ -48,5 +50,11 @@ impl Database {
         }
 
         Ok(())
+    }
+}
+
+impl Default for Database {
+    fn default() -> Self {
+        Self::new()
     }
 }

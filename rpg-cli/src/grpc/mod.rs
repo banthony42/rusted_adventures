@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use clap::{Args, Subcommand};
 
 pub mod operations;
@@ -19,22 +17,4 @@ pub enum GrpcSubcommand {
 pub struct ChatCmd {
     /// The sender name
     pub login: String,
-}
-
-#[derive(Debug, Clone)]
-pub enum ChatCmdEventType {
-    Broadcast,
-    Whisper,
-}
-
-impl FromStr for ChatCmdEventType {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "Broadcast" => Ok(Self::Broadcast),
-            "Whisper" => Ok(Self::Whisper),
-            _ => Err(String::from("Unknown variant")),
-        }
-    }
 }

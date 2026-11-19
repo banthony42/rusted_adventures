@@ -71,7 +71,7 @@ pub struct Spawner {
 
 impl Spawner {
     pub fn new(species: Vec<PgSpecies>, map: MapCoord) -> Self {
-        assert!(species.len() > 0);
+        assert!(!species.is_empty());
         Self {
             species,
             map,

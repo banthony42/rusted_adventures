@@ -1,5 +1,5 @@
 use crate::entities::model::{EntityModel, IEntity, Mage, Player, Warrior};
-use crate::states::states::GameData;
+use crate::states::GameData;
 use common::constants::{Species, SERVER_ENDPOINT};
 use common::rpc_extentions::{RpcCoordExtension, RpcLocationExtension};
 
@@ -110,15 +110,12 @@ impl ConnectionTask {
         }
     }
 
-    async fn fetch_player_request(
-        &self,
-        token: &String,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    async fn fetch_player_request(&self, token: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
         let endpoint = Endpoint::from_static(SERVER_ENDPOINT).connect().await?;
 
         let mut client = RpgEntityClient::with_interceptor(
             endpoint,
-            Self::auth_interceptor(self.login.clone(), token.clone()),
+            Self::auth_interceptor(self.login.clone(), token.to_string()),
         );
 
         let request = tonic::Request::new(EmptyRequest {});
@@ -140,15 +137,12 @@ impl ConnectionTask {
         Ok(())
     }
 
-    async fn fetch_entity_request(
-        &self,
-        token: &String,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    async fn fetch_entity_request(&self, token: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
         let endpoint = Endpoint::from_static(SERVER_ENDPOINT).connect().await?;
 
         let mut client = RpgEntityClient::with_interceptor(
             endpoint,
-            Self::auth_interceptor(self.login.clone(), token.clone()),
+            Self::auth_interceptor(self.login.clone(), token.to_string()),
         );
 
         let request = tonic::Request::new(EmptyRequest {});
@@ -183,7 +177,7 @@ impl TryInto<EntityModel> for &Entity {
         let (cell_rpc_coord, map_rpc_coord) = self
             .location
             .ok_or("TryInto<EntityModel> for &Entity: Failed because location is None.")?
-            .into_cell_map()
+            .as_cell_map()
             .ok_or("TryInto<EntityModel> for &Entity: Failed because location.cell and location.map should exist is None.")?;
 
         entity_model.set_map(map_rpc_coord.into_map());

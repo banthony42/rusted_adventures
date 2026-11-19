@@ -12,11 +12,13 @@ pub struct EntityView {
     pub assets: HashMap<EntityAssets, GameAsset>,
     pub margin: Size,
     species_lib: SpeciesLibrary,
+    font: Font,
 }
 
 impl EntityView {
-    pub fn new(assets: HashMap<EntityAssets, GameAsset>) -> Self {
+    pub fn new(assets: HashMap<EntityAssets, GameAsset>, window: &mut PistonWindow) -> Self {
         EntityView {
+            font: Font::new(GUI_ENTITY_FONT_SIZE).load(window),
             assets,
             species_lib: SpeciesLibrary::new(),
             margin: Size {
@@ -26,13 +28,11 @@ impl EntityView {
         }
     }
 
-    pub fn render(
-        &mut self,
-        evnt: &Event,
-        window: &mut PistonWindow,
-        entity: &dyn IEntity,
-        font: &mut Font,
-    ) {
+    pub fn font(&mut self) -> Vec<&mut Font> {
+        vec![&mut self.font]
+    }
+
+    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, entity: &dyn IEntity) {
         if let Some(asset) = self.assets.get(entity.get_assets()) {
             window.draw_2d(evnt, |ctx, gl, _device| {
                 let asset_src_rect = asset.frames[entity.get_frame()].src_rect;
@@ -66,16 +66,15 @@ impl EntityView {
                     gl,
                 );
             });
-            self.render_entity_name(evnt, window, entity, font);
+            self.render_entity_name(evnt, window, entity);
         }
     }
 
     fn render_entity_name(
-        &self,
+        &mut self,
         evnt: &Event,
         window: &mut PistonWindow,
         entity: &dyn IEntity,
-        font: &mut Font,
     ) {
         let entity_pos = entity.get_real_pos();
 
@@ -84,12 +83,10 @@ impl EntityView {
             entity_pos.y as f64 - self.species_lib.get_height_offset(entity.get_species()),
         ];
         let text_color = self.species_lib.get_font_color(entity.get_species());
-        font.render_centered(
+        self.font.set_color(text_color).render_centered(
             entity.get_name(),
-            GUI_ENTITY_FONT_SIZE,
             evnt,
             window,
-            text_color,
             text_position,
             &self.margin,
         );

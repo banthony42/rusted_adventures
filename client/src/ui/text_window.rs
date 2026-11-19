@@ -1,6 +1,5 @@
 use common::constants::{
-    CHAT_WINDOW_MARGIN_BOTTOM, CHAT_WINDOW_PADDING_HEIGHT, CHAT_WINDOW_PADDING_WIDTH,
-    GUI_ENTITY_FONT_SIZE, TILE_WIDTH,
+    CHAT_WINDOW_MARGIN_BOTTOM, CHAT_WINDOW_PADDING_HEIGHT, CHAT_WINDOW_PADDING_WIDTH, TILE_WIDTH,
 };
 use graphics::rectangle::Shape;
 use piston_window::*;
@@ -23,7 +22,7 @@ pub struct TextWindow<T>
 where
     T: TextWindowFormat + PartialEq,
 {
-    font_size: u32,
+    font: Font,
     max_width: f64,
     messages: Vec<WindowMessage<T>>,
     margin: Size,
@@ -35,9 +34,9 @@ impl<T> TextWindow<T>
 where
     T: TextWindowFormat + PartialEq,
 {
-    pub fn new(font_size: u32, max_width: f64, timer: u128) -> Self {
+    pub fn new(font_size: u32, max_width: f64, timer: u128, window: &mut PistonWindow) -> Self {
         Self {
-            font_size,
+            font: Font::new(font_size).load(window),
             max_width,
             timer,
             species_lib: SpeciesLibrary::new(),
@@ -49,13 +48,16 @@ where
         }
     }
 
-    fn get_font_height(&self, font_size: u32, font: &mut Font) -> f64 {
-        font.get()
-            .character(font_size, '|')
-            .map_or(0.0, |c| c.top())
+    pub fn font(&mut self) -> &mut Font {
+        &mut self.font
     }
 
-    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, font: &mut Font) {
+    fn get_cursor_height(&mut self) -> f64 {
+        self.font.char_offset('|').map_or(0.0, |offset| offset.top)
+    }
+
+    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow) {
+        let cursor_height = self.get_cursor_height();
         self.messages
             .iter()
             .rev()
@@ -65,9 +67,10 @@ where
                 let model_position = msg.content.position();
                 let text_width = self.max_width - CHAT_WINDOW_PADDING_WIDTH;
 
-                let window_height =
-                    font.height_with_auto_newline(text.as_str(), self.font_size, text_width)
-                        + CHAT_WINDOW_PADDING_HEIGHT;
+                let window_height = self
+                    .font
+                    .height_with_auto_newline(text.as_str(), text_width)
+                    + CHAT_WINDOW_PADDING_HEIGHT;
 
                 // Compute the chat window position
                 let window_position = [
@@ -75,16 +78,14 @@ where
                     model_position[1] as f64 + self.margin.height
                         - msg.content.offset(&self.species_lib)[1]
                         - window_height // Need to offset with the rectangle height, therefore we control the bottom right anchor
-                        - self.get_font_height(GUI_ENTITY_FONT_SIZE, font)
+                        - cursor_height
                         - CHAT_WINDOW_MARGIN_BOTTOM,
                 ];
 
                 // Compute the message position inside the chat window
                 let msg_position = [
                     window_position[0] + (CHAT_WINDOW_PADDING_WIDTH / 2.0),
-                    window_position[1]
-                        + self.get_font_height(self.font_size, font)
-                        + (CHAT_WINDOW_PADDING_HEIGHT / 2.0),
+                    window_position[1] + cursor_height + (CHAT_WINDOW_PADDING_HEIGHT / 2.0),
                 ];
 
                 // Prepare the chat window rectangle (position + size)
@@ -100,12 +101,10 @@ where
                         .shape(Shape::Round(5.0, 32))
                         .draw(window_box, &_ctx.draw_state, _ctx.transform, gl);
                 });
-                font.render_with_auto_newline(
+                self.font.render_with_auto_newline(
                     text.as_str(),
-                    self.font_size,
                     evnt,
                     window,
-                    color::BLACK,
                     msg_position,
                     self.max_width - CHAT_WINDOW_PADDING_WIDTH,
                     window_box,
