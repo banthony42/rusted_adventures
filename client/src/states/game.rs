@@ -5,9 +5,8 @@ use crate::{
     chat::controller::ChatController,
     entities::controller::EntityController,
     import::assets::{load_hard_drawn_assets, UITexture},
-    interface::Interface,
-    states::GameState,
-    states::StateFactory,
+    interface::{Interface, InterfaceUpdate},
+    states::{GameState, StateFactory},
     tasks::logout::LogoutTask,
     ui::font::Font,
     world::World,
@@ -59,7 +58,7 @@ impl Game {
                 height: MAP_HEIGHT_CENTER as f64,
             },
             world: World::new(window),
-            interface: Interface::new(),
+            interface: Interface::new(window),
             chat_controller: chat,
             ent_controller: entities,
         }
@@ -91,11 +90,25 @@ impl GameState for Game {
         self.chat_controller.render(evnt, window);
     }
 
-    fn update(&mut self, _args: &UpdateArgs, delta_ts: u128) {
+    fn update(&mut self, args: &UpdateArgs, delta_ts: u128) {
         self.world
             .update(delta_ts, &self.ent_controller.player_map());
         self.ent_controller.update(delta_ts, &self.world);
-        self.interface.update(_args, delta_ts);
+
+        let map_coord = self.ent_controller.player_map();
+        let map_info = self
+            .world
+            .get_map(map_coord)
+            .map_or(String::default(), |map| map.1.info().to_string());
+
+        self.interface.update(
+            args,
+            delta_ts,
+            InterfaceUpdate {
+                map_coord,
+                map_info,
+            },
+        );
         // Get players position from ent_controller and pass it to chat_controller.update
         self.chat_controller
             .update(delta_ts, self.ent_controller.ui_entities_models());
@@ -144,6 +157,7 @@ impl GameState for Game {
         let mut game_fonts = vec![&mut self.font];
         game_fonts.append(&mut self.chat_controller.font());
         game_fonts.append(&mut self.ent_controller.font());
+        game_fonts.append(&mut self.interface.font());
         game_fonts
     }
 }

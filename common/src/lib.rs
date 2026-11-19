@@ -1,4 +1,7 @@
-use std::ops::{MulAssign, SubAssign};
+use std::{
+    fmt::Display,
+    ops::{MulAssign, SubAssign},
+};
 
 use diesel_geometry::data_types::PgPoint;
 use rand::{
@@ -123,6 +126,12 @@ pub struct CellCoord {
 pub struct MapCoord {
     pub x: i8,
     pub y: i8,
+}
+
+impl Display for MapCoord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Coordonées: {}, {}", self.x, self.y)
+    }
 }
 
 impl From<MapCoord> for PgPoint {

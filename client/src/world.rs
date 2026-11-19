@@ -67,6 +67,10 @@ impl MapData {
             self.frame_index += 1;
         }
     }
+
+    pub fn info(&self) -> &str {
+        &self.info
+    }
 }
 pub struct World {
     pub world: HashMap<MapCoord, MapData>,
@@ -163,7 +167,7 @@ impl World {
         self.margin = *margin;
     }
 
-    fn get_map(&self, coord: MapCoord) -> Option<(MapCoord, &MapData)> {
+    pub fn get_map(&self, coord: MapCoord) -> Option<(MapCoord, &MapData)> {
         Some((coord, self.world.get(&coord)?))
     }
 
