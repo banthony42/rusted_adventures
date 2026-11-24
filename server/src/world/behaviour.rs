@@ -1,9 +1,8 @@
 use common::{
-    database::model::{monster::Monster, EntityIdentifiable},
-    grpc_codegen::{Coord as RpcCoord, Location as RpcLocation},
+    database::model::{location::UpdateLocation, monster::Monster, EntityIdentifiable},
     monster::MonsterHandler,
     world::WorldImport,
-    CellCoord, MapCoord, Orientation,
+    CellCoord, MapCoord, Orientation, Position,
 };
 use tokio::sync::mpsc::Sender;
 
@@ -93,8 +92,6 @@ fn move_behaviour(
                     pick if last_orientation.is_some_and(|inner| inner.invert() != pick) => {
                         break pick
                     }
-                    // TODO: Test if both lines above can be simplify by:
-                    // pick if Some(pick.invert()) == last_orientation => break pick
                     _ => { /* pick is same from the last loop, retry */ }
                 }
             };
@@ -116,20 +113,16 @@ fn move_behaviour(
         }
     }
 
-    // TODO: .limit() seems useless since already call in the previous loop
-    new_destination = new_destination.limit();
-    let new_rpc_loc = RpcLocation {
-        map: Some(monster.map.into()),
-        cell: Some(RpcCoord {
-            x: new_destination.x,
-            y: new_destination.y,
-        }),
+    let new_loc = UpdateLocation {
+        map: monster.map,
+        cell: new_destination.into(),
     };
 
     // We accept that players who appear on the map
     // will see the monster directly at its new location,
     // while players already on the map will see the monster move to a new location
-    if let Err(err) = handler.update_location(monster.entity_id, new_rpc_loc) {
+
+    if let Err(err) = handler.update_location(monster.entity_id, new_loc) {
         tracing::error!(
             "{LOG_PREFIX} Drop behaviour task for monster id: {monster_id}: Update location: {err}",
         );
@@ -139,7 +132,10 @@ fn move_behaviour(
     // send MonsterMove event through tx
     let move_event = WorldEvent::MonsterMove(MonsterMove {
         identifier: monster.identifier(),
-        destination: new_rpc_loc,
+        destination: Position {
+            map: monster.map.into(),
+            cell: new_destination,
+        },
         map: monster.map.into(),
     });
 

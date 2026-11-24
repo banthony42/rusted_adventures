@@ -1,26 +1,24 @@
 use std::collections::HashMap;
 
+use common::entities::traits::GameEntity;
 use piston_window::*;
 
-use crate::import::assets::{EntityAssets, GameAsset, SpeciesLibrary};
+use crate::entities::model::ClientEntity;
+use crate::import::assets::{load_assets, EntityAssets, GameAsset};
 use crate::ui::font::Font;
 use common::{constants::*, Orientation};
-
-use super::model::IEntity;
 
 pub struct EntityView {
     pub assets: HashMap<EntityAssets, GameAsset>,
     pub margin: Size,
-    species_lib: SpeciesLibrary,
     font: Font,
 }
 
 impl EntityView {
-    pub fn new(assets: HashMap<EntityAssets, GameAsset>, window: &mut PistonWindow) -> Self {
+    pub fn new(window: &mut PistonWindow) -> Self {
         EntityView {
             font: Font::new(GUI_ENTITY_FONT_SIZE).load(window),
-            assets,
-            species_lib: SpeciesLibrary::new(),
+            assets: load_assets(window),
             margin: Size {
                 width: 0.0,
                 height: 0.0,
@@ -32,22 +30,21 @@ impl EntityView {
         vec![&mut self.font]
     }
 
-    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, entity: &dyn IEntity) {
-        if let Some(asset) = self.assets.get(entity.get_assets()) {
+    pub fn render(&mut self, evnt: &Event, window: &mut PistonWindow, entity: &ClientEntity) {
+        if let Some(asset) = self.assets.get(&entity.asset()) {
             window.draw_2d(evnt, |ctx, gl, _device| {
-                let asset_src_rect = asset.frames[entity.get_frame()].src_rect;
+                let asset_src_rect = asset.frames[entity.graphic.get_frame()].src_rect;
                 let asset_width = asset_src_rect[2];
-                let entity_pos = entity.get_real_pos();
-                let render_offset_y = self.species_lib.get_height_offset(entity.get_species());
+                let entity_pos = entity.get_screen_pos();
 
                 let mut trans = ctx.transform.trans(
                     self.margin.width + entity_pos.x as f64,
-                    self.margin.height + entity_pos.y as f64 - render_offset_y,
+                    self.margin.height + entity_pos.y as f64 - entity.graphic.render_offset()[1],
                 );
                 // Offset the point controlled by the user's keyboard, to bottom center of the sprite character.
 
                 // Flip the sprite according to Est/Wes direction
-                trans = match entity.get_orientation() {
+                trans = match entity.graphic.get_orientation() {
                     Orientation::West => trans.flip_h().trans(-asset_width, 0.0),
                     _ => trans, // Orientation::Est default (define by the sprite) will be fixed when all orientation sprites available
                 };
@@ -74,17 +71,17 @@ impl EntityView {
         &mut self,
         evnt: &Event,
         window: &mut PistonWindow,
-        entity: &dyn IEntity,
+        entity: &ClientEntity,
     ) {
-        let entity_pos = entity.get_real_pos();
-
+        let entity_pos = entity.get_screen_pos();
+        let text_color = entity.graphic.font_color();
         let text_position = [
             entity_pos.x as f64 + TILE_WIDTH as f64 / 2.0,
-            entity_pos.y as f64 - self.species_lib.get_height_offset(entity.get_species()),
+            entity_pos.y as f64 - entity.graphic.render_offset()[1],
         ];
-        let text_color = self.species_lib.get_font_color(entity.get_species());
+
         self.font.set_color(text_color).render_centered(
-            entity.get_name(),
+            entity.model().name(),
             evnt,
             window,
             text_position,
@@ -92,20 +89,20 @@ impl EntityView {
         );
     }
 
-    pub fn update(&mut self, delta_ts: u128, entity: &mut dyn IEntity) {
-        if let Some(asset) = self.assets.get(entity.get_assets()) {
-            let timer = entity.get_timer();
-            let frame = entity.get_frame();
+    pub fn update(&mut self, delta_ts: u128, entity: &mut ClientEntity) {
+        if let Some(asset) = self.assets.get(&entity.asset()) {
+            let timer = entity.graphic.get_timer();
+            let frame = entity.graphic.get_frame();
 
             if timer >= asset.frames[frame].duration {
                 if frame >= (asset.frames.len() - 1) {
-                    entity.set_frame(0);
+                    entity.graphic.set_frame(0);
                 } else {
-                    entity.set_frame(frame as u8 + 1);
+                    entity.graphic.set_frame(frame as u8 + 1);
                 }
-                entity.set_timer(0);
+                entity.graphic.set_timer(0);
             } else {
-                entity.set_timer(timer + delta_ts);
+                entity.graphic.set_timer(timer + delta_ts);
             }
         }
     }

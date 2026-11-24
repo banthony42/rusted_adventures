@@ -5,6 +5,7 @@ use crate::{
 };
 use std::{collections::HashMap, fs};
 
+pub mod entities;
 pub mod tilemap;
 
 struct MapImport {

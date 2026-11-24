@@ -4,7 +4,6 @@ use piston_window::*;
 
 use crate::{
     entities::model::UIEntityModel,
-    import::assets::SpeciesLibrary,
     ui::{
         font::Font,
         input_field::InputField,
@@ -59,8 +58,8 @@ impl TextWindowFormat for WindowChatMessage {
         ]
     }
 
-    fn offset(&self, species_lib: &SpeciesLibrary) -> [f64; 2] {
-        [0.0, species_lib.get_height_offset(&self.ui_model.species)]
+    fn offset(&self) -> [f64; 2] {
+        self.ui_model.render_offset
     }
 }
 

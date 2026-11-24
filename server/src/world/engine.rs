@@ -4,12 +4,14 @@ use crate::world::behaviour::BehaviourHandler;
 
 use super::spawner::Spawner;
 use common::{
+    character::CharacterHandler,
     database::model::bestiary::PgSpecies,
     grpc_codegen::{Coord as RpcCoord, Location as RpcLocation},
     monster::MonsterHandler,
+    path_finding::{astar::AStar, PathFinder, PathFindingStrategy},
     utils::get_timestamp,
     world::WorldImport,
-    MapCoord,
+    MapCoord, Position,
 };
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
@@ -30,8 +32,8 @@ pub struct MonsterSpawn {
 
 pub struct MonsterMove {
     pub identifier: String,
-    pub destination: RpcLocation,
-    pub map: RpcCoord,
+    pub destination: Position,
+    pub map: MapCoord,
 }
 
 pub enum WorldEvent {
@@ -39,15 +41,51 @@ pub enum WorldEvent {
     MonsterMove(MonsterMove),
 }
 
+trait HandleNetEvent {
+    fn proceed(&self, sender: String);
+}
+
+pub enum NetEvent {
+    RequestPath(Position),
+}
+
+impl HandleNetEvent for NetEvent {
+    fn proceed(&self, sender: String) {
+        let char_handler = CharacterHandler::new(&sender);
+        match self {
+            NetEvent::RequestPath(cell_coord) => {
+                // Receive destination request.
+                // Validate player position and destination.
+                // Compute authoritative A* path.
+                // Update authoritative movement state.
+                // Broadcast movement information.
+                todo!()
+            }
+        }
+    }
+}
+
+pub struct EntityNetEvent {
+    sender: String,
+    event: NetEvent,
+}
+
+impl EntityNetEvent {
+    pub fn new(sender: String, event: NetEvent) -> Self {
+        Self { sender, event }
+    }
+}
+
 pub struct WorldEngine {
     world_importer: WorldImport,
+    path_finder: PathFinder<AStar>,
     wtx_to_net: Sender<WorldEvent>,
     monster_handler: MonsterHandler,
     wpl: Duration,
     spawners: Vec<Spawner>,
     behaviours: BehaviourHandler,
     last_update_ts: u128,
-    _network_rx: Receiver<WorldEvent>,
+    net_rx: Receiver<EntityNetEvent>,
 }
 
 // Limit the WorldEngine infinite loop rate
@@ -55,15 +93,16 @@ const UPDATE_PER_SECOND: u64 = 60;
 const WAIT_PER_LOOP: u64 = 1000 / UPDATE_PER_SECOND;
 
 impl WorldEngine {
-    pub fn new() -> (Self, Receiver<WorldEvent>, Sender<WorldEvent>) {
-        let (wtx_to_net, wrx_to_net) = mpsc::channel::<WorldEvent>(10);
-        let (ntx_to_world, nrx_to_world) = mpsc::channel::<WorldEvent>(10);
+    pub fn new() -> (Self, Receiver<WorldEvent>, Sender<EntityNetEvent>) {
+        let (world_tx, world_rx) = mpsc::channel::<WorldEvent>(10);
+        let (net_tx, net_rx) = mpsc::channel::<EntityNetEvent>(10);
         (
             WorldEngine {
-                _network_rx: nrx_to_world,
+                net_rx,
                 world_importer: WorldImport::new(),
+                path_finder: PathFinder::new(AStar::new()),
                 behaviours: BehaviourHandler::new(),
-                wtx_to_net,
+                wtx_to_net: world_tx,
                 monster_handler: MonsterHandler::new(),
                 spawners: vec![
                     Spawner::new(vec![PgSpecies::Bouftou], MapCoord { x: 0, y: 0 }),
@@ -72,8 +111,8 @@ impl WorldEngine {
                 wpl: Duration::from_millis(WAIT_PER_LOOP),
                 last_update_ts: get_timestamp(),
             },
-            wrx_to_net,
-            ntx_to_world,
+            world_rx,
+            net_tx,
         )
     }
 
@@ -84,8 +123,18 @@ impl WorldEngine {
             self.last_update_ts = now;
 
             // Handle NetworkEvent
+            // self.receive_events();
             self.update(delta_ts);
             self.wait();
+        }
+    }
+
+    fn receive_events(&mut self) {
+        match self.net_rx.try_recv() {
+            Ok(net) => net.event.proceed(net.sender),
+            Err(err) => {
+                tracing::error!("WorldEngine: error trying to receive EntityNetEvent: {err}")
+            }
         }
     }
 

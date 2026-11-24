@@ -90,23 +90,25 @@ impl GameState for Loading {
             return self;
         }
 
-        let fetch_data = self.task_data.lock().unwrap();
-        let game_data = Some(fetch_data.data.clone());
+        let task = self.task_data.lock().unwrap();
+        let data = task.data.clone();
 
-        match fetch_data.success {
+        match task.success {
             true => match self.next_state {
-                LoadingNextState::Login => StateFactory::<Login>::new(window, game_data),
-                LoadingNextState::Game => match StateFactory::<Game>::new(window, game_data) {
-                    Ok(new_state) => new_state,
-                    // On any error while creating the Game state
-                    // Fallback to Login state with an error message.
-                    Err(err) => StateFactory::<Login>::new(
-                        window,
-                        Some(vec![GameData::Message(err.to_string())]),
-                    ),
-                },
+                LoadingNextState::Login => StateFactory::<Login>::new(window, Some(data)),
+                LoadingNextState::Game => {
+                    match StateFactory::<Game>::new(window, Some(data)) {
+                        Ok(new_state) => new_state,
+                        // On any error while creating the Game state
+                        // Fallback to Login state with an error message.
+                        Err(err) => StateFactory::<Login>::new(
+                            window,
+                            Some(vec![GameData::Message(err.to_string())]),
+                        ),
+                    }
+                }
             },
-            false => StateFactory::<Login>::new(window, game_data),
+            false => StateFactory::<Login>::new(window, Some(data)),
         }
     }
 

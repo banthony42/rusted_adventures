@@ -14,10 +14,11 @@ use crate::world::ColliderMap;
 pub mod authenticator;
 pub mod character;
 pub mod database;
+pub mod entities;
 pub mod monster;
+pub mod network;
 pub mod path_finding;
 pub mod record;
-pub mod rpc_extentions;
 pub mod utils;
 pub mod world;
 
@@ -81,39 +82,6 @@ pub mod constants {
 
     pub const SERVER_ENDPOINT: &str = "http://127.0.0.1:2121";
     pub const CHAT_SERVER_ENDPOINT: &str = "http://127.0.0.1:2121";
-
-    #[derive(Hash, PartialEq, Eq, Debug, Clone)]
-    pub enum Species {
-        Warrior,
-        Mage,
-        Bouftou,
-        Crabedoeuf,
-    }
-
-    use crate::grpc_codegen;
-
-    use super::grpc_codegen::entity::Family;
-
-    impl TryFrom<Family> for Species {
-        type Error = String;
-
-        fn try_from(value: Family) -> Result<Self, Self::Error> {
-            match value {
-                Family::Species(species) => match species {
-                    val if val == grpc_codegen::Species::Bouftou as i32 => Ok(Species::Bouftou),
-                    val if val == grpc_codegen::Species::Crabedoeuf as i32 => {
-                        Ok(Species::Crabedoeuf)
-                    }
-                    _ => Err(format!("Family::species not found for {:?}", species)),
-                },
-                Family::Class(class) => match class {
-                    val if val == grpc_codegen::Classes::Warrior as i32 => Ok(Species::Warrior),
-                    val if val == grpc_codegen::Classes::Mage as i32 => Ok(Species::Mage),
-                    _ => Err(format!("Family::Class not found for {:?}", class)),
-                },
-            }
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -126,6 +94,12 @@ pub struct CellCoord {
 pub struct MapCoord {
     pub x: i8,
     pub y: i8,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Position {
+    pub map: MapCoord,
+    pub cell: CellCoord,
 }
 
 impl Display for MapCoord {

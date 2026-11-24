@@ -111,7 +111,7 @@ impl GameState for Game {
         );
         // Get players position from ent_controller and pass it to chat_controller.update
         self.chat_controller
-            .update(delta_ts, self.ent_controller.ui_entities_models());
+            .update(delta_ts, self.ent_controller.entities_ui_models());
     }
 
     fn key_press(&mut self, args: &Button) {

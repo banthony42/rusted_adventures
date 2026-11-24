@@ -16,10 +16,15 @@ message EntityDespawn {
   string uuid = 1;
 }
 
+message PathAccepted {
+  repeated Location path = 1;
+}
+
 message ServerEntityEvent {
   oneof event {
     EntityMove move = 1;
     EntitySpawn spawn = 2;
     EntityDespawn despawn = 3;
+    PathAccepted accepted_path = 4;
   };
 }

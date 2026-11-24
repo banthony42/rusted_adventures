@@ -4,7 +4,7 @@ use common::constants::{
 use graphics::rectangle::Shape;
 use piston_window::*;
 
-use crate::{import::assets::SpeciesLibrary, ui::font::Font};
+use crate::ui::font::Font;
 
 #[derive(PartialEq)]
 struct WindowMessage<T> {
@@ -15,7 +15,7 @@ struct WindowMessage<T> {
 pub trait TextWindowFormat {
     fn format(&self) -> String;
     fn position(&self) -> [u32; 2];
-    fn offset(&self, species_lib: &SpeciesLibrary) -> [f64; 2];
+    fn offset(&self) -> [f64; 2];
 }
 
 pub struct TextWindow<T>
@@ -26,7 +26,6 @@ where
     max_width: f64,
     messages: Vec<WindowMessage<T>>,
     margin: Size,
-    species_lib: SpeciesLibrary,
     timer: u128,
 }
 
@@ -39,7 +38,6 @@ where
             font: Font::new(font_size).load(window),
             max_width,
             timer,
-            species_lib: SpeciesLibrary::new(),
             messages: Vec::default(),
             margin: Size {
                 width: 0.0,
@@ -76,7 +74,7 @@ where
                 let window_position = [
                     model_position[0] as f64 + self.margin.width - (TILE_WIDTH / 2) as f64,
                     model_position[1] as f64 + self.margin.height
-                        - msg.content.offset(&self.species_lib)[1]
+                        - msg.content.offset()[1]
                         - window_height // Need to offset with the rectangle height, therefore we control the bottom right anchor
                         - cursor_height
                         - CHAT_WINDOW_MARGIN_BOTTOM,

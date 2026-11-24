@@ -1,25 +1,26 @@
-use common::constants::{Species, SERVER_ENDPOINT};
+use common::constants::SERVER_ENDPOINT;
+use common::entities::traits::GameEntity;
+use common::grpc_codegen::client_entity_event::Event;
 use common::grpc_codegen::rpg_entity_client::RpgEntityClient;
-use common::grpc_codegen::server_entity_event::Event::{Despawn, Move, Spawn};
+use common::grpc_codegen::server_entity_event::Event::{AcceptedPath, Despawn, Move, Spawn};
 use common::grpc_codegen::{
-    ClientEntityEvent, EntityDespawn, EntityMove, EntitySpawn, ServerEntityEvent,
+    self, ClientEntityEvent, EntityDespawn, EntityMove, EntitySpawn, RequestPath, ServerEntityEvent,
 };
-use common::rpc_extentions::{RpcCoordExtension, RpcLocationExtension};
-use common::CellCoord;
+
+use common::Position;
 use std::error::Error;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::runtime::{Builder, Runtime};
 use tokio::select;
 use tokio::sync::mpsc::{self, Sender};
-use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::metadata::MetadataValue;
 use tonic::transport::Endpoint;
 use tonic::{Request, Response, Status, Streaming};
 
-use crate::entities::model::{EntityModel, IEntity};
+use crate::entities::controller::SharedEntities;
+use crate::entities::model::ClientEntity;
 use crate::states::game::GameCredentials;
 
 type ResponseStreamingServerEntityEvent = Response<Streaming<ServerEntityEvent>>;
@@ -34,6 +35,22 @@ pub struct EntityClient {
     _runtime: Runtime,
     credentials: GameCredentials,
     tx: Option<Sender<ClientEntityEvent>>,
+}
+
+pub enum ClientEvent {
+    RequestPath(Position),
+}
+
+impl From<ClientEvent> for grpc_codegen::ClientEntityEvent {
+    fn from(val: ClientEvent) -> Self {
+        match val {
+            ClientEvent::RequestPath(destination) => ClientEntityEvent {
+                event: Some(Event::RequestedPath(RequestPath {
+                    destination: Some(destination.into()),
+                })),
+            },
+        }
+    }
 }
 
 impl EntityClient {
@@ -51,17 +68,13 @@ impl EntityClient {
         }
     }
 
-    pub fn send_client_event(&self, event: ClientEntityEvent) {
-        if let Some(tx) = &self.tx {
-            if let Err(error) = tx.try_send(event) {
-                println!("EntityClient: error while transmitting event: {error:?}");
-            }
-        } else {
-            println!("EntityClient: error while sending ClientEvent, transmitter doesn't exist.");
-        }
-    }
-
-    pub fn run(&mut self, entities: Arc<Mutex<Vec<Box<dyn IEntity>>>>) {
+    /// Spawn a task that connect to the server and handle communication.
+    ///
+    /// Then the client can send a message using `EntityClient::send_event`
+    ///
+    /// For now, messages receive from the server is handle fully in `EntityClient`
+    /// updating `entities: Arc<Mutex<Vec<Box<dyn IEntity>>>>` passed in parameter.
+    pub fn run(&mut self, entities: SharedEntities) {
         let credentials = self.credentials.clone();
         let (tx, mut rx) = mpsc::channel::<ClientEntityEvent>(10);
         let connection_loop = async move {
@@ -96,79 +109,77 @@ impl EntityClient {
         self.tx = Some(tx);
     }
 
-    async fn entity_move_event(
-        entity_move: EntityMove,
-        entities: &Arc<Mutex<Vec<Box<dyn IEntity>>>>,
-    ) {
-        // println!("Client: EntityController: EntityMoveEvent: {:?}", entity_move);
+    pub fn request_path(&self, destination: Position) {
+        self.send_event(ClientEvent::RequestPath(destination));
+    }
+
+    fn send_event(&self, event: ClientEvent) {
+        if let Some(tx) = &self.tx {
+            if let Err(error) = tx.try_send(event.into()) {
+                println!("EntityClient: error while transmitting event: {error:?}");
+            }
+        } else {
+            println!("EntityClient: error while sending ClientEvent, transmitter doesn't exist.");
+        }
+    }
+
+    async fn entity_move_event(entity_move: EntityMove, entities: &SharedEntities) {
+        println!(
+            "Client: EntityController: EntityMoveEvent: {:?}",
+            entity_move
+        );
         let mut entities = entities.lock().await;
         entities
             .iter_mut()
-            .filter(|entity| entity_move.uuid.eq(entity.get_uuid()))
+            .filter(|entity| entity_move.uuid.eq(entity.model().uuid()))
             // Set a new destination therefore the new path will be compute at the next update call
             .for_each(|entity| {
-                if let Some(location) = entity_move.new_location {
-                    if let Some(map) = location.cell {
-                        entity.set_destination(CellCoord { x: map.x, y: map.y });
-                    }
-                }
+                entity.model_mut().destination = entity_move.new_location.try_into().ok();
             });
     }
 
-    async fn entity_spawn_event(
-        entity_spawn: EntitySpawn,
-        entities: &Arc<Mutex<Vec<Box<dyn IEntity>>>>,
-    ) {
-        println!(
-            "Client: EntityController: EntitySpawnEvent: {:?}",
-            entity_spawn
-        );
-        if let Some(new_entity) = entity_spawn.new_entity {
-            if let Some(family) = new_entity.family {
-                match Species::try_from(family) {
-                    Ok(species) => {
-                        let mut instance =
-                            EntityModel::new(new_entity.name, new_entity.uuid, species);
-                        if let Some(location) = new_entity.location {
-                            if let Some((cell_rpc_coord, map_rpc_coord)) = location.as_cell_map() {
-                                instance.set_cell(cell_rpc_coord.into_cell());
-                                instance.set_map(map_rpc_coord.into_map());
-                                instance.set_path(Vec::new(), None);
-                                let mut entities = entities.lock().await;
-                                entities.push(Box::new(instance));
-                            }
-                        }
-                    }
-                    Err(err) => println!(
-                        "Client: EntityController: EntitySpawnEvent: Failed to parse Spefies: {:?}",
-                        err
-                    ),
-                }
+    async fn entity_spawn_event(spawn: EntitySpawn, entities: &SharedEntities) {
+        let prefix = "Client: EntityController: EntitySpawnEvent: ";
+
+        let Some(new_entity) = spawn.new_entity else {
+            println!("{prefix}nothing to spawn");
+            return;
+        };
+
+        match ClientEntity::try_from(new_entity) {
+            Err(err) => println!("{prefix}{err}"),
+            Ok(entity) => {
+                println!("{prefix}{entity:?}");
+                entities.lock().await.push(entity);
             }
         }
     }
 
-    async fn entity_despawn_event(
-        entity_despawn: EntityDespawn,
-        entities: &Arc<Mutex<Vec<Box<dyn IEntity>>>>,
-    ) {
+    async fn entity_despawn_event(entity_despawn: EntityDespawn, entities: &SharedEntities) {
         println!(
             "Client: EntityController: EntityDespawnEvent: {:?}",
             entity_despawn
         );
         let mut entities = entities.lock().await;
-        entities.retain(|entity| !entity.get_uuid().eq(&entity_despawn.uuid));
+        entities.retain(|entity| !entity.model().uuid().eq(&entity_despawn.uuid));
     }
 
     async fn handle_server_messages(
         server_message: Result<Option<ServerEntityEvent>, Status>,
-        entities: &Arc<Mutex<Vec<Box<dyn IEntity>>>>,
+        entities: &SharedEntities,
     ) -> Result<(), ServerError> {
         match server_message {
             Ok(Some(server_event)) => match server_event.event {
                 Some(Move(em)) => Self::entity_move_event(em, entities).await,
                 Some(Spawn(es)) => Self::entity_spawn_event(es, entities).await,
                 Some(Despawn(ed)) => Self::entity_despawn_event(ed, entities).await,
+                Some(AcceptedPath(path)) => {
+                    // Receive authoritative response.
+                    // Compare predicted and authoritative paths.
+                    // Reconcile if necessary.
+                    // Continue rendering smoothly.
+                    todo!()
+                }
                 None => {}
             },
             Ok(None) => {

@@ -3,8 +3,9 @@ use std::io::ErrorKind;
 use std::sync::Arc;
 
 use common::authenticator::Authenticator;
-use common::grpc_codegen::client_entity_event::Event::{PNewCell, PNewDest, PNewMap};
-use common::grpc_codegen::{PlayerNewCell, PlayerNewDest, PlayerNewMap};
+use common::database::model::location::UpdateLocation;
+use common::grpc_codegen::client_entity_event::Event::RequestedPath;
+use common::Position;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio_stream::wrappers::ReceiverStream;
@@ -16,15 +17,15 @@ use common::database::db::Database;
 use common::database::model::character::Character;
 use common::database::model::monster::Monster;
 use common::grpc_codegen::{
-    entity::Family, rpg_entity_server::RpgEntity, ClientEntityEvent, EmptyRequest, Entities,
-    Entity as RpcEntity, PlayerData, ServerEntityEvent as EntityEvent,
+    rpg_entity_server::RpgEntity, ClientEntityEvent, EmptyRequest, Entities, Entity as RpcEntity,
+    PlayerData, ServerEntityEvent as EntityEvent,
 };
-use common::rpc_extentions::{RpcCoordExtension, RpcLocationExtension, ServerEntityEventExtension};
+use common::network::ServerEntityEventExtension;
 use tracing::instrument;
 
 use crate::generics::match_for_io_error;
 use crate::services::utils::login_from_metadata;
-use crate::world::engine::WorldEvent;
+use crate::world::engine::{EntityNetEvent, NetEvent, WorldEvent};
 
 #[derive(Debug)]
 struct RpgEntityEvent {
@@ -82,163 +83,162 @@ pub struct RpgEntityService {
 }
 
 /// Player just change cell, update location in DB
-async fn player_new_cell(sender: String, new_cell: PlayerNewCell) {
-    let Some(cell) = new_cell.cell else {
-        tracing::warn!("RpgEntityService: PlayerMove: new_location is none");
-        return;
-    };
+// async fn player_new_cell(sender: String, new_cell: PlayerNewCell) {
+//     let Some(cell) = new_cell.cell else {
+//         tracing::warn!("RpgEntityService: PlayerMove: new_location is none");
+//         return;
+//     };
 
-    let mut character = match CharacterHandler::new(&sender) {
-        Ok(handler) => handler,
-        Err(e) => {
-            tracing::error!("RpgEntityService: PlayerMove: Load character for {sender} : {e}");
-            return;
-        }
-    };
+//     let mut character = match CharacterHandler::new(&sender) {
+//         Ok(handler) => handler,
+//         Err(e) => {
+//             tracing::error!("RpgEntityService: PlayerMove: Load character for {sender} : {e}");
+//             return;
+//         }
+//     };
 
-    tracing::info!("RpgEntityService: PlayerNewCell: {new_cell:?}");
+//     tracing::info!("RpgEntityService: PlayerNewCell: {new_cell:?}");
 
-    _ = character
-        .update_location(cell)
-        .inspect_err(|err| tracing::error!("RpgEntityService: PlayerMove: Update location: {err}"));
-}
+//     _ = character
+//         .update_location(cell)
+//         .inspect_err(|err| tracing::error!("RpgEntityService: PlayerMove: Update location: {err}"));
+// }
 
-async fn player_new_map(sender: String, new_map: PlayerNewMap, clients: ArcMutexHashMapClient) {
-    let Some(map) = new_map.map else {
-        tracing::warn!("RpgEntityService: PlayerMove: new_location is none");
-        return;
-    };
+// async fn player_new_map(sender: String, new_map: PlayerNewMap, clients: ArcMutexHashMapClient) {
+//     let Some(map) = new_map.map else {
+//         tracing::warn!("RpgEntityService: PlayerMove: new_location is none");
+//         return;
+//     };
 
-    let mut character = match CharacterHandler::new(&sender) {
-        Ok(handler) => handler,
-        Err(e) => {
-            tracing::error!("RpgEntityService: PlayerMove: Load character for {sender} : {e}");
-            return;
-        }
-    };
+//     let mut character = match CharacterHandler::new(&sender) {
+//         Ok(handler) => handler,
+//         Err(e) => {
+//             tracing::error!("RpgEntityService: PlayerMove: Load character for {sender} : {e}");
+//             return;
+//         }
+//     };
 
-    tracing::info!("RpgEntityService: PlayerNewMap: {new_map:?}");
+//     tracing::info!("RpgEntityService: PlayerNewMap: {new_map:?}");
 
-    // Broadcast all players on last map with a despawn event
-    let despawn_event = EntityEvent::despawn(character.identifier());
-    broadcast_player_on_map(&sender, despawn_event, &clients, &mut character).await;
+//     // Broadcast all players on last map with a despawn event
+//     let despawn_event = EntityEvent::despawn(character.identifier());
+//     broadcast_player_on_map(&sender, despawn_event, &clients, &mut character).await;
 
-    if let Err(err) = character.update_location(map) {
-        tracing::error!("RpgEntityService: PlayerMove: Update location: {err}");
-        return;
-    }
+//     if let Err(err) = character.update_location(map) {
+//         tracing::error!("RpgEntityService: PlayerMove: Update location: {err}");
+//         return;
+//     }
 
-    let entity = match character.as_rpc_entity() {
-        Ok(entity) => entity,
-        Err(e) => {
-            tracing::error!("RpgEntityService: PlayerMove: Character as RpcEntity: {e}");
-            return;
-        }
-    };
+//     let entity = match character.as_rpc_entity() {
+//         Ok(entity) => entity,
+//         Err(e) => {
+//             tracing::error!("RpgEntityService: PlayerMove: Character as RpcEntity: {e}");
+//             return;
+//         }
+//     };
 
-    let sender_spawn = EntityEvent::spawn(entity);
-    if let Ok(entities_on_map) = character.entities_on_map() {
-        let clts = clients.lock().await;
-        let Some(sender_tx) = clts.get(&sender) else {
-            tracing::error!(
-                "RpgEntityService: PlayerMove: Fail to get {sender} from connected clients."
-            );
-            return;
-        };
+//     let sender_spawn = EntityEvent::spawn(entity);
+//     if let Ok(entities_on_map) = character.entities_on_map() {
+//         let clts = clients.lock().await;
+//         let Some(sender_tx) = clts.get(&sender) else {
+//             tracing::error!(
+//                 "RpgEntityService: PlayerMove: Fail to get {sender} from connected clients."
+//             );
+//             return;
+//         };
 
-        // Parse all entities on the map (players and monsters)
-        for (entity, entity_destination) in entities_on_map.iter() {
-            // Send each entity on the new map, to this player (sender)
-            let entity_spawn = EntityEvent::spawn(entity.clone());
-            if send_entity_event(sender_tx, entity_spawn).await {
-                // Also send move event for this entity if needed
-                if let Some(dest) = entity_destination {
-                    let move_event =
-                        EntityEvent::movement(entity.uuid.clone(), dest.into_destination());
-                    send_entity_event(sender_tx, move_event).await;
-                }
-            }
+//         // Parse all entities on the map (players and monsters)
+//         for (entity, entity_destination) in entities_on_map.iter() {
+//             // Send each entity on the new map, to this player (sender)
+//             let entity_spawn = EntityEvent::spawn(entity.clone());
+//             if send_entity_event(sender_tx, entity_spawn).await {
+//                 // Also send move event for this entity if needed
+//                 if let Some(dest) = entity_destination {
+//                     let move_event =
+//                         EntityEvent::movement(entity.uuid.clone(), dest.into_destination());
+//                     send_entity_event(sender_tx, move_event).await;
+//                 }
+//             }
 
-            // If entity is another player, warn him that sender has spawn here
-            match (entity.family, clts.get(&entity.name)) {
-                (Some(Family::Class(_)), Some(entity_tx)) => {
-                    send_entity_event(entity_tx, sender_spawn.clone()).await;
-                }
-                (Some(Family::Class(_)), None) => tracing::error!(
-                    "RpgEntityService: PlayerMove: Fail to get {:?} stream from connected clients",
-                    entity.name
-                ),
-                _ => {}
-            };
-        }
-    }
-}
+//             // If entity is another player, warn him that sender has spawn here
+//             match (entity.family, clts.get(&entity.name)) {
+//                 (Some(Family::Class(_)), Some(entity_tx)) => {
+//                     send_entity_event(entity_tx, sender_spawn.clone()).await;
+//                 }
+//                 (Some(Family::Class(_)), None) => tracing::error!(
+//                     "RpgEntityService: PlayerMove: Fail to get {:?} stream from connected clients",
+//                     entity.name
+//                 ),
+//                 _ => {}
+//             };
+//         }
+//     }
+// }
 
-async fn player_new_dest(sender: String, new_dest: PlayerNewDest, clients: ArcMutexHashMapClient) {
-    let Some(dest) = new_dest.destination else {
-        tracing::warn!("RpgEntityService: PlayerMove: new_location is none");
-        return;
-    };
+// async fn player_new_dest(sender: String, new_dest: PlayerNewDest, clients: ArcMutexHashMapClient) {
+//     let Some(dest) = new_dest.destination else {
+//         tracing::warn!("RpgEntityService: PlayerMove: new_location is none");
+//         return;
+//     };
 
-    let mut character = match CharacterHandler::new(&sender) {
-        Ok(handler) => handler,
-        Err(e) => {
-            tracing::error!("RpgEntityService: PlayerMove: Load character for {sender} : {e}");
-            return;
-        }
-    };
+//     let mut character = match CharacterHandler::new(&sender) {
+//         Ok(handler) => handler,
+//         Err(e) => {
+//             tracing::error!("RpgEntityService: PlayerMove: Load character for {sender} : {e}");
+//             return;
+//         }
+//     };
 
-    tracing::info!("RpgEntityService: PlayerNewDest: {new_dest:?}");
+//     tracing::info!("RpgEntityService: PlayerNewDest: {new_dest:?}");
 
-    if let Some(new_destination) = dest.as_update_destination() {
-        if let Err(err) = character.update_destination(new_destination) {
-            tracing::error!("RpgEntityService: PlayerMove: Update destination: {err}");
-            return;
-        }
-        // broadcast all clients on the same new map with EntityMove embedding the new destination
-        let move_event = EntityEvent::movement(character.identifier(), dest);
-        broadcast_player_on_map(&sender, move_event, &clients, &mut character).await;
-    }
-}
+//     if let Some(new_destination) = dest.into_update_destination() {
+//         if let Err(err) = character.update_destination(new_destination) {
+//             tracing::error!("RpgEntityService: PlayerMove: Update destination: {err}");
+//             return;
+//         }
+//         // broadcast all clients on the same new map with EntityMove embedding the new destination
+//         let move_event = EntityEvent::movement(character.identifier(), dest);
+//         broadcast_player_on_map(&sender, move_event, &clients, &mut character).await;
+//     }
+// }
 
 impl RpgEntityService {
-    pub fn new(mut wrx_to_net: Receiver<WorldEvent>, _ntx_to_world: Sender<WorldEvent>) -> Self {
+    pub fn new(mut wrx_to_net: Receiver<WorldEvent>, ntx_to_world: Sender<EntityNetEvent>) -> Self {
         let (event_tx, mut event_rx) = mpsc::channel::<RpgEntityEvent>(10);
 
         let clients = Arc::new(Mutex::new(HashMap::<String, EntityEventSender>::new()));
 
-        let clts = clients.clone();
         // This task loop on the RpgEntityEvent receive channel to handle
         // RpgEntityEvent for all connected clients.
         tokio::spawn(async move {
             while let Some(receive) = event_rx.recv().await {
                 match receive.event.event {
-                    Some(PNewCell(cell)) => player_new_cell(receive.sender, cell).await,
-                    Some(PNewMap(map)) => player_new_map(receive.sender, map, clts.clone()).await,
-                    Some(PNewDest(dest)) => {
-                        player_new_dest(receive.sender, dest, clts.clone()).await
+                    Some(RequestedPath(path)) => {
+                        if let Some(coord) = path.destination {
+                            let net_event = match Position::try_from(coord) {
+                                Ok(position) => EntityNetEvent::new(
+                                    receive.sender,
+                                    NetEvent::RequestPath(position),
+                                ),
+                                Err(err) => {
+                                    tracing::error!("{err}");
+                                    continue;
+                                }
+                            };
+
+                            let _ = ntx_to_world.send(net_event).await.inspect_err(|err| {
+                                tracing::error!(
+                                    "RpgEntityService: failed to transmit RequestPath: {err}"
+                                )
+                            });
+                        }
                     }
-                    // Handle SpellCastedEvent
-                    // Send to world player, spell, target using ntx_to_world
-                    // All needed data to spwan the spell in the world
-                    // Then the WorldEngine simulation will send back a WorldEvent
-                    // when needed, either SpellMissEvent, SpellSucess, MonsterDamage,
-                    // This will be received on wrx_to_net
-                    // OR
-                    // Client should only use simple RPC to launch spell
-                    // We answer directly success / failure
-                    // The simulation start both side worldEngine / client
-                    // The world produce WorldEvent on wrx_to_net
-                    // to warn involved clients of what's happen
-                    // Therefore client get faster first feedback
-                    // does the spell is authorized to be launch ?
-                    // target is valid ? etc ..
                     None => {}
                 };
             }
         });
 
-        let clts_ref = clients.clone();
+        let clts = clients.clone();
         // This task loop on the WorldEvent receive channel to transmit
         // WorldEvent on each concerned connected players.
         tokio::spawn(async move {
@@ -255,9 +255,10 @@ impl RpgEntityService {
                             }
                         };
 
-                        let move_event = EntityEvent::movement(data.identifier, data.destination);
+                        let move_event =
+                            EntityEvent::movement(data.identifier, data.destination.into());
                         {
-                            let clts = clts_ref.lock().await;
+                            let clts = clts.lock().await;
                             // Broadcast all concerned players with the monster move
                             for player in players.iter() {
                                 if let Some(client_sender) = clts.get(&player.name) {
@@ -291,7 +292,7 @@ impl RpgEntityService {
                             "RpgEntityService: WorldEvent: MonsterSpawn: {rpc_spawn_event:?}"
                         );
                         {
-                            let clts = clts_ref.lock().await;
+                            let clts = clts.lock().await;
                             // Broadcast all concerned players with the monster spawn
                             for player in players.iter() {
                                 if let Some(client_sender) = clts.get(&player.name) {
@@ -340,7 +341,12 @@ impl RpgEntity for RpgEntityService {
             let entity = match char_handler.as_rpc_entity() {
                 Ok(entity) => entity,
                 Err(err) => {
-                    let _ = stx.send(Err(Status::not_found(err.to_string()))).await;
+                    let _ = stx
+                        .send(Err(Status::not_found(err.to_string())))
+                        .await
+                        .inspect_err(|err| {
+                            tracing::error!("RpgEntityService: failed to transmit Status NotFound for player's character: {err}")
+                        });
                     return;
                 }
             };
@@ -435,15 +441,14 @@ impl RpgEntity for RpgEntityService {
             Err(err) => return Err(tonic::Status::not_found(err.to_string())),
         };
 
-        let entities: Vec<RpcEntity> = match char_handler.entities_on_map() {
-            Ok(data) => data.iter().map(|(ent, _)| ent.clone()).collect(),
+        match char_handler.entities_on_map() {
+            Ok(data) => Ok(tonic::Response::new(Entities {
+                entities: data.iter().map(|(ent, _)| ent.clone()).collect(),
+            })),
             Err(err) => {
                 tracing::error!("RpgEntityService get_entities: {err}");
-                // TODO: investigate how to handle this in a better way
-                // Which to reply to gRPC client on DB error ?
-                Vec::new()
+                Err(tonic::Status::not_found("{err}"))
             }
-        };
-        Ok(tonic::Response::new(Entities { entities }))
+        }
     }
 }

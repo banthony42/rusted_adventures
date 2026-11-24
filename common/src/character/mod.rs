@@ -10,32 +10,16 @@ use crate::{
             account::Account,
             character::{Character, CharacterInfo, CreateCharacter, PgClasses},
             entity::{CreateEntity, Entity},
-            location::{CreateLocation, Location, UpdateLocationDestination},
+            location::{CreateLocation, Location, UpdateLocation, UpdateLocationDestination},
             monster::Monster,
             EntityIdentifiable,
         },
     },
     grpc_codegen::{Coord, Location as RpcLocation},
-    rpc_extentions::RpcLocationExtension,
     CellCoord,
 };
 
 use crate::grpc_codegen::Entity as RpcEntity;
-
-impl From<PgPoint> for Coord {
-    fn from(val: PgPoint) -> Self {
-        Coord {
-            x: val.0 as i64,
-            y: val.1 as i64,
-        }
-    }
-}
-
-impl From<Coord> for PgPoint {
-    fn from(value: Coord) -> Self {
-        PgPoint(value.x as f64, value.y as f64)
-    }
-}
 
 #[derive(Debug)]
 pub enum CharacterHandlerError {
@@ -204,9 +188,8 @@ impl CharacterHandler {
     /// Update the Character location with `new_loc`
     /// If `new_loc` match the `destination` then `destination` is reset to None
     pub fn update_location(&mut self, new_loc: RpcLocation) -> Result<(), CharacterHandlerError> {
-        let update_location = new_loc
-            .as_update_location()
-            .ok_or_else(|| CharacterHandlerError::GRPCLocationIntoUpdateLocation)?;
+        let update_location = UpdateLocation::try_from(new_loc)
+            .map_err(|_| CharacterHandlerError::GRPCLocationIntoUpdateLocation)?;
 
         Location::update_by_entity_id(
             &mut self.connection,
