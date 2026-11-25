@@ -136,24 +136,15 @@ impl EntityController {
             // succeess -> feedback or simulate spell
             // failure -> feedback
             match key {
-                // TODO: unify lines below
-                piston::Key::D1 => match &self.player.entity {
-                    super::model::ClientEntityType::Monster(_) => {}
-                    super::model::ClientEntityType::Player(PlayerType::Warrior(w)) => {
-                        w.classes.charge()
-                    }
-                    super::model::ClientEntityType::Player(PlayerType::Mage(m)) => {
-                        m.classes.fireball();
-                    }
+                piston::Key::D1 => match self.player.class() {
+                    Ok(PlayerType::Mage(m)) => m.classes.fireball(),
+                    Ok(PlayerType::Warrior(w)) => w.classes.charge(),
+                    Err(err) => println!("{err}"),
                 },
-                piston::Key::D2 => match &self.player.entity {
-                    super::model::ClientEntityType::Monster(_) => {}
-                    super::model::ClientEntityType::Player(PlayerType::Warrior(w)) => {
-                        w.classes.absorption()
-                    }
-                    super::model::ClientEntityType::Player(PlayerType::Mage(m)) => {
-                        m.classes.ice_trap();
-                    }
+                piston::Key::D2 => match self.player.class() {
+                    Ok(PlayerType::Mage(m)) => m.classes.ice_trap(),
+                    Ok(PlayerType::Warrior(w)) => w.classes.absorption(),
+                    Err(err) => println!("{err}"),
                 },
                 _ => {}
             }

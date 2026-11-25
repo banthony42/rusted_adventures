@@ -9,6 +9,12 @@ use graphics::{color, types::Color};
 
 use crate::import::assets::{Animations, EntityAssets};
 
+#[derive(Debug, thiserror::Error)]
+pub enum EntityError {
+    #[error("Can't retrieve class for Monster object.")]
+    UnexpectedMonster,
+}
+
 /// User Interface version of an EntityModel
 #[derive(Clone, PartialEq)]
 pub struct UIEntityModel {
@@ -148,6 +154,13 @@ impl GameEntity for ClientEntity {
 }
 
 impl ClientEntity {
+    pub fn class(&self) -> Result<&PlayerType, EntityError> {
+        match &self.entity {
+            ClientEntityType::Monster(_) => Err(EntityError::UnexpectedMonster),
+            ClientEntityType::Player(player_type) => Ok(player_type),
+        }
+    }
+
     pub fn ui_model(&self) -> UIEntityModel {
         UIEntityModel {
             real_position: self.get_screen_pos(),
