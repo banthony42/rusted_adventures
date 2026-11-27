@@ -17,7 +17,8 @@ message EntityDespawn {
 }
 
 message PathAccepted {
-  repeated Location path = 1;
+  uint32 sequence_number = 1;
+  repeated Location path = 2;
 }
 
 message ServerEntityEvent {

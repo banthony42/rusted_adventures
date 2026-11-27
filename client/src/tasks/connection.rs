@@ -1,6 +1,6 @@
 use crate::states::{GameData, GameEntities};
 use common::constants::SERVER_ENDPOINT;
-use common::network::conversion::NetEntityError;
+use common::network::conversion::NetConversionError;
 
 use super::task::{TaskData, TaskInterface};
 use common::grpc_codegen::rpg_authenticate_client::RpgAuthenticateClient;
@@ -26,7 +26,7 @@ pub enum ConnectionError {
     MissingPlayerEntity,
 
     #[error("Unexpected player data: {0}")]
-    ParseEntity(#[from] NetEntityError),
+    ParseEntity(#[from] NetConversionError),
 }
 
 #[derive(Clone)]

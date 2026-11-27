@@ -3,9 +3,6 @@ use std::io::ErrorKind;
 use std::sync::Arc;
 
 use common::authenticator::Authenticator;
-use common::database::model::location::UpdateLocation;
-use common::grpc_codegen::client_entity_event::Event::RequestedPath;
-use common::Position;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio_stream::wrappers::ReceiverStream;
@@ -17,15 +14,15 @@ use common::database::db::Database;
 use common::database::model::character::Character;
 use common::database::model::monster::Monster;
 use common::grpc_codegen::{
-    rpg_entity_server::RpgEntity, ClientEntityEvent, EmptyRequest, Entities, Entity as RpcEntity,
-    PlayerData, ServerEntityEvent as EntityEvent,
+    rpg_entity_server::RpgEntity, ClientEntityEvent, EmptyRequest, Entities, PlayerData,
+    ServerEntityEvent as EntityEvent,
 };
 use common::network::ServerEntityEventExtension;
 use tracing::instrument;
 
 use crate::generics::match_for_io_error;
 use crate::services::utils::login_from_metadata;
-use crate::world::engine::{EntityNetEvent, NetEvent, WorldEvent};
+use crate::world::engine::{EntityNetEvent, WorldEvent};
 
 #[derive(Debug)]
 struct RpgEntityEvent {
@@ -212,29 +209,17 @@ impl RpgEntityService {
         // RpgEntityEvent for all connected clients.
         tokio::spawn(async move {
             while let Some(receive) = event_rx.recv().await {
-                match receive.event.event {
-                    Some(RequestedPath(path)) => {
-                        if let Some(coord) = path.destination {
-                            let net_event = match Position::try_from(coord) {
-                                Ok(position) => EntityNetEvent::new(
-                                    receive.sender,
-                                    NetEvent::RequestPath(position),
-                                ),
-                                Err(err) => {
-                                    tracing::error!("{err}");
-                                    continue;
-                                }
-                            };
-
-                            let _ = ntx_to_world.send(net_event).await.inspect_err(|err| {
-                                tracing::error!(
-                                    "RpgEntityService: failed to transmit RequestPath: {err}"
-                                )
-                            });
-                        }
+                let channel_event = match receive.event.event.try_into() {
+                    Ok(abstraction) => EntityNetEvent::new(receive.sender, abstraction),
+                    Err(err) => {
+                        tracing::error!("{err}");
+                        continue;
                     }
-                    None => {}
                 };
+
+                let _ = ntx_to_world.send(channel_event).await.inspect_err(|err| {
+                    tracing::error!("RpgEntityService: failed to transmit RequestPath: {err}")
+                });
             }
         });
 

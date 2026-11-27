@@ -1,13 +1,14 @@
 use common::constants::SERVER_ENDPOINT;
 use common::entities::traits::GameEntity;
-use common::grpc_codegen::client_entity_event::Event;
 use common::grpc_codegen::rpg_entity_client::RpgEntityClient;
 use common::grpc_codegen::server_entity_event::Event::{AcceptedPath, Despawn, Move, Spawn};
 use common::grpc_codegen::{
-    self, ClientEntityEvent, EntityDespawn, EntityMove, EntitySpawn, RequestPath, ServerEntityEvent,
+    ClientEntityEvent, EntityDespawn, EntityMove, EntitySpawn, ServerEntityEvent,
 };
 
-use common::Position;
+use common::network::conversion::IntoClientEntityEvent;
+use common::network::events::{EntityEvent, EntityEventSequences, EventKind};
+use common::{CellCoord, Position};
 use std::error::Error;
 use std::time::Duration;
 use tokio::runtime::{Builder, Runtime};
@@ -34,23 +35,7 @@ enum ServerError {
 pub struct EntityClient {
     _runtime: Runtime,
     credentials: GameCredentials,
-    tx: Option<Sender<ClientEntityEvent>>,
-}
-
-pub enum ClientEvent {
-    RequestPath(Position),
-}
-
-impl From<ClientEvent> for grpc_codegen::ClientEntityEvent {
-    fn from(val: ClientEvent) -> Self {
-        match val {
-            ClientEvent::RequestPath(destination) => ClientEntityEvent {
-                event: Some(Event::RequestedPath(RequestPath {
-                    destination: Some(destination.into()),
-                })),
-            },
-        }
-    }
+    tx: Option<Sender<EntityEvent>>,
 }
 
 impl EntityClient {
@@ -76,23 +61,26 @@ impl EntityClient {
     /// updating `entities: Arc<Mutex<Vec<Box<dyn IEntity>>>>` passed in parameter.
     pub fn run(&mut self, entities: SharedEntities) {
         let credentials = self.credentials.clone();
-        let (tx, mut rx) = mpsc::channel::<ClientEntityEvent>(10);
+        let (tx, mut rx) = mpsc::channel::<EntityEvent>(10);
         let connection_loop = async move {
             loop {
                 println!("EntityClient: EntityEventBus: try to connect ...");
-
                 if let Ok((stream_tx, response)) = Self::connect(credentials.clone()).await {
                     println!("EntityClient: EntityEventBus connection succeed.");
                     let mut stream = response.into_inner();
+                    let mut sequences = EntityEventSequences::default();
                     loop {
                         select! {
                             server_event = stream.message() => {
-                                if Self::handle_server_messages(server_event, &entities).await.is_err() {
+                                if Self::handle_server_messages(&sequences, server_event, &entities).await.is_err() {
                                     break;
                                 }
                             },
                             client_event = rx.recv() => {
-                                if  Self::handle_client_messages(&stream_tx, client_event).await.is_err() {
+                                let Some(event) = client_event else {
+                                    break;
+                                };
+                                if  Self::handle_client_messages(&mut sequences, &stream_tx, event).await.is_err() {
                                     break;
                                 }
                             }
@@ -109,13 +97,13 @@ impl EntityClient {
         self.tx = Some(tx);
     }
 
-    pub fn request_path(&self, destination: Position) {
-        self.send_event(ClientEvent::RequestPath(destination));
+    pub fn request_path(&mut self, location: Position, destination: CellCoord) {
+        self.send_event(EntityEvent::RequestPath(location, destination));
     }
 
-    fn send_event(&self, event: ClientEvent) {
+    fn send_event(&self, event: EntityEvent) {
         if let Some(tx) = &self.tx {
-            if let Err(error) = tx.try_send(event.into()) {
+            if let Err(error) = tx.try_send(event) {
                 println!("EntityClient: error while transmitting event: {error:?}");
             }
         } else {
@@ -165,19 +153,25 @@ impl EntityClient {
     }
 
     async fn handle_server_messages(
+        sequences: &EntityEventSequences,
         server_message: Result<Option<ServerEntityEvent>, Status>,
         entities: &SharedEntities,
     ) -> Result<(), ServerError> {
+        // TODO: we should only do pre-processing here (handling sequences, etc..)
+        // then server inputs should be send through channel to controller
+        // therefore the controller will handle server inputs
+        // and will update game state
         match server_message {
             Ok(Some(server_event)) => match server_event.event {
                 Some(Move(em)) => Self::entity_move_event(em, entities).await,
                 Some(Spawn(es)) => Self::entity_spawn_event(es, entities).await,
                 Some(Despawn(ed)) => Self::entity_despawn_event(ed, entities).await,
-                Some(AcceptedPath(path)) => {
-                    // Receive authoritative response.
-                    // Compare predicted and authoritative paths.
-                    // Reconcile if necessary.
-                    // Continue rendering smoothly.
+                Some(AcceptedPath(accepted_path)) => {
+                    if accepted_path.sequence_number < sequences.get(EventKind::RequestPath) {
+                        // When client-side sequence number is higher than this request
+                        // it mean this AcceptedPath is outdated, we can ignore it.
+                        return Ok(());
+                    }
                     todo!()
                 }
                 None => {}
@@ -196,15 +190,22 @@ impl EntityClient {
     }
 
     async fn handle_client_messages(
-        tx: &Sender<ClientEntityEvent>,
-        rx: Option<ClientEntityEvent>,
+        sequences: &mut EntityEventSequences,
+        stream_tx: &Sender<ClientEntityEvent>,
+        event: EntityEvent,
     ) -> Result<(), ServerError> {
-        if let Some(client_entity_event) = rx {
-            if let Err(error) = tx.send(client_entity_event).await {
-                println!("Entity stream tx error, maybe the rx has been dropped (grpc_codegen side): {:?}", error);
-                return Err(ServerError::SenderStream);
-            }
+        let net_event = event
+            .into_net_event(sequences)
+            .map_err(|_| ServerError::EventError)?;
+
+        if let Err(error) = stream_tx.send(net_event).await {
+            println!(
+                "Entity stream tx error, maybe the rx has been dropped (grpc_codegen side): {:?}",
+                error
+            );
+            return Err(ServerError::SenderStream);
         }
+
         Ok(())
     }
 

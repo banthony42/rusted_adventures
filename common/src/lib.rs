@@ -96,7 +96,7 @@ pub struct MapCoord {
     pub y: i8,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Position {
     pub map: MapCoord,
     pub cell: CellCoord,

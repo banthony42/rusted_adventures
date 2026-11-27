@@ -21,6 +21,10 @@ use common::{
 
 use tokio::sync::Mutex;
 
+// TODO: Ensure all channels used are handling correctly Disconnected Error
+
+// TODO: remove this entity.client should not have access
+// Server input should be transmit to controller here through channels
 pub type SharedEntities = Arc<Mutex<GameEntities>>;
 
 pub struct EntityController {
@@ -169,12 +173,11 @@ impl EntityController {
                     .path_finder
                     .compute(position.cell, destination, &map_data.collider_map)
                 {
+                    // Request server with new destination
+                    self.client.request_path(position, destination);
+                    // Meanwhile, set computed path to start the move animation (client prediction)
                     self.player.model_mut().path = Some(self.path_finder.get_path());
                 }
-                // Request server with new destination
-                let mut request_destination = position;
-                request_destination.cell = destination;
-                self.client.request_path(request_destination);
             }
         }
     }

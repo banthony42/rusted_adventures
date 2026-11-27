@@ -1,5 +1,3 @@
-use std::{error::Error, fmt::Display};
-
 use diesel::{result::Error as DieselError, PgConnection};
 use diesel_geometry::data_types::PgPoint;
 
@@ -16,35 +14,23 @@ use crate::{
         },
     },
     grpc_codegen::{Coord, Location as RpcLocation},
-    CellCoord,
+    network::conversion::NetConversionError,
+    CellCoord, Position,
 };
 
 use crate::grpc_codegen::Entity as RpcEntity;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum CharacterHandlerError {
-    DatabaseError(DieselError),
+    #[error("DatabaseError: {0}")]
+    DatabaseError(#[from] DieselError),
+
+    #[error("This account doesn't have any character.")]
     NoCharacterForAccount,
-    GRPCLocationIntoUpdateLocation,
-}
 
-impl Display for CharacterHandlerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CharacterHandlerError::NoCharacterForAccount => {
-                write!(f, "This account doesn't have any character.")
-            }
-            CharacterHandlerError::DatabaseError(err) => {
-                write!(f, "DatabaseError: {err}")
-            }
-            CharacterHandlerError::GRPCLocationIntoUpdateLocation => {
-                write!(f, "Error while trying to transform gRPC Location into database model UpdateLocation.")
-            }
-        }
-    }
+    #[error("{0}")]
+    NetEntityConversion(#[from] NetConversionError),
 }
-
-impl Error for CharacterHandlerError {}
 
 type RpcEntityWithDestination = (RpcEntity, Option<Coord>);
 
@@ -137,6 +123,10 @@ impl CharacterHandler {
         )
     }
 
+    pub fn location(&mut self) -> Result<Position, CharacterHandlerError> {
+        Ok(Location::read(&mut self.connection, &self.character.entity_id)?.into())
+    }
+
     pub fn players_on_same_map(&mut self) -> Result<Vec<String>, CharacterHandlerError> {
         // [941] ERROR:  could not identify an equality operator for type point at character 152
         // [941] STATEMENT:  SELECT "entities"."name" FROM ("locations" INNER JOIN "entities" ON ("locations"."entity_id" = "entities"."id")) WHERE ("entities"."id" = $1) GROUP BY "locations"."map", "entities"."name"
@@ -188,8 +178,7 @@ impl CharacterHandler {
     /// Update the Character location with `new_loc`
     /// If `new_loc` match the `destination` then `destination` is reset to None
     pub fn update_location(&mut self, new_loc: RpcLocation) -> Result<(), CharacterHandlerError> {
-        let update_location = UpdateLocation::try_from(new_loc)
-            .map_err(|_| CharacterHandlerError::GRPCLocationIntoUpdateLocation)?;
+        let update_location = UpdateLocation::try_from(new_loc)?;
 
         Location::update_by_entity_id(
             &mut self.connection,

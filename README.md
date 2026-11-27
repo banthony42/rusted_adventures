@@ -64,6 +64,7 @@ I set myself the goal of creating the minimum of an RPG:
 - [x] Monsters persistency in the game
 - [x] Entities events send to each concerned players
 - [x] Chat (map channel and private messages)
+- [ ] Authoritative server and Client prediction / reconciliation
 - [ ] Character classes
 - [ ] Fight
 - [ ] Levels and experience points

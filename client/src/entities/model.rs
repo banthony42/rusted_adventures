@@ -1,7 +1,7 @@
 use common::{
     entities::{model::EntityModel, monsters::MonsterType, player::PlayerType, traits::GameEntity},
     grpc_codegen::{entity::Family, Classes, Entity, Species},
-    network::conversion::NetEntityError,
+    network::conversion::NetConversionError,
     world::entities::ENTITY_RUN_STEP_DURATION,
     CellCoord, MapCoord, Orientation,
 };
@@ -100,11 +100,11 @@ pub struct ClientEntity {
 }
 
 impl TryFrom<Entity> for ClientEntity {
-    type Error = NetEntityError;
+    type Error = NetConversionError;
 
     fn try_from(value: Entity) -> Result<Self, Self::Error> {
         match value.family {
-            None => Err(NetEntityError::MissingFamily),
+            None => Err(NetConversionError::MissingFamily),
             val if val == Some(Family::Class(Classes::Warrior as i32)) => Ok(ClientEntity {
                 entity: ClientEntityType::Player(value.try_into()?),
                 graphic: GraphicEntityModel::new([0.0, 64.0], color::hex("0017ad")),
@@ -121,8 +121,8 @@ impl TryFrom<Entity> for ClientEntity {
                 entity: ClientEntityType::Monster(value.try_into()?),
                 graphic: GraphicEntityModel::new([0.0, 0.0], color::hex("c5c9e8")),
             }),
-            Some(Family::Species(s)) => Err(NetEntityError::SpeciesNotFound(s)),
-            Some(Family::Class(c)) => Err(NetEntityError::ClassNotFound(c)),
+            Some(Family::Species(s)) => Err(NetConversionError::SpeciesNotFound(s)),
+            Some(Family::Class(c)) => Err(NetConversionError::ClassNotFound(c)),
         }
     }
 }

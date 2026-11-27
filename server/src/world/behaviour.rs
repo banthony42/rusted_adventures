@@ -1,16 +1,15 @@
 use common::{
     database::model::{location::UpdateLocation, monster::Monster, EntityIdentifiable},
     monster::MonsterHandler,
-    world::WorldImport,
+    world::WorldMap,
     CellCoord, MapCoord, Orientation, Position,
 };
 use tokio::sync::mpsc::Sender;
 
 use crate::world::engine::{MonsterMove, WorldEngineComponent, WorldEvent};
 
-type BehaviourTaskCallback = Box<
-    dyn Fn(i32, &mut MonsterHandler, &Sender<WorldEvent>, &WorldImport) -> bool + Send + 'static,
->;
+type BehaviourTaskCallback =
+    Box<dyn Fn(i32, &mut MonsterHandler, &Sender<WorldEvent>, &WorldMap) -> bool + Send + 'static>;
 
 const LOG_PREFIX: &str = "Server: WorldEngine: Behaviour:";
 const BEHAVIOUR_UPDATE_RATE: u128 = 10000;
@@ -44,9 +43,9 @@ impl BehaviourTask {
         &mut self,
         handler: &mut MonsterHandler,
         world_tx: &Sender<WorldEvent>,
-        world_importer: &WorldImport,
+        world_map: &WorldMap,
     ) {
-        self.running = (self.callback)(self.monster_id, handler, world_tx, world_importer);
+        self.running = (self.callback)(self.monster_id, handler, world_tx, world_map);
         if self.running {
             self.reset_timer();
         }
@@ -57,7 +56,7 @@ fn move_behaviour(
     monster_id: i32,
     handler: &mut MonsterHandler,
     world_tx: &Sender<WorldEvent>,
-    world_importer: &WorldImport,
+    world_map: &WorldMap,
 ) -> bool {
     let monster = match Monster::read_info(&mut handler.connection, &monster_id) {
         Ok(info) => info,
@@ -72,7 +71,7 @@ fn move_behaviour(
         y: monster.map.1 as i8,
     };
 
-    let Some(map_data) = world_importer.atlas.get(&m) else {
+    let Some(map_data) = world_map.atlas.get(&m) else {
         tracing::warn!("{LOG_PREFIX} Drop behaviour task for monster id: {monster_id}: {m:?} not found in atlas");
         return false;
     };
@@ -177,7 +176,7 @@ impl WorldEngineComponent for BehaviourHandler {
         delta_ts: u128,
         handler: &mut MonsterHandler,
         tx: &Sender<WorldEvent>,
-        world_importer: &WorldImport,
+        world_map: &WorldMap,
     ) {
         // Periodically load Monsters from DB
         // Create behaviours (timer + callback) for each monster.id
@@ -204,7 +203,7 @@ impl WorldEngineComponent for BehaviourHandler {
 
         for task in self.tasks.iter_mut() {
             if task.timer == 0 {
-                task.execute(handler, tx, world_importer);
+                task.execute(handler, tx, world_map);
             } else {
                 task.timer = task.timer.saturating_sub(delta_ts);
             }

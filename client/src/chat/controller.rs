@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use common::network::SequenceNumber;
 use common::record::Record;
-use common::utils::SequenceNumber;
 use piston_window::*;
 
 use tokio::runtime::{Builder, Runtime};
@@ -65,7 +65,7 @@ impl ChatController {
                     model.local_info(CHAT_CONNECTED).await;
 
                     let mut recorder: Record<ChatMessage> = Record::new(); // TEST: what append to previous instance ?
-                    let mut seq_number = SequenceNumber::new();
+                    let mut seq_number = rand::random::<SequenceNumber>();
                     let (stream_tx, response) = connexion.into_parts();
                     let mut stream = response.into_inner();
                     loop {

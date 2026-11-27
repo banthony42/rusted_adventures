@@ -4,7 +4,9 @@ package RPG.package;
 import "entity/shared.proto";
 
 message RequestPath {
-  Location destination = 1;
+  uint32 sequence_number = 1;
+  Coord destination = 2;
+  Location location = 3;
 }
 
 message ClientEntityEvent {
