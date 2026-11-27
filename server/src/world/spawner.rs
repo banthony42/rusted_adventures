@@ -1,7 +1,7 @@
 use common::{
     database::model::{bestiary::PgSpecies, monster::Monster},
     monster::MonsterHandler,
-    world::WorldImport,
+    world::WorldMap,
     CellCoord, MapCoord,
 };
 use rand::seq::IndexedRandom;
@@ -30,9 +30,9 @@ impl SpawnOrder {
         handler: &mut MonsterHandler,
         map: MapCoord,
         tx: &Sender<WorldEvent>,
-        world_importer: &WorldImport,
+        world_map: &WorldMap,
     ) -> bool {
-        let Some(map_data) = world_importer.atlas.get(&map) else {
+        let Some(map_data) = world_map.atlas.get(&map) else {
             tracing::warn!("{LOG_PREFIX} MonsterSpawn: {map:?} not found in atlas");
             return false;
         };
@@ -119,7 +119,7 @@ impl WorldEngineComponent for Spawner {
         delta_ts: u128,
         handler: &mut MonsterHandler,
         tx: &Sender<WorldEvent>,
-        world_importer: &WorldImport,
+        world_map: &WorldMap,
     ) {
         if self.update_timer > SPAWNER_UPDATE_RATE {
             self.update_timer = 0;
@@ -131,7 +131,7 @@ impl WorldEngineComponent for Spawner {
         // spawn the associated monster on the map
         for order in self.spawn_orders.iter_mut() {
             if order.timer > order.spawn_time() {
-                order.spawn(handler, self.map, tx, world_importer);
+                order.spawn(handler, self.map, tx, world_map);
             } else {
                 order.timer += delta_ts;
             }

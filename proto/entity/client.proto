@@ -3,22 +3,14 @@ package RPG.package;
 
 import "entity/shared.proto";
 
-message PlayerNewMap {
-  Location map = 1;
-}
-
-message PlayerNewCell {
-    Location cell = 1;
-}
-
-message PlayerNewDest {
-    Location destination = 1;
+message RequestPath {
+  uint32 sequence_number = 1;
+  Coord destination = 2;
+  Location location = 3;
 }
 
 message ClientEntityEvent {
   oneof event {
-    PlayerNewMap p_new_map = 1;
-    PlayerNewCell p_new_cell = 2;
-    PlayerNewDest p_new_dest = 3;
+    RequestPath requested_path = 1;
   };
 }

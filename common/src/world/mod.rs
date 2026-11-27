@@ -5,6 +5,7 @@ use crate::{
 };
 use std::{collections::HashMap, fs};
 
+pub mod entities;
 pub mod tilemap;
 
 struct MapImport {
@@ -18,11 +19,11 @@ pub struct RawMap {
     pub collider_map: ColliderMap,
 }
 
-pub struct WorldImport {
+pub struct WorldMap {
     pub atlas: HashMap<MapCoord, RawMap>,
 }
 
-impl WorldImport {
+impl WorldMap {
     fn atlas_import() -> HashMap<MapCoord, MapImport> {
         HashMap::from([
             (
@@ -63,7 +64,7 @@ impl WorldImport {
     }
 }
 
-impl Default for WorldImport {
+impl Default for WorldMap {
     fn default() -> Self {
         Self::new()
     }

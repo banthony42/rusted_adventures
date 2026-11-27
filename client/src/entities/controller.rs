@@ -4,40 +4,32 @@ use piston::{Button, MouseButton, Size};
 use piston_window::PistonWindow;
 
 use crate::{
-    entities::model::{EntityModel, Playable, Player, UIEntityModel, UpdateInformation},
-    import::assets::load_assets,
-    states::game::GameCredentials,
+    entities::model::{ClientEntity, UIEntityModel},
+    states::{game::GameCredentials, GameEntities},
     ui::font::Font,
     world::{MapData, World},
 };
 
-use super::{client::EntityClient, model::IEntity, view::EntityView};
+use super::{client::EntityClient, view::EntityView};
 
 use common::{
     constants::*,
-    grpc_codegen::{
-        client_entity_event::Event::{PNewCell, PNewDest, PNewMap},
-        PlayerNewCell, PlayerNewDest, PlayerNewMap,
-    },
+    entities::{player::PlayerType, traits::GameEntity},
     path_finding::{astar::AStar, PathFinder, PathFindingStrategy},
-    CellCoord, Orientation,
-};
-use common::{
-    grpc_codegen::{ClientEntityEvent, Coord, Location},
-    MapCoord,
+    CellCoord, MapCoord,
 };
 
 use tokio::sync::Mutex;
 
-enum EntityOperation {
-    Idle,
-    ClearEntities,
-}
+// TODO: Ensure all channels used are handling correctly Disconnected Error
+
+// TODO: remove this entity.client should not have access
+// Server input should be transmit to controller here through channels
+pub type SharedEntities = Arc<Mutex<GameEntities>>;
 
 pub struct EntityController {
-    player: Player,
-    entities: Arc<Mutex<Vec<Box<dyn IEntity>>>>,
-    operations: EntityOperation,
+    player: ClientEntity,
+    entities: SharedEntities,
     path_finder: PathFinder<AStar>,
     view: EntityView,
     mouse_pos: [f64; 2],
@@ -48,27 +40,20 @@ pub struct EntityController {
 impl EntityController {
     pub fn new(
         credentials: GameCredentials,
-        player: Player,
-        entities: Vec<EntityModel>,
+        player: ClientEntity,
+        entities: GameEntities,
         window: &mut PistonWindow,
     ) -> Self {
-        let assets = load_assets(window);
-        let am_entities = Arc::new(Mutex::new(
-            entities
-                .iter()
-                .map(|e| -> Box<dyn IEntity> { Box::new(e.clone()) })
-                .collect(),
-        ));
+        let am_entities = Arc::new(Mutex::new(entities));
 
         let mut client = EntityClient::new(credentials);
         client.run(am_entities.clone());
 
         EntityController {
             client,
-            operations: EntityOperation::Idle,
             path_finder: PathFinder::new(AStar::new()),
             mouse_pos: [0.0, 0.0],
-            view: EntityView::new(assets, window),
+            view: EntityView::new(window),
             entities: am_entities,
             player,
             margin: Size {
@@ -83,106 +68,55 @@ impl EntityController {
     }
 
     pub fn player_map(&self) -> MapCoord {
-        self.player.entity().get_map()
+        self.player.model().position.map
     }
 
     /// Foreach entities handled in this controller, gather data for interface rendering.
     ///
     /// This function is best effort, if a data can't be retrieve for an entity
     /// then it will be no entry in the HashMap for this entity.
-    pub fn ui_entities_models(&self) -> HashMap<String, UIEntityModel> {
-        let mut ui_models = HashMap::from([(
-            self.player.entity().get_name().clone(),
-            self.player.entity().get_ui_model(),
-        )]);
+    pub fn entities_ui_models(&self) -> HashMap<String, UIEntityModel> {
+        let mut ui_models =
+            HashMap::from([(self.player.model().name().clone(), self.player.ui_model())]);
 
         if let Ok(entities) = self.entities.try_lock() {
             for entity in entities.iter() {
-                ui_models.insert(entity.get_name().clone(), entity.get_ui_model());
+                ui_models.insert(entity.model().name().clone(), entity.ui_model());
             }
         }
         ui_models
     }
 
     pub fn render(&mut self, evnt: &piston::Event, window: &mut PistonWindow) {
-        self.view.render(evnt, window, self.player.entity());
+        self.view.render(evnt, window, &self.player);
 
         if let Ok(entities) = self.entities.try_lock() {
             entities.iter().for_each(|entity| {
-                self.view.render(evnt, window, entity.as_ref());
+                self.view.render(evnt, window, entity);
             });
         } else {
             dbg!("EntityController::render : fail to obtain entities model lock ...");
         }
     }
 
-    fn create_player_move_event(
-        map: MapCoord,
-        cell: CellCoord,
-        update_info: UpdateInformation,
-    ) -> ClientEntityEvent {
-        let location = Location {
-            map: Some(Coord {
-                x: map.x as i64,
-                y: map.y as i64,
-            }),
-            cell: Some(Coord {
-                x: cell.x,
-                y: cell.y,
-            }),
-        };
-
-        let event = match update_info {
-            UpdateInformation::Map => PNewMap(PlayerNewMap {
-                map: Some(location),
-            }),
-            UpdateInformation::Cell => PNewCell(PlayerNewCell {
-                cell: Some(location),
-            }),
-            UpdateInformation::Dest => PNewDest(PlayerNewDest {
-                destination: Some(location),
-            }),
-        };
-
-        ClientEntityEvent { event: Some(event) }
-    }
-
     pub fn update(&mut self, delta_ts: u128, world: &World) {
-        self.view.update(delta_ts, self.player.entity_mut());
-
-        if let Some(update_info) = self.player.entity_mut().update(delta_ts, world) {
-            if update_info == UpdateInformation::Map {
-                self.operations = EntityOperation::ClearEntities;
-            }
-            // Send a LocationType::NewMap to the server
-            // Server will reply with all new entities present on new map (EntitySpawnEvent)
-            let evt = Self::create_player_move_event(
-                self.player.entity().get_map(),
-                self.player.entity().get_cell(),
-                update_info,
-            );
-            self.client.send_client_event(evt);
-        }
+        self.player.update(delta_ts);
+        self.view.update(delta_ts, &mut self.player);
 
         if let Ok(mut entities) = self.entities.try_lock() {
-            match self.operations {
-                EntityOperation::ClearEntities => entities.clear(),
-                EntityOperation::Idle => {}
-            }
-            self.operations = EntityOperation::Idle;
-
             entities.iter_mut().for_each(|entity| {
-                entity.update(delta_ts, world);
-                self.view.update(delta_ts, entity.as_mut());
+                entity.update(delta_ts);
+                self.view.update(delta_ts, entity);
 
-                if let Some(map_data) = world.world.get(&self.player.entity().get_map()) {
-                    if let Some(new_destination) = entity.consume_destination() {
-                        self.path_finder.compute(
-                            entity.get_cell(),
-                            new_destination,
+                if let Some(map_data) = world.world.get(&self.player.model().position.map) {
+                    if let Some(new_destination) = entity.model_mut().destination.take() {
+                        if self.path_finder.compute(
+                            entity.model().position.cell,
+                            new_destination.cell,
                             &map_data.collider_map,
-                        );
-                        entity.set_path(self.path_finder.get_path(), None);
+                        ) {
+                            entity.model_mut().path = Some(self.path_finder.get_path());
+                        }
                     }
                 }
             });
@@ -206,8 +140,16 @@ impl EntityController {
             // succeess -> feedback or simulate spell
             // failure -> feedback
             match key {
-                piston::Key::D1 => self.player.spell_1(),
-                piston::Key::D2 => self.player.spell_2(),
+                piston::Key::D1 => match self.player.class() {
+                    Ok(PlayerType::Mage(m)) => m.classes.fireball(),
+                    Ok(PlayerType::Warrior(w)) => w.classes.charge(),
+                    Err(err) => println!("{err}"),
+                },
+                piston::Key::D2 => match self.player.class() {
+                    Ok(PlayerType::Mage(m)) => m.classes.ice_trap(),
+                    Ok(PlayerType::Warrior(w)) => w.classes.absorption(),
+                    Err(err) => println!("{err}"),
+                },
                 _ => {}
             }
         }
@@ -225,35 +167,16 @@ impl EntityController {
                 y: mouse_y / 64,
             }
             .limit();
-
-            let next_map_x: Option<Orientation> = match mouse_x {
-                x if x > MAP_EAST_LIMIT as i64 => Some(Orientation::Est),
-                x if x < MAP_CHANGE_LIMIT as i64 => Some(Orientation::West),
-                _ => None,
-            };
-            let next_map_y: Option<Orientation> = match mouse_y {
-                y if y > MAP_SOUTH_LIMIT as i64 => Some(Orientation::South),
-                y if y < MAP_CHANGE_LIMIT as i64 => Some(Orientation::North),
-                _ => None,
-            };
-
-            if let Some(map_data) = world.get(&self.player.entity().get_map()) {
-                let path_found = self.path_finder.compute(
-                    self.player.entity().get_cell(),
-                    destination,
-                    &map_data.collider_map,
-                );
-                if path_found {
-                    self.player
-                        .entity_mut()
-                        .set_path(self.path_finder.get_path(), next_map_x.or(next_map_y));
-
-                    let evt = Self::create_player_move_event(
-                        self.player.entity().get_map(),
-                        destination,
-                        UpdateInformation::Dest,
-                    );
-                    self.client.send_client_event(evt);
+            let position = self.player.model().position.clone();
+            if let Some(map_data) = world.get(&position.map) {
+                if self
+                    .path_finder
+                    .compute(position.cell, destination, &map_data.collider_map)
+                {
+                    // Request server with new destination
+                    self.client.request_path(position, destination);
+                    // Meanwhile, set computed path to start the move animation (client prediction)
+                    self.player.model_mut().path = Some(self.path_finder.get_path());
                 }
             }
         }

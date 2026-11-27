@@ -18,6 +18,8 @@ use tonic::{Request, Status};
 use tracing_subscriber::EnvFilter;
 use world::engine::{WorldEngine, WorldEvent};
 
+use crate::world::engine::EntityNetEvent;
+
 pub mod proto {
     pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
         include_bytes!("../../common/grpc_codegen/rpg_services_descriptor.bin");
@@ -27,13 +29,13 @@ mod generics;
 mod services;
 mod world;
 
-fn run_world_engine_on_another_thread() -> (Receiver<WorldEvent>, Sender<WorldEvent>) {
-    let (mut world_engine, wrx_to_net, ntx_to_world) = WorldEngine::new();
+fn run_world_engine_on_another_thread() -> (Receiver<WorldEvent>, Sender<EntityNetEvent>) {
+    let (mut world_engine, world_rx, net_tx_to_world) = WorldEngine::new();
     thread::spawn(move || {
         world_engine.run();
     });
 
-    (wrx_to_net, ntx_to_world)
+    (world_rx, net_tx_to_world)
 }
 
 fn auth_interceptor(req: Request<()>) -> Result<Request<()>, Status> {

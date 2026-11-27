@@ -1,290 +1,69 @@
-use common::{constants::*, CellCoord, MapCoord, Orientation};
-
-use crate::{
-    import::assets::{Animations, EntityAssets},
-    world::World,
+use common::{
+    entities::{model::EntityModel, monsters::MonsterType, player::PlayerType, traits::GameEntity},
+    grpc_codegen::{entity::Family, Classes, Entity, Species},
+    network::conversion::NetConversionError,
+    world::entities::ENTITY_RUN_STEP_DURATION,
+    CellCoord, MapCoord, Orientation,
 };
+use graphics::{color, types::Color};
+
+use crate::import::assets::{Animations, EntityAssets};
+
+#[derive(Debug, thiserror::Error)]
+pub enum EntityError {
+    #[error("Can't retrieve class for Monster object.")]
+    UnexpectedMonster,
+}
 
 /// User Interface version of an EntityModel
 #[derive(Clone, PartialEq)]
 pub struct UIEntityModel {
     pub real_position: CellCoord,
     pub map: MapCoord,
-    pub species: Species,
+    pub render_offset: [f64; 2],
 }
 
-const ENTITY_RUN_SPEED: f64 = 225.0;
-const ENTITY_RUN_STEP_DURATION: f64 = 1.0 / ENTITY_RUN_SPEED;
-
+/// Entity data needed by the graphic client
 #[derive(Debug, Clone)]
-pub struct EntityModel {
-    name: String,
-    uuid: String,
-    species: Species,
-    offset: CellCoord,
-    step: f64,
-    cell: CellCoord,
-    map: MapCoord,
+pub struct GraphicEntityModel {
+    render_offset: [f64; 2],
+    font_color: Color,
+    cell_offset: CellCoord,
     state: Animations,
-    destination: Option<CellCoord>,
-    path: Vec<CellCoord>,
-    orientation: Orientation,
-    next_map: Option<Orientation>,
+    step: f64,
     frame: u8,
     timer: u128,
+    orientation: Orientation,
 }
 
-#[derive(Debug, Clone)]
-pub struct Warrior {
-    entity: EntityModel,
-}
-
-#[derive(Debug, Clone)]
-pub struct Mage {
-    entity: EntityModel,
-}
-
-pub trait Playable {
-    fn entity(&self) -> &EntityModel;
-    fn entity_mut(&mut self) -> &mut EntityModel;
-
-    fn spell_1(&self);
-    fn spell_2(&self);
-}
-
-#[derive(Debug, Clone)]
-pub enum Player {
-    Warrior(Warrior),
-    Mage(Mage),
-}
-
-impl Playable for Player {
-    fn entity(&self) -> &EntityModel {
-        match self {
-            Player::Warrior(warrior) => &warrior.entity,
-            Player::Mage(mage) => &mage.entity,
-        }
-    }
-
-    fn entity_mut(&mut self) -> &mut EntityModel {
-        match self {
-            Player::Warrior(warrior) => &mut warrior.entity,
-            Player::Mage(mage) => &mut mage.entity,
-        }
-    }
-
-    fn spell_1(&self) {
-        match self {
-            Player::Warrior(warrior) => warrior.absorption(),
-            Player::Mage(mage) => mage.fireball(),
-        }
-    }
-
-    fn spell_2(&self) {
-        match self {
-            Player::Warrior(warrior) => warrior.charge(),
-            Player::Mage(mage) => mage.ice_trap(),
-        }
-    }
-}
-
-impl Warrior {
-    pub fn new(entity: EntityModel) -> Self {
-        Self { entity }
-    }
-
-    fn absorption(&self) {
-        println!("Cast absorption");
-    }
-
-    fn charge(&self) {
-        println!("Cast charge");
-    }
-}
-
-impl Mage {
-    pub fn new(entity: EntityModel) -> Self {
-        Self { entity }
-    }
-
-    fn fireball(&self) {
-        println!("Cast fireball");
-    }
-
-    fn ice_trap(&self) {
-        println!("Cast ice trap");
-    }
-}
-
-macro_rules! impl_entity {
-    ($type:ty) => {
-        impl IEntity for $type {
-            fn get_ui_model(&self) -> UIEntityModel {
-                self.entity.get_ui_model()
-            }
-
-            fn get_name(&self) -> &String {
-                self.entity.get_name()
-            }
-
-            fn get_species(&self) -> &Species {
-                self.entity.get_species()
-            }
-
-            fn get_map(&self) -> MapCoord {
-                self.entity.get_map()
-            }
-
-            fn set_map(&mut self, map: MapCoord) {
-                self.entity.set_map(map);
-            }
-
-            fn get_uuid(&self) -> &String {
-                self.entity.get_uuid()
-            }
-
-            fn get_cell(&self) -> CellCoord {
-                self.entity.get_cell()
-            }
-
-            fn set_cell(&mut self, cell: CellCoord) {
-                self.entity.set_cell(cell);
-            }
-
-            fn get_timer(&self) -> u128 {
-                self.entity.get_timer()
-            }
-
-            fn set_timer(&mut self, timer: u128) {
-                self.entity.set_timer(timer)
-            }
-
-            fn get_frame(&self) -> usize {
-                self.entity.get_frame()
-            }
-
-            fn set_frame(&mut self, frame: u8) {
-                self.entity.set_frame(frame);
-            }
-
-            fn get_assets(&self) -> &EntityAssets {
-                self.entity.get_assets()
-            }
-
-            fn set_path(&mut self, path: Vec<CellCoord>, next_map: Option<Orientation>) {
-                self.entity.set_path(path, next_map);
-            }
-
-            fn consume_destination(&mut self) -> Option<CellCoord> {
-                self.entity.consume_destination()
-            }
-
-            fn set_destination(&mut self, destination: CellCoord) {
-                self.entity.set_destination(destination);
-            }
-
-            fn update(&mut self, delta_ts: u128, world: &World) -> Option<UpdateInformation> {
-                self.entity.update(delta_ts, world)
-            }
-
-            fn get_real_pos(&self) -> CellCoord {
-                self.entity.get_real_pos()
-            }
-
-            fn get_orientation(&self) -> &Orientation {
-                self.entity.get_orientation()
-            }
-        }
-    };
-}
-
-impl_entity!(Warrior);
-impl_entity!(Mage);
-
-// This UpdateInformation will only exist waiting the rework on player path computing
-// Indeed the path computing should be done server side
-// autoritative server instead of client compute and server ack / save in DB
-#[derive(PartialEq)]
-pub enum UpdateInformation {
-    Map,
-    Cell,
-    Dest,
-}
-
-// Needed to manipulate EntityModel attributes using IEntity abstraction
-pub trait IEntity: Send {
-    fn get_ui_model(&self) -> UIEntityModel;
-
-    fn get_name(&self) -> &String;
-
-    fn get_species(&self) -> &Species;
-
-    fn get_map(&self) -> MapCoord;
-    fn set_map(&mut self, map: MapCoord);
-
-    fn get_uuid(&self) -> &String;
-
-    fn get_cell(&self) -> CellCoord;
-    fn set_cell(&mut self, cell: CellCoord);
-
-    fn get_timer(&self) -> u128;
-    fn set_timer(&mut self, timer: u128);
-
-    fn get_frame(&self) -> usize;
-    fn set_frame(&mut self, frame: u8);
-
-    fn get_assets(&self) -> &EntityAssets;
-
-    fn set_path(&mut self, path: Vec<CellCoord>, next_map: Option<Orientation>);
-
-    fn consume_destination(&mut self) -> Option<CellCoord>;
-    fn set_destination(&mut self, destination: CellCoord);
-
-    fn update(&mut self, delta_ts: u128, world: &World) -> Option<UpdateInformation>;
-    fn get_real_pos(&self) -> CellCoord;
-
-    fn get_orientation(&self) -> &Orientation;
-}
-
-impl EntityModel {
-    pub fn new(name: String, uuid: String, race: Species) -> Self {
-        EntityModel {
-            name,
-            uuid,
-            species: race,
-            offset: CellCoord::default(),
-            map: MapCoord::default(),
-            cell: CellCoord::default(),
+impl GraphicEntityModel {
+    fn new(render_offset: [f64; 2], font_color: Color) -> Self {
+        GraphicEntityModel {
+            render_offset,
+            font_color,
+            cell_offset: CellCoord::default(),
             state: Animations::default(),
-            destination: None,
-            path: Vec::new(),
             orientation: Orientation::Est,
-            next_map: None,
             timer: 0,
             frame: 0,
             step: 0.0,
         }
     }
 
-    fn get_assets(&self) -> &EntityAssets {
-        match self.species {
-            Species::Crabedoeuf => match self.state {
-                Animations::Idle => &EntityAssets::Crabedoeuf(Animations::Idle),
-                Animations::Run => &EntityAssets::Crabedoeuf(Animations::Run),
-            },
-            Species::Bouftou => match self.state {
-                Animations::Idle => &EntityAssets::Bouftou(Animations::Idle),
-                Animations::Run => &EntityAssets::Bouftou(Animations::Run),
-            },
-            Species::Warrior => match self.state {
-                Animations::Idle => &EntityAssets::Warrior(Animations::Idle),
-                Animations::Run => &EntityAssets::Warrior(Animations::Run),
-            },
-            Species::Mage => match self.state {
-                Animations::Idle => &EntityAssets::Mage(Animations::Idle),
-                Animations::Run => &EntityAssets::Mage(Animations::Run),
-            },
-        }
+    pub fn get_timer(&self) -> u128 {
+        self.timer
+    }
+
+    pub fn set_timer(&mut self, timer: u128) {
+        self.timer = timer;
+    }
+
+    pub fn get_frame(&self) -> usize {
+        self.frame as usize
+    }
+
+    pub fn set_frame(&mut self, frame: u8) {
+        self.frame = frame;
     }
 
     fn set_state(&mut self, state: Animations) {
@@ -294,148 +73,165 @@ impl EntityModel {
             self.timer = 0;
         }
     }
-}
 
-impl IEntity for EntityModel {
-    fn get_ui_model(&self) -> UIEntityModel {
-        UIEntityModel {
-            real_position: self.get_real_pos(),
-            map: self.get_map(),
-            species: self.get_species().clone(),
-        }
+    pub fn font_color(&self) -> Color {
+        self.font_color
     }
 
-    fn get_name(&self) -> &String {
-        &self.name
+    pub fn render_offset(&self) -> [f64; 2] {
+        self.render_offset
     }
 
-    fn set_map(&mut self, map: MapCoord) {
-        self.map = map;
-    }
-
-    fn get_map(&self) -> MapCoord {
-        self.map
-    }
-
-    fn set_cell(&mut self, cell: CellCoord) {
-        self.cell = cell.limit();
-    }
-
-    fn get_cell(&self) -> CellCoord {
-        self.cell
-    }
-
-    fn get_timer(&self) -> u128 {
-        self.timer
-    }
-
-    fn set_timer(&mut self, timer: u128) {
-        self.timer = timer;
-    }
-
-    fn get_frame(&self) -> usize {
-        self.frame as usize
-    }
-
-    fn set_frame(&mut self, frame: u8) {
-        self.frame = frame;
-    }
-
-    fn get_assets(&self) -> &EntityAssets {
-        self.get_assets()
-    }
-
-    fn set_path(&mut self, path: Vec<CellCoord>, next_map: Option<Orientation>) {
-        self.path = path;
-        self.next_map = next_map;
-    }
-
-    fn update(&mut self, delta_ts: u128, world: &World) -> Option<UpdateInformation> {
-        let mut new_pos: Option<UpdateInformation> = None;
-        if self.path.is_empty() {
-            self.set_state(Animations::Idle);
-            self.map = match self.next_map.take() {
-                Some(Orientation::Est) => {
-                    if let Some(new_map) = world.get_east_map(self.map) {
-                        self.cell.x = 0;
-                        new_pos = Some(UpdateInformation::Map);
-                        new_map.0
-                    } else {
-                        self.map
-                    }
-                }
-                Some(Orientation::West) => {
-                    if let Some(new_map) = world.get_west_map(self.map) {
-                        self.cell.x = TILEMAP_WIDTH as i64 - 1;
-                        new_pos = Some(UpdateInformation::Map);
-                        new_map.0
-                    } else {
-                        self.map
-                    }
-                }
-                _ => self.map,
-            };
-        } else {
-            self.set_state(Animations::Run);
-            if let Some(target) = self.path.last() {
-                // Compute unit vector (x and y could be 1, -1 or 0)
-                let mut direction = *target - self.cell;
-                if self.step > 1.0 {
-                    if let Some(cell) = self.path.pop() {
-                        self.cell = cell;
-                        self.offset.x = 0;
-                        self.offset.y = 0;
-                        self.step = 0.0;
-                        new_pos = Some(UpdateInformation::Cell);
-                    }
-                } else {
-                    direction *= 64.0;
-                    self.offset = CellCoord {
-                        x: lerp(0.0, direction.x as f64, self.step) as i64,
-                        y: lerp(0.0, direction.y as f64, self.step) as i64,
-                    };
-                    self.step += delta_ts as f64 * ENTITY_RUN_STEP_DURATION;
-                }
-
-                if let Some(new_orientation) = match direction {
-                    dir if dir.x > 0 => Some(Orientation::Est),
-                    dir if dir.x < 0 => Some(Orientation::West),
-                    dir if dir.y > 0 => Some(Orientation::South),
-                    dir if dir.y < 0 => Some(Orientation::North),
-                    _ => None,
-                } {
-                    self.orientation = new_orientation;
-                }
-            }
-        }
-        new_pos
-    }
-
-    fn get_real_pos(&self) -> CellCoord {
-        CellCoord {
-            x: self.cell.x * 64 + self.offset.x,
-            y: self.cell.y * 64 + self.offset.y,
-        }
-    }
-
-    fn get_orientation(&self) -> &Orientation {
+    pub fn get_orientation(&self) -> &Orientation {
         &self.orientation
     }
+}
 
-    fn get_uuid(&self) -> &String {
-        &self.uuid
+#[derive(Debug, Clone)]
+pub enum ClientEntityType {
+    Player(PlayerType),
+    Monster(MonsterType),
+}
+
+#[derive(Debug, Clone)]
+pub struct ClientEntity {
+    pub entity: ClientEntityType,
+    pub graphic: GraphicEntityModel,
+}
+
+impl TryFrom<Entity> for ClientEntity {
+    type Error = NetConversionError;
+
+    fn try_from(value: Entity) -> Result<Self, Self::Error> {
+        match value.family {
+            None => Err(NetConversionError::MissingFamily),
+            val if val == Some(Family::Class(Classes::Warrior as i32)) => Ok(ClientEntity {
+                entity: ClientEntityType::Player(value.try_into()?),
+                graphic: GraphicEntityModel::new([0.0, 64.0], color::hex("0017ad")),
+            }),
+            val if val == Some(Family::Class(Classes::Mage as i32)) => Ok(ClientEntity {
+                entity: ClientEntityType::Player(value.try_into()?),
+                graphic: GraphicEntityModel::new([0.0, 64.0], color::hex("0017ad")),
+            }),
+            val if val == Some(Family::Species(Species::Bouftou as i32)) => Ok(ClientEntity {
+                entity: ClientEntityType::Monster(value.try_into()?),
+                graphic: GraphicEntityModel::new([0.0, 0.0], color::hex("c5c9e8")),
+            }),
+            val if val == Some(Family::Species(Species::Crabedoeuf as i32)) => Ok(ClientEntity {
+                entity: ClientEntityType::Monster(value.try_into()?),
+                graphic: GraphicEntityModel::new([0.0, 0.0], color::hex("c5c9e8")),
+            }),
+            Some(Family::Species(s)) => Err(NetConversionError::SpeciesNotFound(s)),
+            Some(Family::Class(c)) => Err(NetConversionError::ClassNotFound(c)),
+        }
+    }
+}
+
+impl GameEntity for ClientEntityType {
+    fn model(&self) -> &EntityModel {
+        match self {
+            ClientEntityType::Player(player) => player.model(),
+            ClientEntityType::Monster(monster) => monster.model(),
+        }
     }
 
-    fn consume_destination(&mut self) -> Option<CellCoord> {
-        self.destination.take()
+    fn model_mut(&mut self) -> &mut EntityModel {
+        match self {
+            ClientEntityType::Player(player) => player.model_mut(),
+            ClientEntityType::Monster(monster) => monster.model_mut(),
+        }
+    }
+}
+
+impl GameEntity for ClientEntity {
+    fn model(&self) -> &EntityModel {
+        self.entity.model()
     }
 
-    fn set_destination(&mut self, destination: CellCoord) {
-        self.destination = Some(destination);
+    fn model_mut(&mut self) -> &mut EntityModel {
+        self.entity.model_mut()
+    }
+}
+
+impl ClientEntity {
+    pub fn class(&self) -> Result<&PlayerType, EntityError> {
+        match &self.entity {
+            ClientEntityType::Monster(_) => Err(EntityError::UnexpectedMonster),
+            ClientEntityType::Player(player_type) => Ok(player_type),
+        }
     }
 
-    fn get_species(&self) -> &Species {
-        &self.species
+    pub fn ui_model(&self) -> UIEntityModel {
+        UIEntityModel {
+            real_position: self.get_screen_pos(),
+            map: self.entity.model().position.map,
+            render_offset: self.graphic.render_offset(),
+        }
+    }
+
+    pub fn get_screen_pos(&self) -> CellCoord {
+        let cell = self.entity.model().position.cell;
+        CellCoord {
+            x: cell.x * 64 + self.graphic.cell_offset.x,
+            y: cell.y * 64 + self.graphic.cell_offset.y,
+        }
+    }
+
+    pub fn asset(&self) -> EntityAssets {
+        match &self.entity {
+            ClientEntityType::Player(PlayerType::Mage(_)) => EntityAssets::Mage(self.graphic.state),
+            ClientEntityType::Player(PlayerType::Warrior(_)) => {
+                EntityAssets::Warrior(self.graphic.state)
+            }
+            ClientEntityType::Monster(MonsterType::Bouftou(_)) => {
+                EntityAssets::Bouftou(self.graphic.state)
+            }
+            ClientEntityType::Monster(MonsterType::Crabedoeuf(_)) => {
+                EntityAssets::Crabedoeuf(self.graphic.state)
+            }
+        }
+    }
+
+    pub fn update(&mut self, delta_ts: u128) {
+        let entity_model_mut = &mut self.entity.model_mut();
+        let Some(path) = &mut entity_model_mut.path else {
+            self.graphic.set_state(Animations::Idle);
+            return;
+        };
+
+        self.graphic.set_state(Animations::Run);
+        if let Some(target) = path.last() {
+            // Compute unit vector (x and y could be 1, -1 or 0)
+            let mut direction = *target - entity_model_mut.position.cell;
+            if self.graphic.step > 1.0 {
+                if let Some(cell) = path.pop() {
+                    entity_model_mut.position.cell = cell;
+                    self.graphic.cell_offset.x = 0;
+                    self.graphic.cell_offset.y = 0;
+                    self.graphic.step = 0.0;
+                }
+            } else {
+                direction *= 64.0;
+                self.graphic.cell_offset = CellCoord {
+                    x: lerp(0.0, direction.x as f64, self.graphic.step) as i64,
+                    y: lerp(0.0, direction.y as f64, self.graphic.step) as i64,
+                };
+                self.graphic.step += delta_ts as f64 * ENTITY_RUN_STEP_DURATION;
+            }
+
+            if let Some(new_orientation) = match direction {
+                dir if dir.x > 0 => Some(Orientation::Est),
+                dir if dir.x < 0 => Some(Orientation::West),
+                dir if dir.y > 0 => Some(Orientation::South),
+                dir if dir.y < 0 => Some(Orientation::North),
+                _ => None,
+            } {
+                self.graphic.orientation = new_orientation;
+            }
+        } else {
+            // We failed to get last element, it mean path is empty
+            entity_model_mut.path = None;
+        }
     }
 }
 

@@ -1,5 +1,3 @@
-use common::constants::Species;
-use graphics::types::Color;
 use piston_window::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -117,68 +115,6 @@ pub enum EntityAssets {
 impl Default for EntityAssets {
     fn default() -> Self {
         Self::Character(Animations::default())
-    }
-}
-
-pub struct SpeciesConstants {
-    pub font_color: Color,
-    // See notes about render_offest below
-    pub _render_offset_x: f64,
-    pub render_offset_y: f64,
-}
-
-pub struct SpeciesLibrary(HashMap<Species, SpeciesConstants>);
-
-impl SpeciesLibrary {
-    pub fn new() -> Self {
-        SpeciesLibrary(HashMap::from([
-            (
-                Species::Warrior,
-                SpeciesConstants {
-                    font_color: color::hex("0017ad"),
-                    _render_offset_x: 0.0,
-                    render_offset_y: 64.0,
-                },
-            ),
-            (
-                Species::Mage,
-                SpeciesConstants {
-                    font_color: color::hex("0017ad"),
-                    _render_offset_x: 0.0,
-                    render_offset_y: 64.0,
-                },
-            ),
-            (
-                Species::Bouftou,
-                SpeciesConstants {
-                    font_color: color::hex("c5c9e8"),
-                    _render_offset_x: 0.0,
-                    render_offset_y: 0.0,
-                },
-            ),
-            (
-                Species::Crabedoeuf,
-                SpeciesConstants {
-                    font_color: color::hex("c5c9e8"),
-                    _render_offset_x: 0.0,
-                    render_offset_y: 0.0,
-                },
-            ),
-        ]))
-    }
-
-    fn _get_species_constants(&self, species: &Species) -> &SpeciesConstants {
-        self.0
-            .get(species)
-            .unwrap_or_else(|| panic!("SpeciesLibrary: Unknow species: {:?}", species))
-    }
-
-    pub fn get_font_color(&self, species: &Species) -> Color {
-        self._get_species_constants(species).font_color
-    }
-
-    pub fn get_height_offset(&self, species: &Species) -> f64 {
-        self._get_species_constants(species).render_offset_y
     }
 }
 

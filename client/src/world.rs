@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use common::{
     constants::*,
-    world::{tilemap::LoadedMap, ColliderMap, WorldImport},
+    world::{tilemap::LoadedMap, ColliderMap, WorldMap},
     MapCoord,
 };
 
@@ -86,9 +86,9 @@ impl World {
                 height: 0.0,
             },
         };
-        let world_importer = WorldImport::new();
+        let world_map = WorldMap::new();
 
-        for (map_coord, raw_map) in world_importer.atlas {
+        for (map_coord, raw_map) in world_map.atlas {
             let tilesets: Vec<G2dTexture> = raw_map
                 .loaded_map
                 .tilesets

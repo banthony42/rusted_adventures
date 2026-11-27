@@ -8,13 +8,9 @@ use piston_window::*;
 
 use crate::{
     chat::controller::ChatController,
-    entities::{
-        controller::EntityController,
-        model::{EntityModel, Player},
-    },
+    entities::{controller::EntityController, model::ClientEntity},
     states::{
-        game::Game,
-        game::GameCredentials,
+        game::{Game, GameCredentials},
         loading::{Loading, LoadingNextState},
         login::Login,
     },
@@ -22,13 +18,15 @@ use crate::{
     ui::font::Font,
 };
 
-#[derive(Debug, Clone)]
+pub type GameEntities = Vec<ClientEntity>;
+
+#[derive(Clone)]
 pub enum GameData {
     Login(String),
     Token(String),
     Message(String),
-    Player(Player),
-    Entities(Vec<EntityModel>),
+    Player(ClientEntity),
+    Entities(GameEntities),
 }
 
 pub trait GameState {
@@ -188,14 +186,14 @@ impl StateFactory<Game> {
 
         let mut login: Option<String> = None;
         let mut token: Option<String> = None;
-        let mut player: Option<Player> = None;
-        let mut entities: Option<Vec<EntityModel>> = None;
+        let mut player: Option<ClientEntity> = None;
+        let mut entities: Option<GameEntities> = None;
 
-        game_data.iter().for_each(|gd| match gd {
+        game_data.into_iter().for_each(|gd| match gd {
             GameData::Login(l) => login = Some(l.to_owned()),
             GameData::Token(t) => token = Some(t.to_owned()),
-            GameData::Player(p) => player = Some(p.to_owned()),
-            GameData::Entities(e) => entities = Some(e.to_owned()),
+            GameData::Player(p) => player = Some(p),
+            GameData::Entities(e) => entities = Some(e),
             _ => {}
         });
 

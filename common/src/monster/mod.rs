@@ -8,13 +8,11 @@ use crate::{
         model::{
             bestiary::{Bestiary, BestiaryEntry, PgSpecies},
             entity::{CreateEntity, Entity},
-            location::{CreateLocation, Location},
+            location::{CreateLocation, Location, UpdateLocation},
             monster::{CreateMonster, Monster},
         },
     },
-    grpc_codegen::Location as RpcLocation,
     record::Record,
-    rpc_extentions::RpcLocationExtension,
     CellCoord, MapCoord,
 };
 
@@ -105,13 +103,9 @@ impl MonsterHandler {
     pub fn update_location(
         &mut self,
         entity_id: i32,
-        new_loc: RpcLocation,
+        new_loc: UpdateLocation,
     ) -> Result<(), MonsterHandlerError> {
-        let update_location = new_loc
-            .as_update_location()
-            .ok_or_else(|| MonsterHandlerError::GRPCLocationIntoUpdateLocation)?;
-
-        Location::update_by_entity_id(&mut self.connection, &entity_id, update_location)
+        Location::update_by_entity_id(&mut self.connection, &entity_id, new_loc)
             .map_err(MonsterHandlerError::DatabaseError)?;
 
         Ok(())
